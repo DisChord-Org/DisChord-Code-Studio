@@ -1,0 +1,47 @@
+[gd_scene format=3 uid="uid://b1mgmgsnr6edl"]
+
+[ext_resource type="Script" uid="uid://dvntkqculom22" path="res://run.gd" id="1_1qsck"]
+[ext_resource type="Script" uid="uid://m7mq4m7oi4ir" path="res://code_edit.gd" id="1_62x0m"]
+
+[node name="Main" type="Control" unique_id=607862346]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="." unique_id=2084991080]
+layout_mode = 1
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ToolBar" type="HBoxContainer" parent="VBoxContainer" unique_id=1410635381]
+custom_minimum_size = Vector2(0, 25)
+layout_mode = 2
+
+[node name="Run" type="Button" parent="VBoxContainer/ToolBar" unique_id=1599125525]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Ejecutar"
+script = ExtResource("1_1qsck")
+
+[node name="HSplitContainer" type="VSplitContainer" parent="VBoxContainer" unique_id=1532718213]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CodeEdit" type="CodeEdit" parent="VBoxContainer/HSplitContainer" unique_id=634615161]
+custom_minimum_size = Vector2(0, 500)
+layout_mode = 2
+size_flags_horizontal = 3
+script = ExtResource("1_62x0m")
+
+[node name="Terminal" type="TextEdit" parent="VBoxContainer/HSplitContainer" unique_id=1466349560]
+layout_mode = 2
+size_flags_horizontal = 3
+editable = false
+
+[connection signal="pressed" from="VBoxContainer/ToolBar/Run" to="VBoxContainer/ToolBar/Run" method="_on_run_pressed"]
