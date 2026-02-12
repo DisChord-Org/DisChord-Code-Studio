@@ -26,8 +26,7 @@ func _on_run_pressed():
 		return
 	
 	var docs_path = OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
-	var repo_path = docs_path + "/DisChord"
-	var repo_path_abs = ProjectSettings.globalize_path(repo_path)
+	var repo_path = docs_path + "/DisChord" # compiler path
 	
 	# if DisChord is not installed
 	if not DirAccess.dir_exists_absolute(repo_path):
@@ -39,22 +38,29 @@ func _on_run_pressed():
 	if not DirAccess.dir_exists_absolute(node_modules_path):
 		_log_err("No se encontró node_modules.")
 		return
+		
+	# check repo path
+	if root.project_path == "":
+		_log_err("No se ha detectado la ruta del proyecto.")
+		return
+		
+	var src_path = root.project_path + "/src"
+	if not DirAccess.dir_exists_absolute(src_path):
+		_log_err("No se encontró la carpeta 'src' en el proyecto.")
+		return
 	
 	# making chord test file
-	var file_name = "temp_code.chord"
-	var full_file_path = repo_path + "/" + file_name
-	var file = FileAccess.open(full_file_path, FileAccess.WRITE)
-	file.store_string(code_edit.text)
-	file.close()
+	var file_name = "index.chord"
+	var full_file_path = src_path + "/" + file_name
 	
 	if os == "Windows":
-		var command = "pnpm --silent --dir \"" + repo_path_abs + "\" run dev " + file_name
+		var command = "pnpm --silent --dir \"" + repo_path + "\" run dev " + full_file_path
 		_run_command("cmd.exe", [ "/c", command ])
 	else:
-		var command = "pnpm --silent --dir " + repo_path_abs + " run dev " + file_name
+		var command = "pnpm --silent --dir " + repo_path + " run dev " + full_file_path
 		_run_command("sh", [ "-c", command ])
 	
-	_cleanup(repo_path, file_name)
+	# _cleanup(repo_path, file_name)
 
 func _check_command(cmd_check: String) -> bool:
 	var out = []
