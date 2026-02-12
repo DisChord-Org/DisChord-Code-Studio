@@ -19,11 +19,11 @@ func _ready() -> void:
 	var highlighter = CodeHighlighter.new()
 	
 	# Classes and structure
-	var keywords_estructura = [
+	var structure_keywords = [
 		"clase", "extiende", "prop", "fijar", "esta", "super", 
 		"nuevo", "devolver", "importar", "exportar", "desde", "js"
 	]
-	for word in keywords_estructura:
+	for word in structure_keywords:
 		highlighter.add_keyword_color(word, Color("#ff8c00")) # DarkOrange
 		
 	# flow control
@@ -41,12 +41,12 @@ func _ready() -> void:
 		highlighter.add_keyword_color(word, Color("#66d9ef")) # i like cyan for this
 		
 	# Logic operators
-	var keywords_operadores = [
+	var operators_keywords = [
 		"mayor", "menor", "mayor_igual", "menor_igual", "no", 
 		"igual_tipado", "igual", "y", "o", "mas", "menos", 
 		"por", "entre", "resto", "exp"
 	]
-	for word in keywords_operadores:
+	for word in operators_keywords:
 		highlighter.add_keyword_color(word, Color("#f92672")) # Reddish
 		
 	# primitive types
@@ -68,3 +68,10 @@ func _ready() -> void:
 	highlighter.symbol_color = Color("#f8f8f2")
 	highlighter.member_variable_color = Color("#a6e22e")
 	self.syntax_highlighter = highlighter
+	
+	# extras
+	var extra_keywords = [
+		"rango"
+	]
+	for word in extra_keywords:
+		highlighter.add_keyword_color(word, Color("#66d9ef")) # Cyan
