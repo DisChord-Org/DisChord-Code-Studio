@@ -2,6 +2,14 @@
 
 [ext_resource type="Script" uid="uid://rix57bdlp2yl" path="res://Scripts/init.gd" id="1_ievwv"]
 
+[sub_resource type="Gradient" id="Gradient_ievwv"]
+offsets = PackedFloat32Array(0, 0.99596775)
+colors = PackedColorArray(0.101960786, 0, 0, 1, 0.063323714, 6.498253e-05, 0.1969598, 1)
+
+[sub_resource type="GradientTexture2D" id="GradientTexture2D_hdioq"]
+gradient = SubResource("Gradient_ievwv")
+fill_from = Vector2(0, 0.5)
+
 [node name="Init" type="Control" unique_id=1702295046]
 layout_mode = 3
 anchors_preset = 15
@@ -11,14 +19,14 @@ grow_horizontal = 2
 grow_vertical = 2
 script = ExtResource("1_ievwv")
 
-[node name="ColorRect" type="ColorRect" parent="." unique_id=1898985077]
+[node name="ColorRect" type="TextureRect" parent="." unique_id=296798762]
 layout_mode = 1
 anchors_preset = 15
 anchor_right = 1.0
 anchor_bottom = 1.0
 grow_horizontal = 2
 grow_vertical = 2
-color = Color(0, 0, 0, 1)
+texture = SubResource("GradientTexture2D_hdioq")
 
 [node name="CenterContainer" type="CenterContainer" parent="." unique_id=1465164063]
 layout_mode = 1
