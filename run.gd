@@ -28,7 +28,7 @@ func _on_run_pressed():
 	# checking if node_modules
 	var node_modules_path = repo_path + "/node_modules"
 	if not DirAccess.dir_exists_absolute(node_modules_path):
-		_log_info("No se encontró node_modules.")
+		_log_err("No se encontró node_modules.")
 		return
 	
 	# making chord test file
@@ -38,13 +38,11 @@ func _on_run_pressed():
 	file.store_string(code_edit.text)
 	file.close()
 	
-	_log_info("Compilando...")
-	
 	if os == "Windows":
-		var command = "pnpm --dir \"" + repo_path_abs + "\" run dev " + file_name
+		var command = "pnpm --silent --dir \"" + repo_path_abs + "\" run dev " + file_name
 		_run_command("cmd.exe", [ "/c", command ])
 	else:
-		var command = "pnpm --dir " + repo_path_abs + " run dev " + file_name
+		var command = "pnpm --silent --dir " + repo_path_abs + " run dev " + file_name
 		_run_command("sh", [ "-c", command ])
 	
 	_cleanup(repo_path, file_name)
@@ -68,6 +66,8 @@ func _run_command(cmd: String, args: Array):
 		var shell_command = path_prefix + args[1]
 		var updated_args = ["-c", shell_command]
 		OS.execute(cmd, updated_args, out, true)
+	
+	terminal.text = ''
 	for line in out: terminal.text += line
 
 func _log_info(msg: String):
