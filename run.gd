@@ -3,6 +3,14 @@ extends Button
 @onready var terminal = $"../../HSplitContainer/Terminal"
 @onready var code_edit = $"../../HSplitContainer/CodeEdit"
 
+func _input(event: InputEvent):
+	if event is InputEventKey:
+		# ctrl + r for execute
+		if event.ctrl_pressed and event.keycode == KEY_R and event.pressed:
+			# this block the editor cz' sometimes it writes 'r'
+			get_viewport().set_input_as_handled()
+			_on_run_pressed()
+
 func _on_run_pressed():
 	var os = OS.get_name() # Windows, macOS or Linux
 	
