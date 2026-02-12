@@ -33,17 +33,25 @@ layout_mode = 2
 text = "Ejecutar"
 script = ExtResource("2_6ykgs")
 
-[node name="HSplitContainer" type="VSplitContainer" parent="VBoxContainer" unique_id=1532718213]
+[node name="HSplitContainer2" type="HSplitContainer" parent="VBoxContainer" unique_id=195546637]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="CodeEdit" type="CodeEdit" parent="VBoxContainer/HSplitContainer" unique_id=634615161]
+[node name="Tree" type="Tree" parent="VBoxContainer/HSplitContainer2" unique_id=944426127]
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+
+[node name="VSplitContainer" type="VSplitContainer" parent="VBoxContainer/HSplitContainer2" unique_id=1532718213]
+layout_mode = 2
+size_flags_vertical = 3
+
+[node name="CodeEdit" type="CodeEdit" parent="VBoxContainer/HSplitContainer2/VSplitContainer" unique_id=634615161]
 custom_minimum_size = Vector2(0, 500)
 layout_mode = 2
 size_flags_horizontal = 3
 script = ExtResource("3_dfuwn")
 
-[node name="Terminal" type="TextEdit" parent="VBoxContainer/HSplitContainer" unique_id=1466349560]
+[node name="Terminal" type="TextEdit" parent="VBoxContainer/HSplitContainer2/VSplitContainer" unique_id=1466349560]
 layout_mode = 2
 size_flags_horizontal = 3
 editable = false

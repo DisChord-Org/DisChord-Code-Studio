@@ -11,8 +11,10 @@ config_version=5
 [application]
 
 config/name="DisChord Code Studio"
-run/main_scene="uid://b1mgmgsnr6edl"
+config/version="1.0.0"
+run/main_scene="uid://fhn8astqjjpm"
 config/features=PackedStringArray("4.6", "GL Compatibility")
+boot_splash/show_image=false
 config/icon="res://icon.svg"
 
 [display]
@@ -21,6 +23,12 @@ window/size/viewport_width=1280
 window/size/viewport_height=720
 window/stretch/mode="canvas_items"
 window/stretch/aspect="expand"
+
+[importer_defaults]
+
+animation_library={
+&"nodes/root_script": null
+}
 
 [physics]
 
