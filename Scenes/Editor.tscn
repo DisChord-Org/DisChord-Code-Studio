@@ -2,6 +2,7 @@
 
 [ext_resource type="Script" uid="uid://dpp5nu7ttehjp" path="res://Scripts/editor.gd" id="1_trcuy"]
 [ext_resource type="Script" uid="uid://dvntkqculom22" path="res://Scripts/run.gd" id="2_6ykgs"]
+[ext_resource type="Script" uid="uid://dhyjb13s3vu1k" path="res://Scenes/save_file.gd" id="3_6ykgs"]
 [ext_resource type="Script" uid="uid://m7mq4m7oi4ir" path="res://Scripts/code_edit.gd" id="3_dfuwn"]
 
 [node name="Main" type="Control" unique_id=607862346]
@@ -33,27 +34,34 @@ layout_mode = 2
 text = "Ejecutar"
 script = ExtResource("2_6ykgs")
 
-[node name="HSplitContainer2" type="HSplitContainer" parent="VBoxContainer" unique_id=195546637]
+[node name="SaveFile" type="Button" parent="VBoxContainer/ToolBar" unique_id=462594144]
+custom_minimum_size = Vector2(100, 0)
+layout_mode = 2
+text = "Guardar"
+script = ExtResource("3_6ykgs")
+
+[node name="HSplitContainer" type="HSplitContainer" parent="VBoxContainer" unique_id=195546637]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="Tree" type="Tree" parent="VBoxContainer/HSplitContainer2" unique_id=944426127]
+[node name="FileExplorer" type="Tree" parent="VBoxContainer/HSplitContainer" unique_id=944426127]
 custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 
-[node name="VSplitContainer" type="VSplitContainer" parent="VBoxContainer/HSplitContainer2" unique_id=1532718213]
+[node name="VSplitContainer" type="VSplitContainer" parent="VBoxContainer/HSplitContainer" unique_id=1532718213]
 layout_mode = 2
 size_flags_vertical = 3
 
-[node name="CodeEdit" type="CodeEdit" parent="VBoxContainer/HSplitContainer2/VSplitContainer" unique_id=634615161]
+[node name="CodeEdit" type="CodeEdit" parent="VBoxContainer/HSplitContainer/VSplitContainer" unique_id=634615161]
 custom_minimum_size = Vector2(0, 500)
 layout_mode = 2
 size_flags_horizontal = 3
 script = ExtResource("3_dfuwn")
 
-[node name="Terminal" type="TextEdit" parent="VBoxContainer/HSplitContainer2/VSplitContainer" unique_id=1466349560]
+[node name="Terminal" type="TextEdit" parent="VBoxContainer/HSplitContainer/VSplitContainer" unique_id=1466349560]
 layout_mode = 2
 size_flags_horizontal = 3
 editable = false
 
 [connection signal="pressed" from="VBoxContainer/ToolBar/Run" to="VBoxContainer/ToolBar/Run" method="_on_run_pressed"]
+[connection signal="pressed" from="VBoxContainer/ToolBar/SaveFile" to="VBoxContainer/ToolBar/SaveFile" method="_on_save_pressed"]

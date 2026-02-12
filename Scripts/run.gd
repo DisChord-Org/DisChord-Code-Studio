@@ -1,7 +1,8 @@
 extends Button
 
-@onready var terminal = $"../../HSplitContainer/Terminal"
-@onready var code_edit = $"../../HSplitContainer/CodeEdit"
+@onready var terminal = $"../../HSplitContainer/VSplitContainer/Terminal"
+@onready var code_edit = $"../../HSplitContainer/VSplitContainer/CodeEdit"
+@onready var root = $"../../../"
 
 func _input(event: InputEvent):
 	if event is InputEventKey:
