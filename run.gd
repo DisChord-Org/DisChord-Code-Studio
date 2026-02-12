@@ -7,14 +7,14 @@ func _on_run_pressed():
 	var os = OS.get_name() # Windows, macOS or Linux
 	
 	# check if nodejs is installed
-	if not _check_command("node -v"):
-		_log_err("Error: Node.js no está instalado.")
+	if not _check_command("node"):
+		_log_err("Node.js no está instalado.")
 		return
 	
 	# check if pnpm is installed and tries to install it
-	if not _check_command("pnpm -v"):
-		_log_info("Instalando pnpm...")
-		_run_command("npm", ["install", "-g", "pnpm"])
+	if not _check_command("pnpm"):
+		_log_err("Instale pnpm.")
+		return
 	
 	var docs_path = OS.get_system_dir(OS.SYSTEM_DIR_DOCUMENTS)
 	var repo_path = docs_path + "/DisChord"
@@ -22,20 +22,14 @@ func _on_run_pressed():
 	
 	# if DisChord is not installed
 	if not DirAccess.dir_exists_absolute(repo_path):
-		_log_info("Clonando repositorio DisChord...")
-		_run_command("git", ["clone", "https://github.com/DisChord-Org/DisChord", repo_path_abs])
+		_log_err("DisChord no está instalado.")
+		return
 	
-	# pnpm install
+	# checking if node_modules
 	var node_modules_path = repo_path + "/node_modules"
 	if not DirAccess.dir_exists_absolute(node_modules_path):
-		_log_info("No se encontró node_modules. Instalando dependencia...")
-		_log_info("Esto puede tardar un minuto, espera por favor...")
-		
-		if OS.get_name() == "Windows":
-			OS.execute("cmd.exe", ["/c", "pnpm --dir \"" + repo_path_abs + "\" install"], [], true)
-		else:
-			OS.execute("pnpm", ["--dir", repo_path_abs, "install"], [], true)
-		_log_info("Instalación completada.")
+		_log_info("No se encontró node_modules.")
+		return
 	
 	# making chord test file
 	var file_name = "temp_code.chord"
@@ -43,32 +37,37 @@ func _on_run_pressed():
 	var file = FileAccess.open(full_file_path, FileAccess.WRITE)
 	file.store_string(code_edit.text)
 	file.close()
-
-	_log_info("Compilando...")
-	var output = []
-	var exit_code
 	
-	if OS.get_name() == "Windows":
+	_log_info("Compilando...")
+	
+	if os == "Windows":
 		var command = "pnpm --dir \"" + repo_path_abs + "\" run dev " + file_name
-		exit_code = OS.execute("cmd.exe", ["/c", command], output, true)
+		_run_command("cmd.exe", [ "/c", command ])
 	else:
 		var command = "pnpm --dir " + repo_path_abs + " run dev " + file_name
-		exit_code = OS.execute("sh", ["-c", command], output, true)
-	
-	for line in output:
-		terminal.text += line
+		_run_command("sh", [ "-c", command ])
 	
 	_cleanup(repo_path, file_name)
 
 func _check_command(cmd_check: String) -> bool:
 	var out = []
-	var c = "cmd.exe" if OS.get_name() == "Windows" else "sh"
-	var a = ["/c", cmd_check] if OS.get_name() == "Windows" else ["-c", cmd_check]
-	return OS.execute(c, a, out) == 0
+	if OS.get_name() == "Windows":
+		return OS.execute("cmd.exe", ["/c", "where " + cmd_check], out) == 0
+	else:
+		# linux is more complex. So i will export enviroment paths for pnpm
+		var cmd = "export PATH=$PATH:$HOME/.local/share/pnpm:$HOME/.local/bin:/usr/local/bin;"
+		return OS.execute("sh", ["-c", cmd, "command -v " + cmd_check], out) == 0
 
 func _run_command(cmd: String, args: Array):
 	var out = []
-	OS.execute(cmd, args, out, true)
+	
+	if OS.get_name() == "Windows":
+		OS.execute(cmd, args, out, true)
+	else:
+		var path_prefix = "export PATH=$PATH:$HOME/.local/share/pnpm:$HOME/.local/bin:/usr/local/bin; "
+		var shell_command = path_prefix + args[1]
+		var updated_args = ["-c", shell_command]
+		OS.execute(cmd, updated_args, out, true)
 	for line in out: terminal.text += line
 
 func _log_info(msg: String):
