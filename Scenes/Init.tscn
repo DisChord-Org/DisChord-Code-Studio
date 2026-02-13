@@ -60,9 +60,15 @@ layout_mode = 2
 layout_mode = 2
 
 [node name="NewProjectButton" type="Button" parent="CenterContainer/VBoxContainer/HSeparator" unique_id=908143804]
-layout_mode = 0
-offset_right = 8.0
-offset_bottom = 8.0
+layout_mode = 1
+anchors_preset = 5
+anchor_left = 0.5
+anchor_right = 0.5
+offset_left = -65.5
+offset_top = 10.0
+offset_right = 65.5
+offset_bottom = 41.0
+grow_horizontal = 2
 text = "Nuevo Proyecto"
 
 [node name="SelectFolder" type="FileDialog" parent="." unique_id=653039771]
@@ -73,12 +79,18 @@ file_mode = 2
 access = 2
 
 [node name="NewProjectDialog" type="ConfirmationDialog" parent="." unique_id=323018903]
+oversampling_override = 1.0
+title = "Nombre del proyecto"
+size = Vector2i(300, 100)
+ok_button_text = "Crear"
+cancel_button_text = "Cancelar"
 
 [node name="LineEdit" type="LineEdit" parent="NewProjectDialog" unique_id=1666846987]
-offset_right = 68.5
-offset_bottom = 31.0
-text = "a"
-placeholder_text = "b"
+offset_left = 8.0
+offset_top = 8.0
+offset_right = 292.0
+offset_bottom = 51.0
+placeholder_text = "MiProyecto"
 
 [connection signal="pressed" from="CenterContainer/VBoxContainer/Open" to="." method="_on_btn_open_pressed"]
 [connection signal="pressed" from="CenterContainer/VBoxContainer/HSeparator/NewProjectButton" to="." method="_on_new_project_button_pressed"]
