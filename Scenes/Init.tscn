@@ -42,10 +42,28 @@ layout_mode = 2
 [node name="Label" type="Label" parent="CenterContainer/VBoxContainer" unique_id=95033839]
 layout_mode = 2
 text = "DisChord IDE"
+horizontal_alignment = 1
 
 [node name="Open" type="Button" parent="CenterContainer/VBoxContainer" unique_id=991831985]
+visible = false
 layout_mode = 2
 text = "Seleccionar Proyecto"
+
+[node name="ScrollContainer" type="ScrollContainer" parent="CenterContainer/VBoxContainer" unique_id=560877173]
+custom_minimum_size = Vector2(500, 300)
+layout_mode = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="CenterContainer/VBoxContainer/ScrollContainer" unique_id=145659473]
+layout_mode = 2
+
+[node name="HSeparator" type="HSeparator" parent="CenterContainer/VBoxContainer" unique_id=504043798]
+layout_mode = 2
+
+[node name="NewProjectButton" type="Button" parent="CenterContainer/VBoxContainer/HSeparator" unique_id=908143804]
+layout_mode = 0
+offset_right = 8.0
+offset_bottom = 8.0
+text = "Nuevo Proyecto"
 
 [node name="SelectFolder" type="FileDialog" parent="." unique_id=653039771]
 oversampling_override = 1.0
@@ -54,5 +72,15 @@ position = Vector2i(0, 36)
 file_mode = 2
 access = 2
 
+[node name="NewProjectDialog" type="ConfirmationDialog" parent="." unique_id=323018903]
+
+[node name="LineEdit" type="LineEdit" parent="NewProjectDialog" unique_id=1666846987]
+offset_right = 68.5
+offset_bottom = 31.0
+text = "a"
+placeholder_text = "b"
+
 [connection signal="pressed" from="CenterContainer/VBoxContainer/Open" to="." method="_on_btn_open_pressed"]
+[connection signal="pressed" from="CenterContainer/VBoxContainer/HSeparator/NewProjectButton" to="." method="_on_new_project_button_pressed"]
 [connection signal="dir_selected" from="SelectFolder" to="." method="_on_select_folder_dir_selected"]
+[connection signal="confirmed" from="NewProjectDialog" to="." method="_on_new_project_dialog_confirmed"]
