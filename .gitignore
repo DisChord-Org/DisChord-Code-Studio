@@ -1,3 +1,7 @@
-# Godot 4+ specific ignores
-.godot/
-/android/
+node_modules
+dist
+.env
+
+src-tauri/target
+src-tauri/binaries
+src-tauri/gen/schemas
