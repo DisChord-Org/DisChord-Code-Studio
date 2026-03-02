@@ -48,6 +48,15 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
         }
     };
 
+    const refreshFiles = async () => {
+        try {
+            const updatedFiles = await invoke("read_project_files", { name: projectName });
+            setFileTree(updatedFiles as FileNode[]);
+        } catch (error) {
+            console.error("Error al refrescar explorador:", error);
+        }
+    };
+
     return (
         <div className="h-screen bg-[#0B0E14] flex flex-col text-white overflow-hidden">
             <Toolbar projectName={projectName} onBack={onBack} />
@@ -56,6 +65,8 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                 <Sidebar
                     files={fileTree}
                     onFileClick={handleFileSelect}
+                    projectName={projectName}
+                    onRefresh={refreshFiles}
                 />
 
                 <main className="flex-1 flex flex-col bg-[#0B0E14] overflow-hidden">

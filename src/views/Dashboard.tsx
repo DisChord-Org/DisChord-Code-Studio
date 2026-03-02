@@ -63,9 +63,12 @@ function Dashboard({ onSelectProject }: DashboardProps) {
             </div>
             
             <Modal 
-                isOpen={isModalOpen} 
-                onClose={() => setIsModalOpen(false)} 
-                onSubmit={handleCreateProject} 
+                isOpen={isModalOpen}
+                title="Nuevo Proyecto"
+                placeholder="Mi proyecto"
+                confirmLabel="Crear"
+                onClose={() => setIsModalOpen(false)}
+                onSubmit={handleCreateProject}
             />
 
             <Title>DisChord Studio Code</Title>

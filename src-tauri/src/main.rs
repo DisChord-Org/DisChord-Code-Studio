@@ -136,6 +136,38 @@ fn save_file_content(app_handle: tauri::AppHandle, project_name: String, file_pa
     Ok("Archivo guardado".into())
 }
 
+#[tauri::command]
+fn create_new_file(app_handle: tauri::AppHandle, project_name: String, parent_path: String, name: String) -> Result<String, String> {
+    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
+    path.push("DisChord-Workflows");
+    path.push(project_name);
+    path.push(parent_path);
+    path.push(name);
+
+    if path.exists() {
+        return Err("El archivo ya existe".into());
+    }
+
+    fs::write(&path, "").map_err(|e| format!("Error al crear el archivo: {}", e))?;
+    Ok("Archivo creado".into())
+}
+
+#[tauri::command]
+fn create_new_folder(app_handle: tauri::AppHandle, project_name: String, parent_path: String, name: String) -> Result<String, String> {
+    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
+    path.push("DisChord-Workflows");
+    path.push(project_name);
+    path.push(parent_path);
+    path.push(name);
+
+    if path.exists() {
+        return Err("La carpeta ya existe".into());
+    }
+
+    fs::create_dir_all(&path).map_err(|e| format!("Error al crear la carpeta: {}", e))?;
+    Ok("Carpeta creada".into())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -145,7 +177,9 @@ fn main() {
             create_new_project,
             read_project_files,
             read_file_content,
-            save_file_content
+            save_file_content,
+            create_new_file,
+            create_new_folder
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
