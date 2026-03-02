@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { Toolbar } from "../components/Toolbar";
 import { Sidebar } from "../components/Sidebar";
+import { CodeCanvas } from "../components/CodeCanvas";
 
 export const Editor = ({ projectName, onBack }: { projectName: string, onBack: () => void }) => {
     const [fileTree, setFileTree] = useState<string[]>([]);
@@ -41,18 +42,11 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                 {/* CANVAS */}
                 <main className="flex-1 flex flex-col bg-[#0B0E14]">
                     {selectedFile ? (
-                        <div className="flex flex-col h-full">
-                            {/* archivo actual */}
-                            <div className="bg-[#1e1f22]/30 px-4 py-2 text-xs border-b border-[#1e1f22] w-fit text-[#5865F2] flex items-center gap-2">
-                                📄 {selectedFile}
-                            </div>
-                            <textarea
-                                className="flex-1 bg-transparent p-6 outline-none font-mono text-sm leading-relaxed resize-none text-gray-300"
-                                value={content}
-                                onChange={(e) => setContent(e.target.value)}
-                                spellCheck={false}
-                            />
-                        </div>
+                        <CodeCanvas 
+                            fileName={selectedFile} 
+                            content={content} 
+                            onChange={setContent} 
+                        />
                     ) : (
                         /* pantalla de bienvenida */
                         <div className="flex-1 relative bg-[radial-gradient(#1e1f22_1px,transparent_1px)] [background-size:20px_20px]">
