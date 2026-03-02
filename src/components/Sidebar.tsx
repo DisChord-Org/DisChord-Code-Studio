@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { Modal } from "./Modal";
 
-const FileItem = ({ node, level, onFileClick, onCreateRequest }: { node: FileNode, level: number, onFileClick: (node: FileNode) => void, onCreateRequest: (type: 'file' | 'folder', path: string) => void }) => {
+const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextMenu }: { node: FileNode, level: number, onFileClick: (node: FileNode) => void, onCreateRequest: (type: 'file' | 'folder', path: string) => void, onContextMenu: (e: React.MouseEvent, path: string) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
     const isChordFile = !node.is_dir && node.name.toLowerCase().endsWith('.chord');
 
@@ -19,6 +19,7 @@ const FileItem = ({ node, level, onFileClick, onCreateRequest }: { node: FileNod
                 className="group px-4 py-1.5 text-sm text-gray-400 hover:bg-white/5 hover:text-gray-200 cursor-pointer flex items-center justify-between gap-2 truncate"
                 style={{ paddingLeft: `${level * 12 + 16}px` }}
                 onClick={handleClick}
+                onContextMenu={(e) => onContextMenu(e, node.relative_path)}
             >
                 <div className="flex items-center gap-2 truncate">
                     {node.is_dir
@@ -55,6 +56,7 @@ const FileItem = ({ node, level, onFileClick, onCreateRequest }: { node: FileNod
                             level={level + 1}
                             onFileClick={onFileClick}
                             onCreateRequest={onCreateRequest}
+                            onContextMenu={onContextMenu}
                         />
                     ))}
                 </div>
@@ -73,6 +75,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: { files:
         type: 'file',
         parentPath: ''
     });
+    const [contextMenu, setContextMenu] = useState<{ x: number, y: number, path: string } | null>(null);
 
     const openModal = (type: 'file' | 'folder', path: string) => {
         setModalState({ isOpen: true, type, parentPath: path });
@@ -95,6 +98,15 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: { files:
         }
     };
 
+    const handleDelete = async (path: string) => {
+        if (window.confirm(`¿Seguro que quieres borrar ${path}?`)) {
+            try {
+                await invoke("delete_item", { projectName, path });
+                onRefresh();
+            } catch (e) { alert(e); }
+        }
+    };
+
     return (
         <aside className="w-60 border-r border-[#1e1f22] bg-[#0B0E14] flex flex-col shrink-0 select-none">
             <div className="p-3 text-[10px] font-bold uppercase tracking-widest text-gray-500">
@@ -108,6 +120,10 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: { files:
                         level={0}
                         onFileClick={onFileClick}
                         onCreateRequest={openModal}
+                        onContextMenu={(e, path) => {
+                            e.preventDefault();
+                            setContextMenu({ x: e.clientX, y: e.clientY, path });
+                        }}
                     />
                 ))}
             </div>
@@ -120,6 +136,27 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: { files:
                 onClose={() => setModalState(prev => ({ ...prev, isOpen: false }))}
                 onSubmit={handleModalSubmit}
             />
+
+            {contextMenu && (
+                <>
+                    <div className="fixed inset-0 z-40" onClick={() => setContextMenu(null)} />
+                        <div 
+                            className="fixed z-50 bg-[#111214] border border-[#1e1f22] py-1 rounded shadow-xl min-w-[120px] animate-in fade-in zoom-in duration-75"
+                            style={{ top: contextMenu.y, left: contextMenu.x }}
+                        >
+                            <button 
+                                className="w-full text-left px-3 py-1.5 text-xs text-red-400 hover:bg-red-500/10 flex items-center gap-2"
+                                onClick={() => {
+                                    handleDelete(contextMenu.path);
+                                    setContextMenu(null);
+                                }}
+                            >
+                                <i className="bi bi-trash"></i>
+                                Borrar
+                            </button>
+                        </div>
+                </>
+            )}
         </aside>
     );
 };

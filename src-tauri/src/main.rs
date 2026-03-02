@@ -168,6 +168,26 @@ fn create_new_folder(app_handle: tauri::AppHandle, project_name: String, parent_
     Ok("Carpeta creada".into())
 }
 
+#[tauri::command]
+fn delete_item(app_handle: tauri::AppHandle, project_name: String, path: String) -> Result<String, String> {
+    let mut full_path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
+    full_path.push("DisChord-Workflows");
+    full_path.push(project_name);
+    full_path.push(path);
+
+    if !full_path.exists() {
+        return Err("El elemento no existe".into());
+    }
+
+    if full_path.is_dir() {
+        fs::remove_dir_all(&full_path).map_err(|e| e.to_string())?;
+    } else {
+        fs::remove_file(&full_path).map_err(|e| e.to_string())?;
+    }
+
+    Ok("Eliminado correctamente".into())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -179,7 +199,8 @@ fn main() {
             read_file_content,
             save_file_content,
             create_new_file,
-            create_new_folder
+            create_new_folder,
+            delete_item
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
