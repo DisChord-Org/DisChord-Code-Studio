@@ -9,19 +9,51 @@ const FileItem = ({ node, level, onFileClick }: { node: FileNode, level: number,
         else onFileClick(node);
     };
 
+    const handleCreateFile = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        console.log("Crear archivo en:", node.relative_path);
+    };
+
+    const handleCreateFolder = (e: React.MouseEvent) => {
+        e.stopPropagation();
+        console.log("Crear carpeta en:", node.relative_path);
+    };
+
     return (
         <div>
             {/* la fila donde se hace clic */}
             <div 
-                className="px-4 py-1.5 text-sm text-gray-400 hover:bg-white/5 hover:text-gray-200 cursor-pointer flex items-center gap-2 truncate"
+                className="group px-4 py-1.5 text-sm text-gray-400 hover:bg-white/5 hover:text-gray-200 cursor-pointer flex items-center justify-between gap-2 truncate"
                 style={{ paddingLeft: `${level * 12 + 16}px` }}
-                onClick={() => handleClick()}
+                onClick={handleClick}
             >
                 {/* icono dinamico */}
-                <span className="text-gray-600 opacity-70">
-                    {node.is_dir ? (isOpen ? "📂" : "📁") : "📄"}
-                </span>
-                {node.name}
+                <div className="flex items-center gap-2 truncate">
+                    <span className="text-gray-600 opacity-70 shrink-0">
+                        {node.is_dir ? (isOpen ? "📂" : "📁") : "📄"}
+                    </span>
+                    <span className="truncate">{node.name}</span>
+                </div>
+
+                {/* botones de acción */}
+                {node.is_dir && (
+                    <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity pr-2">
+                        <button 
+                            onClick={handleCreateFile}
+                            className="hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                            title="Nuevo Archivo"
+                        >
+                            <i className="bi bi-file-earmark-plus text-[15px]"></i>
+                        </button>
+                        <button 
+                            onClick={handleCreateFolder}
+                            className="hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                            title="Nueva Carpeta"
+                        >
+                            <i className="bi bi-folder-plus"></i>
+                        </button>
+                    </div>
+                )}
             </div>
 
             {/* si es carpeta, si está abierta y si tiene hijos, se dibujarán */}
@@ -29,7 +61,7 @@ const FileItem = ({ node, level, onFileClick }: { node: FileNode, level: number,
                 <div>
                     {node.children.map((child) => (
                         <FileItem
-                            key={child.name}
+                            key={child.relative_path}
                             node={child}
                             level={level + 1}
                             onFileClick={onFileClick}

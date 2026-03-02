@@ -24,9 +24,9 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
     const handleSave = async () => {
         try {
             await invoke("save_file_content", { 
-                projectName, 
-                filePath: relative_path, 
-                content 
+                projectName,
+                filePath: relative_path,
+                content
             });
             setIsDirty(false);
         } catch (error) {
