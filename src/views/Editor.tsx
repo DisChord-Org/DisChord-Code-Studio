@@ -63,6 +63,7 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                         <div className="flex h-full">
                             <div className="flex-1 overflow-hidden">
                                 <CodeCanvas
+                                    key={selectedNode.relative_path}
                                     projectName={projectName}
                                     relative_path={selectedNode.relative_path}
                                     fileName={selectedNode.name}
