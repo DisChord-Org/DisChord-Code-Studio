@@ -188,6 +188,20 @@ fn delete_item(app_handle: tauri::AppHandle, project_name: String, path: String)
     Ok("Eliminado correctamente".into())
 }
 
+#[tauri::command]
+fn delete_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
+    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
+    path.push("DisChord-Workflows");
+    path.push(&name);
+
+    if path.exists() && path.is_dir() {
+        fs::remove_dir_all(&path).map_err(|e| format!("Error al borrar proyecto: {}", e))?;
+        Ok("Proyecto eliminado".into())
+    } else {
+        Err("El proyecto no existe".into())
+    }
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -200,7 +214,8 @@ fn main() {
             save_file_content,
             create_new_file,
             create_new_folder,
-            delete_item
+            delete_item,
+            delete_project
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

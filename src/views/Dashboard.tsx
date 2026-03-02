@@ -45,6 +45,19 @@ function Dashboard({ onSelectProject }: DashboardProps) {
         }
     };
 
+    const handleDeleteProject = async (name: string) => {
+        const confirm = window.confirm(`¿Estás seguro de que quieres borrar el proyecto "${name}"? Esta acción es irreversible.`);
+
+        if (confirm) {
+            try {
+                await invoke("delete_project", { name }); 
+                await loadProjects();
+            } catch (error) {
+                alert("No se pudo borrar el proyecto: " + error);
+            }
+        }
+    };
+
     const handleClose = async () => {
         await appWindow.close();
     };
@@ -94,7 +107,7 @@ function Dashboard({ onSelectProject }: DashboardProps) {
                                 key={name}
                                 title={name}
                                 subtitle="Última edición: ahora"
-                                onDelete={() => {}}
+                                onDelete={() => handleDeleteProject(name)}
                                 onClick={() => onSelectProject(name)}
                             />
                         ))}
