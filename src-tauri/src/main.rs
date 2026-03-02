@@ -3,8 +3,15 @@
 
 use std::fs;
 use tauri::Manager;
-use std::process::Command;
+use std::process::{Command, Stdio, Child};
 use serde::Serialize;
+use std::io::{BufRead, BufReader};
+use std::thread;
+use tauri::Emitter;
+use std::sync::{Arc, Mutex};
+use tauri::State;
+
+pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
 #[tauri::command]
 fn create_projects_folder(app_handle: tauri::AppHandle) -> String {
@@ -202,8 +209,83 @@ fn delete_project(app_handle: tauri::AppHandle, name: String) -> Result<String, 
     }
 }
 
+#[tauri::command]
+fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>, project_name: String) -> Result<(), String> {
+    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
+    path.push("DisChord-Workflows");
+    path.push(&project_name);
+    path.push("src");
+    path.push("index.chord");
+
+    if !path.exists() {
+        return Err(format!("No se encontró el archivo de entrada: {:?}", path));
+    }
+
+    let mut child = Command::new("chord")
+        .arg("run")
+        .arg(&path)
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
+        .map_err(|e| e.to_string())?;
+
+    let stdout = child.stdout.take().expect("Fallo stdout");
+    let stderr = child.stderr.take().expect("Fallo stderr");
+
+    {
+        let mut lock = state.0.lock().unwrap();
+        *lock = Some(child);
+    }
+
+    let state_arc = state.0.clone(); 
+
+    thread::spawn(move || {
+        let handle_out = app_handle.clone();
+        let stdout_thread = thread::spawn(move || {
+            let reader = BufReader::new(stdout);
+            for line in reader.lines() {
+                if let Ok(l) = line {
+                    let _ = handle_out.emit("terminal-data", format!("{}\r\n", l));
+                }
+            }
+        });
+
+        let handle_err = app_handle.clone();
+        let stderr_thread = thread::spawn(move || {
+            let reader = BufReader::new(stderr);
+            for line in reader.lines() {
+                if let Ok(l) = line {
+                    let _ = handle_err.emit("terminal-data", format!("\x1b[31m{}\r\n\x1b[0m", l));
+                }
+            }
+        });
+
+        let _ = stdout_thread.join();
+        let _ = stderr_thread.join();
+
+        let _ = app_handle.emit("terminal-data", "\x1b[1;32m[!] Ejecución finalizada.\x1b[0m\r\n");
+
+        let mut lock = state_arc.lock().unwrap();
+        *lock = None;
+    });
+
+    Ok(())
+}
+
+#[tauri::command]
+fn stop_chord_project(state: State<'_, ChildProcessState>) -> Result<String, String> {
+    let mut lock = state.0.lock().unwrap();
+    if let Some(mut child) = lock.take() {
+        child.kill().map_err(|e| e.to_string())?;
+        Ok("Proceso detenido".into())
+    } else {
+        Err("No hay ningún proceso en ejecución".into())
+    }
+}
+
 fn main() {
     tauri::Builder::default()
+        .manage(ChildProcessState(Arc::new(Mutex::new(None))))
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
             create_projects_folder,
@@ -215,7 +297,9 @@ fn main() {
             create_new_file,
             create_new_folder,
             delete_item,
-            delete_project
+            delete_project,
+            run_chord_project,
+            stop_chord_project
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

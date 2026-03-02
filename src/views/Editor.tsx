@@ -2,11 +2,13 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileNode } from "../types";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { listen } from "@tauri-apps/api/event";
 
 import { Toolbar } from "../components/Toolbar";
 import { Sidebar } from "../components/Sidebar";
 import { CodeCanvas } from "../components/CodeCanvas";
 import { CodeMinimap } from "../components/CodeMinimap";
+import { TerminalPanel } from "../components/Terminal";
 
 const appWindow = getCurrentWindow();
 
@@ -14,6 +16,8 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
     const [selectedNode, setSelectedNode] = useState<FileNode | null>(null);
     const [content, setContent] = useState<string>("");
+    const [isRunning, setIsRunning] = useState(false);
+    const [showTerminal, setShowTerminal] = useState(false);
 
     useEffect(() => {
         appWindow.setResizable(true);
@@ -30,6 +34,18 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
             appWindow.setResizable(false);
         };
     }, [projectName]);
+
+    useEffect(() => {
+        const unlisten = listen<string>("terminal-data", (event) => {
+            if (event.payload.includes("[!] Ejecución finalizada")) {
+                setIsRunning(false);
+            }
+        });
+
+        return () => {
+            unlisten.then((cleanup) => cleanup());
+        };
+    }, []);
 
     const handleFileSelect = async (node: FileNode) => {
         if (node.is_dir) return;
@@ -57,9 +73,30 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
         }
     };
 
+    const handleToggleRun = async () => {
+        if (isRunning) {
+            try {
+                await invoke("stop_chord_project");
+                setIsRunning(false);
+            } catch (e) { console.error(e); }
+        } else {
+            setShowTerminal(true);
+            setIsRunning(true);
+
+            setTimeout(async () => {
+                try {
+                    await invoke("run_chord_project", { projectName });
+                } catch (e) {
+                    setIsRunning(false);
+                    console.error(e);
+                }
+            }, 200);
+        }
+    };
+
     return (
         <div className="h-screen bg-[#0B0E14] flex flex-col text-white overflow-hidden">
-            <Toolbar projectName={projectName} onBack={onBack} />
+            <Toolbar projectName={projectName} onBack={onBack} onRun={handleToggleRun} isRunning={isRunning} />
 
             <div className="flex flex-1 overflow-hidden relative">
                 <Sidebar
@@ -91,6 +128,22 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                                     DisChord
                                 </p>
                             </div>
+                        </div>
+                    )}
+
+                    {/* terminal */}
+                    {showTerminal && (
+                        <div className="h-72 flex flex-col">
+                            {/* Cabecera para cerrar la terminal */}
+                            <div className="flex justify-end bg-[#0B0E14] border-t border-[#1e1f22] px-2 py-1">
+                                <button 
+                                    onClick={() => setShowTerminal(false)}
+                                    className="text-gray-500 hover:text-white"
+                                >
+                                    <i className="bi bi-x-lg text-xs"></i>
+                                </button>
+                            </div>
+                            <TerminalPanel />
                         </div>
                     )}
                 </main>

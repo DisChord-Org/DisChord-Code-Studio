@@ -3,7 +3,7 @@ import { ToolbarButton } from "./ToolbarButton";
 
 const appWindow = getCurrentWindow();
 
-export const Toolbar = ({ projectName, onBack }: { projectName: string, onBack: () => void }) => {
+export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName: string, onBack: () => void, onRun: () => void, isRunning: boolean }) => {
     const handleMinimize = async () => {
         await appWindow.minimize();
     };
@@ -25,7 +25,11 @@ export const Toolbar = ({ projectName, onBack }: { projectName: string, onBack: 
                 <div className="flex items-center">
                     <ToolbarButton label="Archivo" />
                     <ToolbarButton label="Editar" />
-                    <ToolbarButton label="Ejecutar" variant="run" />
+                    <ToolbarButton
+                        label={isRunning ? "Detener" : "Ejecutar"}
+                        variant={isRunning ? "stop" : "run"}
+                        onClick={onRun}
+                    />
                 </div>
             </div>
 
