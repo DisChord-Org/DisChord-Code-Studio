@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { Button } from "../components/Button";
 import { Card } from "../components/ProjectCard";
@@ -9,6 +10,8 @@ import { Modal } from "../components/Modal";
 interface DashboardProps {
     onSelectProject: (name: string) => void;
 }
+
+const appWindow = getCurrentWindow();
 
 function Dashboard({ onSelectProject }: DashboardProps) {
     const [projects, setProjects] = useState<string[]>([]);
@@ -42,8 +45,23 @@ function Dashboard({ onSelectProject }: DashboardProps) {
         }
     };
 
+    const handleClose = async () => {
+        await appWindow.close();
+    };
+
     return (
-        <div className="min-h-screen bg-[#0B0E14] p-12">
+        <div className="relative min-h-screen bg-[#0B0E14] rounded-xl border border-[#1e1f22] p-12 overflow-hidden">
+            <div className="absolute top-0 right-0 flex items-center h-10 z-50">
+                <div className="flex items-center h-full ml-2">
+                    <button 
+                        onClick={handleClose}
+                        className="w-10 h-10 flex items-center justify-center hover:bg-red-500 hover:text-white text-gray-400 transition-colors"
+                    >
+                        <i className="bi bi-x-lg"></i>
+                    </button>
+                </div>
+            </div>
+            
             <Modal 
                 isOpen={isModalOpen} 
                 onClose={() => setIsModalOpen(false)} 

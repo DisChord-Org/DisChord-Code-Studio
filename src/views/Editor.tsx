@@ -8,7 +8,7 @@ import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 
 const appWindow = getCurrentWindow();
 
-export const Editor = ({ projectName, onBack }: { projectName: string, onBack: () => void }) => {
+export const Editor = ({ projectName, onBack }: { projectName: string, onBack: () => void }) => {    
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
     const [selectedNode, setSelectedNode] = useState<FileNode | null>(null);
     const [content, setContent] = useState<string>("");
