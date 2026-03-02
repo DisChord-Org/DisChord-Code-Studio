@@ -125,6 +125,17 @@ fn read_file_content(app_handle: tauri::AppHandle, project_name: String, file_pa
     fs::read_to_string(&path).map_err(|e| format!("No se pudo leer el archivo: {}", e))
 }
 
+#[tauri::command]
+fn save_file_content(app_handle: tauri::AppHandle, project_name: String, file_path: String, content: String) -> Result<String, String> {
+    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
+    path.push("DisChord-Workflows");
+    path.push(project_name);
+    path.push(file_path);
+
+    fs::write(&path, content).map_err(|e| format!("Error al guardar: {}", e))?;
+    Ok("Archivo guardado".into())
+}
+
 fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
@@ -133,7 +144,8 @@ fn main() {
             get_projects,
             create_new_project,
             read_project_files,
-            read_file_content
+            read_file_content,
+            save_file_content
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

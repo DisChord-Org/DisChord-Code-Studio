@@ -1,10 +1,5 @@
 import { useState } from "react";
-
-interface FileNode {
-    name: string;
-    is_dir: boolean;
-    children?: FileNode[];
-}
+import { FileNode } from "../types";
 
 const FileItem = ({ node, level, onFileClick }: { node: FileNode, level: number, onFileClick: (node: FileNode) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
