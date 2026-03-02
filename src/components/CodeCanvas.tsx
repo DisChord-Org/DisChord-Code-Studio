@@ -40,7 +40,27 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
                 e.preventDefault();
                 handleSave();
             }
+
+            if (e.key === 'Tab') {
+                e.preventDefault();
+
+                const textarea = textAreaRef.current;
+                if (!textarea) return;
+
+                const start = textarea.selectionStart;
+                const end = textarea.selectionEnd;
+
+                const tab = "    "; 
+                const newContent = content.substring(0, start) + tab + content.substring(end);
+
+                handleChange(newContent);
+
+                setTimeout(() => {
+                    textarea.selectionStart = textarea.selectionEnd = start + tab.length;
+                }, 0);
+            }
         };
+
         window.addEventListener("keydown", handleKeyDown);
         return () => window.removeEventListener("keydown", handleKeyDown);
     }, [content, relative_path]);
