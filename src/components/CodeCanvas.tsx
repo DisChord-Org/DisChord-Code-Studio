@@ -65,7 +65,7 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
 
         const view = new EditorView({
             state: EditorState.create({
-                doc: '',
+                doc: content,
                 extensions: [
                     basicSetup,
                     oneDark,
@@ -112,6 +112,7 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
         });
 
         viewRef.current = view;
+        setIsDirty(false);
         return () => {
             view.destroy();
             viewRef.current = null;
@@ -132,6 +133,7 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
                 insert: content
             }
         });
+        setIsDirty(false);
     }, [content]);
 
     return (
