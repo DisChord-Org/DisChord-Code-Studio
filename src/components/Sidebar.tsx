@@ -3,6 +3,7 @@ import { FileNode } from "../types";
 
 const FileItem = ({ node, level, onFileClick }: { node: FileNode, level: number, onFileClick: (node: FileNode) => void }) => {
     const [isOpen, setIsOpen] = useState(false);
+    const isChordFile = !node.is_dir && node.name.toLowerCase().endsWith('.chord');
 
     const handleClick = () => {
         if (node.is_dir) setIsOpen(!isOpen);
@@ -29,9 +30,18 @@ const FileItem = ({ node, level, onFileClick }: { node: FileNode, level: number,
             >
                 {/* icono dinamico */}
                 <div className="flex items-center gap-2 truncate">
-                    <span className="text-gray-600 opacity-70 shrink-0">
-                        {node.is_dir ? (isOpen ? "📂" : "📁") : "📄"}
-                    </span>
+                    {node.is_dir
+                        ? (
+                            isOpen
+                            ? <i className="bi bi-folder2-open"></i>
+                            : <i className="bi bi-folder"></i>
+                        )
+                        : (
+                            isChordFile
+                            ? <span className="text-[#5865F2] font-bold text-lg mr-4">D</span>
+                            : <i className="bi bi-file-text"></i>
+                        )
+                    }
                     <span className="truncate">{node.name}</span>
                 </div>
 
