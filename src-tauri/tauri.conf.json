@@ -12,9 +12,14 @@
   "app": {
     "windows": [
       {
-        "title": "dischord-code-studio",
+        "title": "DisChord Code Studio",
         "width": 800,
-        "height": 600
+        "height": 600,
+        "resizable": true,
+        "decorations": true,
+        "transparent": true,
+        "minWidth": 800,
+        "minHeight": 600
       }
     ],
     "security": {

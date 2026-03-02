@@ -4,6 +4,9 @@ import { Toolbar } from "../components/Toolbar";
 import { Sidebar } from "../components/Sidebar";
 import { CodeCanvas } from "../components/CodeCanvas";
 import { FileNode } from "../types";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+
+const appWindow = getCurrentWindow();
 
 export const Editor = ({ projectName, onBack }: { projectName: string, onBack: () => void }) => {
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
@@ -11,9 +14,19 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
     const [content, setContent] = useState<string>("");
 
     useEffect(() => {
+        appWindow.setResizable(true);
+        appWindow.maximize();
+
         invoke<FileNode[]>("read_project_files", { name: projectName })
             .then(setFileTree)
             .catch(console.error);
+        
+        return () => {
+            appWindow.unmaximize();
+            appWindow.setSize(new LogicalSize(800, 600));
+            appWindow.center();
+            appWindow.setResizable(false);
+        };
     }, [projectName]);
 
     const handleFileSelect = async (node: FileNode) => {
