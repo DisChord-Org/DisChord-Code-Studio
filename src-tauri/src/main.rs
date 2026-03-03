@@ -287,6 +287,36 @@ fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProces
     }
 }
 
+#[tauri::command]
+async fn update_chord_system(app_handle: tauri::AppHandle) -> Result<(), String> {
+    thread::spawn(move || {
+        let mut child = Command::new("chord")
+            .arg("update")
+            .arg("all")
+            .stdout(Stdio::piped())
+            .spawn()
+            .map_err(|e| e.to_string())
+            .expect("Fallo al iniciar el comando de actualización");
+
+        let stdout = child.stdout.take().expect("Fallo al capturar stdout");
+        let reader = BufReader::new(stdout);
+
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let clean_line = l.trim().replace("────────", "").trim().to_string();
+                if !clean_line.is_empty() {
+                    let _ = app_handle.emit("update-status", clean_line);
+                }
+            }
+        }
+        
+        let _ = child.wait();
+        let _ = app_handle.emit("update-finished", "success");
+    });
+
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
         .manage(ChildProcessState(Arc::new(Mutex::new(None))))
@@ -303,7 +333,8 @@ fn main() {
             delete_item,
             delete_project,
             run_chord_project,
-            stop_chord_project
+            stop_chord_project,
+            update_chord_system
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
