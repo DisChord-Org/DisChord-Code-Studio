@@ -211,19 +211,22 @@ fn delete_project(app_handle: tauri::AppHandle, name: String) -> Result<String, 
 
 #[tauri::command]
 fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>, project_name: String) -> Result<(), String> {
-    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
-    path.push("DisChord-Workflows");
-    path.push(&project_name);
-    path.push("src");
-    path.push("index.chord");
+    let mut project_dir = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
+    project_dir.push("DisChord-Workflows");
+    project_dir.push(&project_name);
 
-    if !path.exists() {
-        return Err(format!("No se encontró el archivo de entrada: {:?}", path));
+    let mut chord_file = project_dir.clone();
+    chord_file.push("src");
+    chord_file.push("index.chord");
+
+    if !chord_file.exists() {
+        return Err(format!("No se encontró el archivo: {:?}", chord_file));
     }
 
     let mut child = Command::new("chord")
         .arg("run")
-        .arg(&path)
+        .arg("src/index.chord")
+        .current_dir(&project_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
@@ -273,10 +276,11 @@ fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcess
 }
 
 #[tauri::command]
-fn stop_chord_project(state: State<'_, ChildProcessState>) -> Result<String, String> {
+fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>) -> Result<String, String> {
     let mut lock = state.0.lock().unwrap();
     if let Some(mut child) = lock.take() {
         child.kill().map_err(|e| e.to_string())?;
+        let _ = app_handle.emit("terminal-data", "\x1b[1;31m[!] Proceso detenido.\x1b[0m\r\n");
         Ok("Proceso detenido".into())
     } else {
         Err("No hay ningún proceso en ejecución".into())
