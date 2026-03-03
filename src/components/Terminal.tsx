@@ -47,17 +47,35 @@ export const TerminalPanel = () => {
     }, []);
 
     return (
-        <div className="h-64 border-t border-[#1e1f22] bg-[#0B0E14] p-2 overflow-hidden">
-            <div className="flex items-center justify-between mb-1 px-2">
-                <span className="text-[10px] font-bold uppercase tracking-widest text-gray-500">Terminal</span>
-                <button 
-                    onClick={() => xtermRef.current?.clear()}
-                    className="text-gray-500 hover:text-white text-[10px]"
-                >
-                    LIMPIAR
-                </button>
+        <div className="h-72 flex flex-col bg-[#0B0E14] border-t border-white/5 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.5)]">
+            <div className="flex items-center justify-between px-4 py-2 bg-[#0E1117]/50 backdrop-blur-sm border-b border-white/[0.02]">
+                <div className="flex items-center gap-3">
+                    <div className="flex gap-1.5">
+                        <div className="w-2 h-2 rounded-full bg-white/10" />
+                        <div className="w-2 h-2 rounded-full bg-white/10" />
+                    </div>
+                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 select-none">
+                        Terminal
+                    </span>
+                </div>
+                
+                <div className="flex items-center gap-4">
+                    <button 
+                        onClick={() => xtermRef.current?.clear()}
+                        className="group flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-[#5865F2] transition-all"
+                    >
+                        <i className="bi bi-trash3 text-xs opacity-50 group-hover:opacity-100"></i>
+                        <span>LIMPIAR</span>
+                    </button>
+                </div>
             </div>
-            <div ref={terminalRef} className="h-full w-full" />
+
+            <div className="flex-1 p-3 overflow-hidden group">
+                <div 
+                    ref={terminalRef} 
+                    className="h-full w-full opacity-90 group-hover:opacity-100 transition-opacity" 
+                />
+            </div>
         </div>
     );
 };
