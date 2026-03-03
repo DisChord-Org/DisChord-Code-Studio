@@ -108,18 +108,20 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
 
                 <main className="flex-1 flex flex-col bg-[#0B0E14] overflow-hidden">
                     {selectedNode ? (
-                        <div className="flex h-full">
-                            <div className="flex-1 overflow-hidden">
-                                <CodeCanvas
-                                    key={selectedNode.relative_path}
-                                    projectName={projectName}
-                                    relative_path={selectedNode.relative_path}
-                                    fileName={selectedNode.name}
-                                    content={content}
-                                    onChange={setContent}
-                                />
+                        <div className="flex-1 min-h-0 relative">
+                            <div className="flex h-full">
+                                <div className="flex-1 overflow-hidden">
+                                    <CodeCanvas
+                                        key={selectedNode.relative_path}
+                                        projectName={projectName}
+                                        relative_path={selectedNode.relative_path}
+                                        fileName={selectedNode.name}
+                                        content={content}
+                                        onChange={setContent}
+                                    />
+                                </div>
+                                <CodeMinimap text={content} />
                             </div>
-                            <CodeMinimap text={content} />
                         </div>
                     ) : (
                         <div className="flex-1 relative bg-[radial-gradient(#1e1f22_1px,transparent_1px)] [background-size:20px_20px]">
