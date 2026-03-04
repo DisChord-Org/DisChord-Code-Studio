@@ -47,6 +47,20 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
         };
     }, []);
 
+    useEffect(() => {
+        const handleOpenHidden = (event: any) => {
+            const fileData = event.detail;
+            handleFileSelect({
+                name: fileData.name,
+                relative_path: fileData.relative_path,
+                is_dir: false
+            } as FileNode);
+        };
+
+        window.addEventListener("open-hidden-file", handleOpenHidden);
+        return () => window.removeEventListener("open-hidden-file", handleOpenHidden);
+    }, [projectName]);
+
     const handleFileSelect = async (node: FileNode) => {
         if (node.is_dir) return;
 

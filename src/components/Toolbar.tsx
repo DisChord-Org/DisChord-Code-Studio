@@ -10,6 +10,8 @@ const appWindow = getCurrentWindow();
 export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName: string, onBack: () => void, onRun: () => void, isRunning: boolean, onSave: () => void }) => {
     const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
     const menuRef = useRef<HTMLDivElement>(null);
+    const [isEditMenuOpen, setIsEditMenuOpen] = useState(false);
+    const editMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -37,6 +39,16 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName
     const handleSave = () => {
         window.dispatchEvent(new CustomEvent("dischord-save"));
         setIsFileMenuOpen(false);
+    };
+
+    const handleEditGitignore = () => {
+        window.dispatchEvent(new CustomEvent("open-hidden-file", { 
+            detail: {
+                name: ".gitignore",
+                relative_path: ".gitignore"
+            }
+        }));
+        setIsEditMenuOpen(false);
     };
 
     return (
@@ -77,7 +89,23 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName
                         )}
                     </div>
 
-                    <ToolbarButton label="Editar" />
+                    <div className="relative" ref={editMenuRef}>
+                        <ToolbarButton 
+                            label="Editar" 
+                            onClick={() => setIsEditMenuOpen(!isEditMenuOpen)} 
+                        />
+
+                        {isEditMenuOpen && (
+                            <div className="absolute top-full left-0 mt-1 w-48 bg-[#1e1f22] border border-[#2b2d31] rounded-lg shadow-2xl py-1 z-[200] animate-in fade-in zoom-in-95 duration-100">
+                                <MenuOption 
+                                    icon="bi bi-gear" 
+                                    label="Configurar .gitignore" 
+                                    onClick={handleEditGitignore} 
+                                />
+                            </div>
+                        )}
+                    </div>
+
                     <ToolbarButton
                         label={isRunning ? "Detener" : "Ejecutar"}
                         variant={isRunning ? "stop" : "run"}
