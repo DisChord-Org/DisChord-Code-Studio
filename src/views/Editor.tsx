@@ -96,7 +96,13 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
 
     return (
         <div className="h-screen bg-[#0B0E14] flex flex-col text-white overflow-hidden">
-            <Toolbar projectName={projectName} onBack={onBack} onRun={handleToggleRun} isRunning={isRunning} />
+            <Toolbar
+                projectName={projectName}
+                onBack={onBack}
+                onRun={handleToggleRun}
+                isRunning={isRunning}
+                onSave={() => window.dispatchEvent(new CustomEvent("dischord-save"))}
+            />
 
             <div className="flex flex-1 overflow-hidden relative">
                 <Sidebar
@@ -136,7 +142,6 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                     {/* terminal */}
                     {showTerminal && (
                         <div className="h-72 flex flex-col">
-                            {/* Cabecera para cerrar la terminal */}
                             <div className="flex justify-end bg-[#0B0E14] border-t border-[#1e1f22] px-2 py-1">
                                 <button 
                                     onClick={() => setShowTerminal(false)}

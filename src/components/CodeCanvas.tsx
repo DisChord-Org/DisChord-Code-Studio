@@ -136,6 +136,17 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
         setIsDirty(false);
     }, [content]);
 
+    useEffect(() => {
+        const triggerSave = () => {
+            if (viewRef.current) {
+                handleSave(viewRef.current.state.doc.toString());
+            }
+        };
+
+        window.addEventListener("dischord-save", triggerSave);
+        return () => window.removeEventListener("dischord-save", triggerSave);
+    }, [relative_path, projectName]);
+
     return (
         <div className="flex flex-col h-full bg-[#0B0E14] overflow-hidden">
             <div className={`flex items-center gap-2 bg-[#0B0E14] px-4 py-2 text-[11px] border-b border-[#1e1f22] w-fit text-[#5865f2] font-medium shrink-0`}>

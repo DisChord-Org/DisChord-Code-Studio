@@ -1,20 +1,44 @@
+import { useState, useRef, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { invoke } from "@tauri-apps/api/core";
+
 import { ToolbarButton } from "./ToolbarButton";
+import { MenuOption } from "./MenuOption";
 
 const appWindow = getCurrentWindow();
 
-export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName: string, onBack: () => void, onRun: () => void, isRunning: boolean }) => {
-    const handleMinimize = async () => {
-        await appWindow.minimize();
+export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName: string, onBack: () => void, onRun: () => void, isRunning: boolean, onSave: () => void }) => {
+    const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
+    const menuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        const handleClickOutside = (event: MouseEvent) => {
+            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
+                setIsFileMenuOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
+    
+    const handleMinimize = async () => await appWindow.minimize();
+    const handleToggleMaximize = async () => await appWindow.toggleMaximize();
+    const handleClose = async () => await appWindow.close();
+
+    const handleOpenExplorer = async () => {
+        try {
+            await invoke("open_in_explorer", { projectName });
+            setIsFileMenuOpen(false);
+        } catch (error) {
+            alert("No se pudo abrir el explorador: " + error);
+        }
     };
 
-    const handleToggleMaximize = async () => {
-        await appWindow.toggleMaximize();
+    const handleSave = () => {
+        window.dispatchEvent(new CustomEvent("dischord-save"));
+        setIsFileMenuOpen(false);
     };
 
-    const handleClose = async () => {
-        await appWindow.close();
-    };
     return (
         <header
             data-tauri-drag-region
@@ -23,7 +47,36 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName
             <div className="flex items-center gap-1 flex-1">
                 <span className="text-[#5865F2] font-black text-xl px-2">D</span>
                 <div className="flex items-center">
-                    <ToolbarButton label="Archivo" />
+                    <div className="relative" ref={menuRef}>
+                        <ToolbarButton
+                            label="Archivo"
+                            onClick={() => setIsFileMenuOpen(!isFileMenuOpen)}
+                        />
+                        
+                        {isFileMenuOpen && (
+                            <div className="absolute top-full left-0 mt-1 w-48 bg-[#1e1f22] border border-[#2b2d31] rounded-lg shadow-2xl py-1 z-[200] animate-in fade-in zoom-in-95 duration-100">
+                                <MenuOption
+                                    icon="bi bi-save"
+                                    label="Guardar"
+                                    shortcut="Ctrl+S"
+                                    onClick={handleSave}
+                                />
+                                <MenuOption
+                                    icon="bi bi-folder2-open"
+                                    label="Abrir en explorador"
+                                    onClick={handleOpenExplorer}
+                                />
+                                <div className="h-[1px] bg-[#2b2d31] my-1 mx-2" />
+                                <MenuOption
+                                    icon="bi bi-box-arrow-right"
+                                    label="Salir"
+                                    onClick={handleClose}
+                                    variant="danger"
+                                />
+                            </div>
+                        )}
+                    </div>
+
                     <ToolbarButton label="Editar" />
                     <ToolbarButton
                         label={isRunning ? "Detener" : "Ejecutar"}
@@ -34,7 +87,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName
             </div>
 
             <div className="flex-none pointer-events-none">
-                <span className="ext-xs text-gray-600 flex-1 font-mono px-2 py-1 rounded">
+                <span className="text-xs text-gray-600 flex-1 font-mono px-2 py-1 rounded">
                     <i className="bi bi-folder"></i> {projectName}
                 </span>
             </div>
