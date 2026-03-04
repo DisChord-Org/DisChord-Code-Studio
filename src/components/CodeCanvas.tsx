@@ -6,12 +6,15 @@ import { EditorState, Compartment } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
+import { autocompletion } from "@codemirror/autocomplete";
+import { chordCompletionSource } from "../languages/chord-completions";
 
 import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { json } from "@codemirror/lang-json";
 import { chord } from "../languages/chord-language";
+
 
 interface CodeCanvasProps {
     projectName: string;
@@ -73,6 +76,7 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
                     basicSetup,
                     oneDark,
                     languageConf.of(getLanguage(fileName)),
+                    autocompletion({ override: [ chordCompletionSource ] }),
                     keymap.of([
                         indentWithTab,
                         { key: "Ctrl-s", run: (v) => { handleSave(v.state.doc.toString()); return true; } }
