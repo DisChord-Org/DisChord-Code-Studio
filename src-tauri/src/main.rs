@@ -2,14 +2,18 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 use std::fs;
-use tauri::Manager;
 use std::process::{Command, Stdio, Child};
-use serde::Serialize;
 use std::io::{BufRead, BufReader};
 use std::thread;
-use tauri::Emitter;
 use std::sync::{Arc, Mutex};
+use std::time::SystemTime;
+use std::path::Path;
+
+use tauri::Manager;
+use tauri::Emitter;
 use tauri::State;
+
+use serde::Serialize;
 
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
@@ -24,24 +28,61 @@ fn create_projects_folder(app_handle: tauri::AppHandle) -> String {
     "done".into()
 }
 
-#[tauri::command]
-fn get_projects(app_handle: tauri::AppHandle) -> Vec<String> {
-    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
-    path.push("DisChord-Workflows");
+#[derive(Serialize)]
+struct ProjectInfo {
+    name: String,
+    last_modified: String,
+}
 
-    let mut projects = Vec::new();
+fn get_latest_modification(path: &Path) -> SystemTime {
+    let mut latest = fs::metadata(path)
+        .and_then(|m| m.modified())
+        .unwrap_or(SystemTime::UNIX_EPOCH);
 
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
-            if let Ok(file_type) = entry.file_type() {
-                if file_type.is_dir() {
-                    if let Some(name) = entry.file_name().to_str() {
-                        projects.push(name.to_string());
-                    }
-                }
+            let entry_path = entry.path();
+            let mtime = if entry_path.is_dir() {
+                get_latest_modification(&entry_path)
+            } else {
+                fs::metadata(&entry_path)
+                    .and_then(|m| m.modified())
+                    .unwrap_or(SystemTime::UNIX_EPOCH)
+            };
+
+            if mtime > latest {
+                latest = mtime;
             }
         }
     }
+    latest
+}
+
+#[tauri::command]
+fn get_projects(app_handle: tauri::AppHandle) -> Vec<ProjectInfo> {
+    let mut root_path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
+    root_path.push("DisChord-Workflows");
+
+    let mut projects = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(root_path) {
+        for entry in entries.flatten() {
+            let path = entry.path();
+            if path.is_dir() {
+                let name = entry.file_name().to_string_lossy().to_string();
+                let last_modified_time = get_latest_modification(&path);
+                let datetime: chrono::DateTime<chrono::Local> = last_modified_time.into();
+                let formatted_time = datetime.to_rfc3339(); 
+
+                projects.push(ProjectInfo {
+                    name,
+                    last_modified: formatted_time,
+                });
+            }
+        }
+    }
+    
+    projects.sort_by(|a, b| b.last_modified.cmp(&a.last_modified));
     projects
 }
 

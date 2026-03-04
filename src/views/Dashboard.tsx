@@ -15,7 +15,7 @@ interface DashboardProps {
 const appWindow = getCurrentWindow();
 
 function Dashboard({ onSelectProject }: DashboardProps) {
-    const [projects, setProjects] = useState<string[]>([]);
+    const [projects, setProjects] = useState<{name: string, last_modified: string}[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [updating, setUpdating] = useState(false);
@@ -24,7 +24,7 @@ function Dashboard({ onSelectProject }: DashboardProps) {
     const loadProjects = async () => {
         try {
             await invoke("create_projects_folder");
-            const list = await invoke<string[]>("get_projects");
+            const list = await invoke<{name: string, last_modified: string}[]>("get_projects");
             setProjects(list);
         } catch (error) {
             console.error("Fallo al cargar proyectos:", error);
@@ -113,6 +113,36 @@ function Dashboard({ onSelectProject }: DashboardProps) {
         }
     };
 
+    const formatRelativeTime = (dateStr: string): string => {
+        const now = new Date();
+        const then = new Date(dateStr);
+        const diffInSeconds = Math.floor((now.getTime() - then.getTime()) / 1000);
+        const diffInMinutes = Math.floor(diffInSeconds / 60);
+        const diffInHours = Math.floor(diffInMinutes / 60);
+
+        if (diffInSeconds < 120) return "Ahora mismo";
+        if (diffInMinutes < 5) return "Hace un momento";
+        if (diffInMinutes < 30) return "Hace cinco minutos";
+        if (diffInMinutes < 60) return `Hace ${diffInMinutes} minutos`;
+    
+        if (diffInHours >= 1 && diffInHours <= 5) {
+            return diffInHours === 1 ? "Hace 1 hora" : `Hace ${diffInHours} horas`;
+        }
+
+        const isToday = now.toDateString() === then.toDateString();
+        if (isToday && diffInHours > 5) return "Hoy";
+
+        const yesterday = new Date();
+        yesterday.setDate(now.getDate() - 1);
+        if (yesterday.toDateString() === then.toDateString()) return "Ayer";
+
+        return then.toLocaleDateString('es-ES', {
+            day: '2-digit',
+            month: '2-digit',
+            year: 'numeric'
+        });
+    };
+
     return (
         <div className="relative min-h-screen bg-[#0B0E14] rounded-xl border border-[#1e1f22] p-12 overflow-hidden">
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
@@ -182,13 +212,13 @@ function Dashboard({ onSelectProject }: DashboardProps) {
                             <p className="text-gray-500 animate-pulse">Buscando en Documentos...</p>
                         ) : projects.length > 0 ? (
                             <div className="grid gap-3">
-                                {projects.map((name) => (
+                                {projects.map((project) => (
                                     <Card
-                                        key={name}
-                                        title={name}
-                                        subtitle="Última edición: ahora"
-                                        onDelete={() => handleDeleteProject(name)}
-                                        onClick={() => onSelectProject(name)}
+                                        key={project.name}
+                                        title={project.name}
+                                        subtitle={`Última edición: ${formatRelativeTime(project.last_modified)}`}
+                                        onDelete={() => handleDeleteProject(project.name)}
+                                        onClick={() => onSelectProject(project.name)}
                                     />
                                 ))}
                             </div>
