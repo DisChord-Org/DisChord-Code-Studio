@@ -14,6 +14,7 @@ use tauri::Emitter;
 use tauri::State;
 
 use serde::Serialize;
+use ignore::gitignore::GitignoreBuilder;
 
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
@@ -134,33 +135,55 @@ fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<
     let mut root_path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
     root_path.push("DisChord-Workflows");
     root_path.push(&name);
+    
     let root_str = root_path.to_string_lossy().to_string();
+    let mut builder = GitignoreBuilder::new(&root_path);
+    let gitignore_path = root_path.join(".gitignore");
+    if gitignore_path.exists() {
+        let _ = builder.add(&gitignore_path);
+    }
+    let matcher = builder.build().unwrap();
 
-    fn scan_dir(path: &std::path::Path, root_str: &str) -> Vec<ProjectFile> {
+    fn scan_dir(path: &Path, root_str: &str, matcher: &ignore::gitignore::Gitignore) -> Vec<ProjectFile> {
         let mut files = Vec::new();
-        if let Ok(entries) = fs::read_dir(path) {
+
+        if let Ok(entries) = std::fs::read_dir(path) {
             for entry in entries.flatten() {
                 let file_path = entry.path();
+                let file_name = entry.file_name().to_string_lossy().to_string();
+
+                if file_name == ".gitignore" || file_name == ".git" {
+                    continue;
+                }
+
+                if matcher.matched(&file_path, file_path.is_dir()).is_ignore() {
+                    continue;
+                }
+
                 let is_dir = file_path.is_dir();
-                
                 let relative_path = file_path.to_string_lossy()
                     .replace(root_str, "")
-                    .trim_start_matches('/')
+                    .trim_start_matches(|c| c == '/' || c == '\\')
                     .to_string();
 
                 files.push(ProjectFile {
-                    name: entry.file_name().to_string_lossy().to_string(),
+                    name: file_name,
                     is_dir,
                     relative_path,
-                    children: if is_dir { Some(scan_dir(&file_path, root_str)) } else { None },
+                    children: if is_dir { 
+                        Some(scan_dir(&file_path, root_str, matcher)) 
+                    } else { 
+                        None 
+                    },
                 });
             }
         }
-        files.sort_by(|a, b| b.is_dir.cmp(&a.is_dir));
+
+        files.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
         files
     }
 
-    Ok(scan_dir(&root_path, &root_str))
+    Ok(scan_dir(&root_path, &root_str, &matcher))
 }
 
 #[tauri::command]
