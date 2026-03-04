@@ -11,6 +11,7 @@ import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { json } from "@codemirror/lang-json";
+import { chord } from "../languages/chord-language";
 
 interface CodeCanvasProps {
     projectName: string;
@@ -30,6 +31,8 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
     const getLanguage = (fname: string) => {
         const ext = fname.split('.').pop()?.toLowerCase();
         switch (ext) {
+            case 'chord':
+                return chord();
             case 'js':
             case 'jsx':
             case 'mjs':
