@@ -82,6 +82,8 @@ jobs:
       - uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NODE_OPTIONS: "--max_old_space_size=4096"
+          OUTPUT_APPIMAGE: "DisChord_Studio.AppImage"
         with:
           tagName: ${{ github.ref_name }}
           releaseName: "DisChord Studio ${{ github.ref_name }}"
