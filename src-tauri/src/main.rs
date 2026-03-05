@@ -12,7 +12,7 @@ use std::path::Path;
 use tauri::Manager;
 use tauri::Emitter;
 use tauri::State;
-use tauri::path::BaseDirectory
+use tauri::path::BaseDirectory;
 
 use serde::Serialize;
 use ignore::gitignore::GitignoreBuilder;
