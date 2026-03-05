@@ -26,6 +26,9 @@ jobs:
         with:
           version: 8
 
+      - name: install bun
+        uses: oven-sh/setup-bun@v1
+
       - name: setup node
         uses: actions/setup-node@v4
         with:
@@ -39,6 +42,35 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Clone and Build Sidecars (CLI & Compiler)
+        shell: bash
+        run: |
+          mkdir -p src-tauri/binaries
+          
+          if [ "${{ matrix.platform }}" = "windows-latest" ]; then
+            EXT=".exe"
+            ARCH="x86_64-pc-windows-msvc"
+          elif [ "${{ matrix.platform }}" = "ubuntu-22.04" ]; then
+            EXT=""
+            ARCH="x86_64-unknown-linux-gnu"
+          else
+            EXT=""
+            ARCH="x86_64-apple-darwin"
+          fi
+
+          git clone https://github.com/DisChord-Org/DischordCLI.git cli-repo
+          cd cli-repo
+          bun install
+          bun build ./src/index.ts --compile --outfile ../src-tauri/binaries/dischord-cli-$ARCH$EXT
+          cd ..
+
+          # 2. Compilar el Compilador
+          git clone https://github.com/DisChord-Org/DisChord.git compiler-repo
+          cd compiler-repo
+          bun install
+          bun build ./src/index.ts --compile --outfile ../src-tauri/binaries/dischord-compiler-$ARCH$EXT
+          cd ..
 
       - name: install frontend dependencies
         run: pnpm install --no-frozen-lockfile
