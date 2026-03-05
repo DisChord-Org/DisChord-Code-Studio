@@ -68,7 +68,7 @@ jobs:
 
           git clone https://github.com/DisChord-Org/DischordCLI.git cli-repo
           cd cli-repo && bun install
-          bun build ./src/index.ts --compile --outfile ../src-tauri/binaries/dischord-cli-$TARGET$EXT
+          bun build ./src/index.ts --compile --outfile ../src-tauri/binaries/chord-$TARGET$EXT
           cd ..
 
           git clone https://github.com/DisChord-Org/DisChord.git compiler-repo

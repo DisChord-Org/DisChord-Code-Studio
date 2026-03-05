@@ -7,11 +7,12 @@ use std::io::{BufRead, BufReader};
 use std::thread;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use tauri::Manager;
 use tauri::Emitter;
 use tauri::State;
+use tauri::path::BaseDirectory
 
 use serde::Serialize;
 use ignore::gitignore::GitignoreBuilder;
@@ -411,7 +412,8 @@ fn open_in_explorer(app_handle: tauri::AppHandle, project_name: String) -> Resul
 
 fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle();
-    let home = tauri::api::path::home_dir().expect("No se encontró el home");
+    
+    let home = handle.path().home_dir()?;
     
     #[cfg(target_os = "windows")]
     let bin_dir = home.join(".dischord").join("bin");
@@ -426,16 +428,20 @@ fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
     let tools = vec!["chord", "dischord-compiler"];
 
     for tool in tools {
-        let dest_path = bin_dir.join(if cfg!(windows) { format!("{}.exe", tool) } else { tool.to_string() });
-        if let Ok(sidecar_path) = handle.resolve_resource(format!("binaries/{}", tool)) {
-            fs::copy(&sidecar_path, &dest_path)?;
+        let tool_name = if cfg!(windows) { format!("{}.exe", tool) } else { tool.to_string() };
+        let dest_path = bin_dir.join(&tool_name);
+        
+        if let Ok(sidecar_path) = handle.path().resolve(format!("binaries/{}", tool_name), BaseDirectory::Resource) {
+            if sidecar_path.exists() {
+                fs::copy(&sidecar_path, &dest_path)?;
 
-            #[cfg(unix)]
-            {
-                use std::os::unix::fs::PermissionsExt;
-                let mut perms = fs::metadata(&dest_path)?.permissions();
-                perms.set_mode(0o755);
-                fs::set_permissions(&dest_path, perms)?;
+                #[cfg(unix)]
+                {
+                    use std::os::unix::fs::PermissionsExt;
+                    let mut perms = fs::metadata(&dest_path)?.permissions();
+                    perms.set_mode(0o755);
+                    fs::set_permissions(&dest_path, perms)?;
+                }
             }
         }
     }
