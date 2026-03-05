@@ -1,6 +1,6 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "dischord-code-studio",
+  "productName": "DisChord-Code-Studio",
   "version": "1.0.0",
   "identifier": "com.ether.dischord-code-studio-v2",
   "build": {
