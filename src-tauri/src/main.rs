@@ -7,7 +7,7 @@ use std::io::{BufRead, BufReader};
 use std::thread;
 use std::sync::{Arc, Mutex};
 use std::time::SystemTime;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use tauri::Manager;
 use tauri::Emitter;
@@ -409,8 +409,47 @@ fn open_in_explorer(app_handle: tauri::AppHandle, project_name: String) -> Resul
     Ok(())
 }
 
+fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
+    let handle = app.handle();
+    let home = tauri::api::path::home_dir().expect("No se encontró el home");
+    
+    #[cfg(target_os = "windows")]
+    let bin_dir = home.join(".dischord").join("bin");
+    
+    #[cfg(not(target_os = "windows"))]
+    let bin_dir = home.join(".local").join("bin");
+
+    if !bin_dir.exists() {
+        fs::create_dir_all(&bin_dir)?;
+    }
+
+    let tools = vec!["chord", "dischord-compiler"];
+
+    for tool in tools {
+        let dest_path = bin_dir.join(if cfg!(windows) { format!("{}.exe", tool) } else { tool.to_string() });
+        if let Ok(sidecar_path) = handle.resolve_resource(format!("binaries/{}", tool)) {
+            fs::copy(&sidecar_path, &dest_path)?;
+
+            #[cfg(unix)]
+            {
+                use std::os::unix::fs::PermissionsExt;
+                let mut perms = fs::metadata(&dest_path)?.permissions();
+                perms.set_mode(0o755);
+                fs::set_permissions(&dest_path, perms)?;
+            }
+        }
+    }
+    Ok(())
+}
+
 fn main() {
     tauri::Builder::default()
+        .setup(|app| {
+            if let Err(e) = setup_environment(app) {
+                eprintln!("Error instalando herramientas: {}", e);
+            }
+            Ok(())
+        })
         .manage(ChildProcessState(Arc::new(Mutex::new(None))))
         .plugin(tauri_plugin_opener::init())
         .invoke_handler(tauri::generate_handler![
