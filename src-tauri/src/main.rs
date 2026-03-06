@@ -484,7 +484,7 @@ fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
     {
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         let (env, _) = hkcu.create_subkey("Environment")?;
-        let current_path: String = env.get_value("Path").unwrap_or_default();
+        let current_path: String = env.get_value::<String, _>("Path").unwrap_or_default();
         let bin_dir_str = bin_dir.to_string_lossy().to_string();
 
         if !current_path.contains(&bin_dir_str) {
