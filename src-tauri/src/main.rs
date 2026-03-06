@@ -20,6 +20,8 @@ use ignore::gitignore::GitignoreBuilder;
 use winreg::enums::*;
 #[cfg(target_os = "windows")]
 use winreg::RegKey;
+#[cfg(target_os = "windows")]
+use windows_sys::Win32::UI::WindowsAndMessaging::{SendMessageTimeoutW, HWND_BROADCAST, WM_SETTINGCHANGE, SMTO_ABORTIFHUNG};
 
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
@@ -494,6 +496,27 @@ fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
                 format!("{};{}", current_path, bin_dir_str)
             };
             env.set_value("Path", &new_path)?;
+
+            let mut paths = std::env::var_os("PATH").unwrap_or_default();
+            let mut split_paths: Vec<_> = std::env::split_paths(&paths).collect();
+            if !split_paths.contains(&bin_dir) {
+                split_paths.push(bin_dir);
+                let new_os_path = std::env::join_paths(split_paths)?;
+                std::env::set_var("PATH", new_os_path);
+            }
+
+            unsafe {
+                let env_str: Vec<u16> = "Environment\0".encode_utf16().collect();
+                SendMessageTimeoutW(
+                    HWND_BROADCAST,
+                    WM_SETTINGCHANGE,
+                    0,
+                    env_str.as_ptr() as isize,
+                    SMTO_ABORTIFHUNG,
+                    5000,
+                    std::ptr::null_mut(),
+                );
+            }
         }
     }
 
