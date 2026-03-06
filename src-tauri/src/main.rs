@@ -17,6 +17,11 @@ use tauri::path::BaseDirectory;
 use serde::Serialize;
 use ignore::gitignore::GitignoreBuilder;
 
+#[cfg(target_os = "windows")]
+use winreg::enums::*;
+#[cfg(target_os = "windows")]
+use winreg::RegKey;
+
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
 #[tauri::command]
@@ -412,12 +417,10 @@ fn open_in_explorer(app_handle: tauri::AppHandle, project_name: String) -> Resul
 
 fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle();
-    
-    let home = handle.path().home_dir()?;
+    let home = handle.path().home_dir().expect("No se encontró el home dir");
     
     #[cfg(target_os = "windows")]
     let bin_dir = home.join(".dischord").join("bin");
-    
     #[cfg(not(target_os = "windows"))]
     let bin_dir = home.join(".local").join("bin");
 
@@ -426,12 +429,12 @@ fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
     }
 
     let tools = vec!["chord", "dischord-compiler"];
-
     for tool in tools {
-        let tool_name = if cfg!(windows) { format!("{}.exe", tool) } else { tool.to_string() };
-        let dest_path = bin_dir.join(&tool_name);
+        let tool_filename = if cfg!(windows) { format!("{}.exe", tool) } else { tool.to_string() };
         
-        if let Ok(sidecar_path) = handle.path().resolve(format!("binaries/{}", tool_name), BaseDirectory::Resource) {
+        if let Ok(sidecar_path) = handle.path().resolve_resource(format!("binaries/{}", tool_filename)) {
+            let dest_path = bin_dir.join(&tool_filename);
+            
             if sidecar_path.exists() {
                 fs::copy(&sidecar_path, &dest_path)?;
 
@@ -445,6 +448,24 @@ fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
             }
         }
     }
+
+    #[cfg(target_os = "windows")]
+    {
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let (env, _) = hkcu.create_subkey("Environment")?;
+        let current_path: String = env.get_value("Path").unwrap_or_default();
+        let bin_dir_str = bin_dir.to_string_lossy().to_string();
+
+        if !current_path.contains(&bin_dir_str) {
+            let new_path = if current_path.is_empty() {
+                bin_dir_str
+            } else {
+                format!("{};{}", current_path, bin_dir_str)
+            };
+            env.set_value("Path", &new_path)?;
+        }
+    }
+
     Ok(())
 }
 
