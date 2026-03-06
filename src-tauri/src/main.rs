@@ -12,7 +12,6 @@ use std::path::Path;
 use tauri::Manager;
 use tauri::Emitter;
 use tauri::State;
-use tauri::path::BaseDirectory;
 
 use serde::Serialize;
 use ignore::gitignore::GitignoreBuilder;
@@ -100,7 +99,7 @@ fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<Stri
         .output();
 
     if chord_check.is_err() {
-        return Err("El comando 'chord' no está instalado en tu sistema Debian.".into());
+        return Err("El comando 'chord' no está instalado en tu sistema.".into());
     }
 
     let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
@@ -415,6 +414,47 @@ fn open_in_explorer(app_handle: tauri::AppHandle, project_name: String) -> Resul
     Ok(())
 }
 
+fn get_target_triple() -> &'static str {
+    if cfg!(target_os = "windows") {
+        "x86_64-pc-windows-msvc"
+    } else if cfg!(target_os = "macos") {
+        "aarch64-apple-darwin"
+    } else {
+        "x86_64-unknown-linux-gnu"
+    }
+}
+
+fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let repo = if name == "chord" { "DischordCLI" } else { "DisChord" };
+    let target = get_target_triple();
+    let ext = if cfg!(windows) { ".exe" } else { "" };
+    
+    let url = format!(
+        "https://github.com/DisChord-Org/{}/releases/latest/download/{}-{}{}",
+        repo, name, target, ext
+    );
+
+    println!("Descargando {} desde {}...", name, url);
+    
+    let mut response = reqwest::blocking::get(url)?;
+    if !response.status().is_success() {
+        return Err(format!("Fallo al descargar: {}", response.status()).into());
+    }
+
+    let mut file = fs::File::create(dest)?;
+    response.copy_to(&mut file)?;
+    
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let mut perms = fs::metadata(dest)?.permissions();
+        perms.set_mode(0o755);
+        fs::set_permissions(dest, perms)?;
+    }
+
+    Ok(())
+}
+
 fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>> {
     let handle = app.handle();
     let home = handle.path().home_dir().expect("No se encontró el home dir");
@@ -431,20 +471,11 @@ fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
     let tools = vec!["chord", "dischord-compiler"];
     for tool in tools {
         let tool_filename = if cfg!(windows) { format!("{}.exe", tool) } else { tool.to_string() };
+        let dest_path = bin_dir.join(&tool_filename);
         
-        if let Ok(sidecar_path) = handle.path().resolve_resource(format!("binaries/{}", tool_filename)) {
-            let dest_path = bin_dir.join(&tool_filename);
-            
-            if sidecar_path.exists() {
-                fs::copy(&sidecar_path, &dest_path)?;
-
-                #[cfg(unix)]
-                {
-                    use std::os::unix::fs::PermissionsExt;
-                    let mut perms = fs::metadata(&dest_path)?.permissions();
-                    perms.set_mode(0o755);
-                    fs::set_permissions(&dest_path, perms)?;
-                }
+        if !dest_path.exists() {
+            if let Err(e) = download_tool(tool, &dest_path) {
+                eprintln!("Error descargando {}: {}", tool, e);
             }
         }
     }
