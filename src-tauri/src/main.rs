@@ -497,7 +497,7 @@ fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
             };
             env.set_value("Path", &new_path)?;
 
-            let mut paths = std::env::var_os("PATH").unwrap_or_default();
+            let paths = std::env::var_os("PATH").unwrap_or_default();
             let mut split_paths: Vec<_> = std::env::split_paths(&paths).collect();
             if !split_paths.contains(&bin_dir) {
                 split_paths.push(bin_dir);
