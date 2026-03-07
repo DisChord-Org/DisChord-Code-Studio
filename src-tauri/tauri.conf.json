@@ -38,8 +38,7 @@
     ],
     "windows": {
       "certificateThumbprint": null,
-      "digestAlgorithm": "sha256",
-      "timestampServer": ""
+      "digestAlgorithm": "sha256"
     },
     "linux": {
       "deb": {
