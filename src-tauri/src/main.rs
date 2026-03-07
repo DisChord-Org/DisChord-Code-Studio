@@ -508,7 +508,7 @@ fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Error>>
             unsafe {
                 let env_str: Vec<u16> = "Environment\0".encode_utf16().collect();
                 SendMessageTimeoutW(
-                    HWND_BROADCAST,
+                    HWND_BROADCAST as _,
                     WM_SETTINGCHANGE,
                     0,
                     env_str.as_ptr() as isize,
