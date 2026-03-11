@@ -29,6 +29,11 @@
   "bundle": {
     "active": true,
     "targets": "all",
+    "shortDescription": "IDE para programadores de DisChord",
+    "longDescription": "DisChord Code Studio es un entorno de desarrollo optimizado para la creación, gestión, despliegue de bots y aplicaciones de Discord.",
+    "publisher": "Ether",
+    "copyright": "Copyright © 2026 Ether",
+    "category": "Development",
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",
