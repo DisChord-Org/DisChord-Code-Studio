@@ -2,9 +2,9 @@ import { useRef, useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 import { EditorView, basicSetup } from "codemirror";
-import { EditorState, Compartment } from "@codemirror/state";
+import { EditorState, Compartment, StateEffect, StateField } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { keymap } from "@codemirror/view";
+import { Decoration, keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { autocompletion } from "@codemirror/autocomplete";
 import { chordCompletionSource } from "../languages/chord-completions";
@@ -30,6 +30,32 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
     const [isDirty, setIsDirty] = useState(false);
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
+    
+    const addFlash = StateEffect.define<{from: number, to: number}>();
+    const clearFlash = StateEffect.define<null>();
+    const flashField = StateField.define({
+        create() { return Decoration.none },
+        update(underlines, tr) {
+            underlines = underlines.map(tr.changes);
+            for (let e of tr.effects) {
+                if (e.is(addFlash)) {
+                    underlines = underlines.update({
+                        add: [
+                            Decoration.mark({
+                                attributes: { class: "bg-red-500/40 transition-colors duration-300 rounded-sm" }
+                            }).range(e.value.from, e.value.to)
+                        ]
+                    });
+                }
+
+                if (e.is(clearFlash)) {
+                    return Decoration.none;
+                }
+            }
+            return underlines;
+        },
+        provide: f => EditorView.decorations.from(f)
+    });
 
     const getLanguage = (fname: string) => {
         const ext = fname.split('.').pop()?.toLowerCase();
@@ -75,6 +101,7 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
                 extensions: [
                     basicSetup,
                     oneDark,
+                    flashField,
                     languageConf.of(getLanguage(fileName)),
                     autocompletion({ override: [ chordCompletionSource ] }),
                     keymap.of([
@@ -85,6 +112,25 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
                         if (update.docChanged) {
                             setIsDirty(true);
                             onChange(update.state.doc.toString());
+                        }
+                    }),
+                    EditorView.domEventHandlers({
+                        copy: (_event, view) => {
+                            const { from, to } = view.state.selection.main;
+                    
+                            if (from !== to) {
+                                view.dispatch({
+                                    effects: addFlash.of({ from, to })
+                                });
+                                
+                                setTimeout(() => {
+                                    if (view && view.state) {
+                                        view.dispatch({
+                                            effects: clearFlash.of(null)
+                                        });
+                                    }
+                                }, 300);
+                            }
                         }
                     }),
                     EditorView.theme({
