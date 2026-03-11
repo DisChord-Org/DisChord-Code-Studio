@@ -13,6 +13,7 @@ use tauri::State;
 use serde::Serialize;
 use ignore::gitignore::GitignoreBuilder;
 use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
+use tauri_plugin_updater::UpdaterExt;
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -526,6 +527,13 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                if let Ok(Some(update)) = handle.updater().expect("Error al obtener updater").check().await {
+                    let _ = update.download_and_install(|_, _| {}, || {}).await;
+                }
+            });
+
             let mut client = DiscordIpcClient::new("1481205770489167973");
             
             std::thread::spawn(move || {
