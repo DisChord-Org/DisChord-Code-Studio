@@ -12,6 +12,7 @@ use tauri::State;
 
 use serde::Serialize;
 use ignore::gitignore::GitignoreBuilder;
+use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -525,6 +526,19 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            let mut client = DiscordIpcClient::new("1481205770489167973");
+            
+            std::thread::spawn(move || {
+                if client.connect().is_ok() {
+                    let _ = client.set_activity(activity::Activity::new()
+                        .state("Programando en DisChord")
+                        .assets(activity::Assets::new().large_image("logo_main"))
+                    );
+                    
+                    loop { std::thread::sleep(std::time::Duration::from_secs(15)); }
+                }
+            });
+
             if let Err(e) = setup_environment(app) {
                 eprintln!("Error instalando herramientas: {}", e);
             }
