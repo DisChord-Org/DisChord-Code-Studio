@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
+import { getVersion } from "@tauri-apps/api/app";
 
 import { Button } from "../components/Button";
 import { Card } from "../components/ProjectCard";
@@ -20,6 +21,11 @@ function Dashboard({ onSelectProject }: DashboardProps) {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [updating, setUpdating] = useState(false);
     const [statusLogs, setStatusLogs] = useState<{ [key: string]: string }>({});
+    const [appVersion, setAppVersion] = useState<string>("");
+
+    useEffect(() => {
+        getVersion().then(setAppVersion);
+    }, []);
 
     const loadProjects = async () => {
         try {
@@ -144,7 +150,7 @@ function Dashboard({ onSelectProject }: DashboardProps) {
     };
 
     return (
-        <div className="relative min-h-screen bg-[#0B0E14] rounded-xl border border-[#1e1f22] p-12 overflow-hidden">
+        <div data-tauri-drag-region className="relative min-h-screen bg-[#0B0E14] rounded-xl border border-[#1e1f22] p-12 overflow-hidden select-none">
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
                 <div className="flex items-center h-full ml-2">
                     <button 
@@ -247,6 +253,12 @@ function Dashboard({ onSelectProject }: DashboardProps) {
                 >
                     <i className={`bi bi-arrow-clockwise text-lg ${(loading || updating) ? 'animate-spin' : ''}`}></i>
                 </button>
+            </div>
+
+            <div className="absolute bottom-4 right-6 pointer-events-none select-none">
+                <span className="text-[10px] font-mono text-gray-600 tracking-widest uppercase opacity-50">
+                    v{appVersion}
+                </span>
             </div>
 
         </div>
