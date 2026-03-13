@@ -1,8 +1,7 @@
 use std::fs;
-use std::process::{Command, Stdio, Child};
+use std::process::{Command, Stdio};
 use std::io::{BufRead, BufReader};
 use std::thread;
-use std::sync::{Arc, Mutex};
 use std::path::Path;
 
 use tauri::Manager;
@@ -15,8 +14,10 @@ use winreg::enums::*;
 use winreg::RegKey;
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::UI::WindowsAndMessaging::{SendMessageTimeoutW, HWND_BROADCAST, WM_SETTINGCHANGE, SMTO_ABORTIFHUNG};
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
-pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
+use crate::ChildProcessState;
 
 #[tauri::command]
 pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>, project_name: String) -> Result<(), String> {
@@ -32,15 +33,20 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
         return Err(format!("No se encontró el archivo: {:?}", chord_file));
     }
 
-    let mut child = Command::new("chord")
-        .arg("run")
+    let mut command = Command::new("chord");
+    command.arg("run")
         .arg("src/index.chord")
         .current_dir(&project_dir)
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
-        .spawn()
-        .map_err(|e| e.to_string())?;
+        .stderr(Stdio::piped());
+    
+    #[cfg(target_os = "windows")]
+    {
+        const CREATE_NO_WINDOW: u32 = 0x08000000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
 
+    let mut child = command.spawn().map_err(|e| e.to_string())?;
     let stdout = child.stdout.take().expect("Fallo stdout");
     let stderr = child.stderr.take().expect("Fallo stderr");
 
@@ -49,10 +55,11 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
         *lock = Some(child);
     }
 
-    let state_arc = state.0.clone(); 
+    let state_arc = state.0.clone();
+    let handle_clone = app_handle.clone();
 
     thread::spawn(move || {
-        let handle_out = app_handle.clone();
+        let handle_out = handle_clone.clone();
         let stdout_thread = thread::spawn(move || {
             let reader = BufReader::new(stdout);
             for line in reader.lines() {
@@ -75,9 +82,12 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
         let _ = stdout_thread.join();
         let _ = stderr_thread.join();
 
-        let _ = app_handle.emit("terminal-data", "\x1b[1;32m[!] Ejecución finalizada.\x1b[0m\r\n");
-
         let mut lock = state_arc.lock().unwrap();
+        if let Some(mut child) = lock.take() {
+            let _ = child.wait();
+        }
+
+        let _ = handle_clone.emit("terminal-data", "\x1b[1;32m[!] Ejecución finalizada.\x1b[0m\r\n");
         *lock = None;
     });
 
