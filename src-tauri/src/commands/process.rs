@@ -36,6 +36,8 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
     let mut command = Command::new("chord");
     command.current_dir(&project_dir);
 
+    command.env("NODE_OPTIONS", "--experimental-default-type=module");
+
     if let Ok(path) = std::env::var("PATH") {
         command.env("PATH", path);
     }
