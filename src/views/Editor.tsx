@@ -61,6 +61,26 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
         return () => window.removeEventListener("open-hidden-file", handleOpenHidden);
     }, [projectName]);
 
+    useEffect(() => {
+        const triggerRun = (e: KeyboardEvent | CustomEvent) => {
+            if (e instanceof KeyboardEvent) {
+                if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                    handleToggleRun();
+                }
+            } else {
+                handleToggleRun();
+            }
+        };
+
+        window.addEventListener("keydown", triggerRun as EventListener);
+        window.addEventListener("dischord-run", triggerRun as EventListener);
+
+        return () => {
+            window.removeEventListener("keydown", triggerRun as EventListener);
+            window.removeEventListener("dischord-run", triggerRun as EventListener);
+        };
+    }, [isRunning, projectName]);
+
     const handleFileSelect = async (node: FileNode) => {
         if (node.is_dir) return;
 

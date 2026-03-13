@@ -106,7 +106,8 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
                     autocompletion({ override: [ chordCompletionSource ] }),
                     keymap.of([
                         indentWithTab,
-                        { key: "Ctrl-s", run: (v) => { handleSave(v.state.doc.toString()); return true; } }
+                        { key: "Ctrl-s", run: (v) => { handleSave(v.state.doc.toString()); return true; } },
+                        { key: "Ctrl-r", run: () => { window.dispatchEvent(new CustomEvent("dischord-run")); return true; } }
                     ]),
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
