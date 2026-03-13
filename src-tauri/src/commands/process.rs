@@ -34,9 +34,14 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
     }
 
     let mut command = Command::new("chord");
+    command.current_dir(&project_dir);
+
+    if let Ok(path) = std::env::var("PATH") {
+        command.env("PATH", path);
+    }
+
     command.arg("run")
         .arg("src/index.chord")
-        .current_dir(&project_dir)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
     
