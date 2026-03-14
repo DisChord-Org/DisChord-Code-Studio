@@ -105,7 +105,24 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
 pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>) -> Result<String, String> {
     let mut lock = state.0.lock().unwrap();
     if let Some(mut child) = lock.take() {
-        child.kill().map_err(|e| e.to_string())?;
+        let pid = child.id();
+
+        #[cfg(target_os = "windows")]
+        {
+            let _ = Command::new("taskkill")
+                .arg("/F")
+                .arg("/T")
+                .arg("/PID")
+                .arg(pid.to_string())
+                .creation_flags(0x08000000)
+                .spawn();
+        }
+
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = child.kill();
+        }
+
         let _ = app_handle.emit("terminal-data", "\x1b[1;31m[!] Proceso detenido.\x1b[0m\r\n");
         Ok("Proceso detenido".into())
     } else {
