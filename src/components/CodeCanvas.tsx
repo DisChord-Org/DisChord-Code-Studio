@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState } from "react";
+import { useRef, useEffect } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 import { EditorView, basicSetup } from "codemirror";
@@ -20,14 +20,15 @@ interface CodeCanvasProps {
     projectName: string;
     relative_path: string;
     fileName: string;
+    isDirty: boolean;
+    setIsDirty: (value: boolean) => void;
     content: string;
     onChange: (value: string) => void;
 }
 
 const languageConf = new Compartment();
 
-export const CodeCanvas = ({ projectName, relative_path, fileName, content, onChange }: CodeCanvasProps) => {
-    const [isDirty, setIsDirty] = useState(false);
+export const CodeCanvas = ({ projectName, relative_path, fileName, content, isDirty, setIsDirty, onChange }: CodeCanvasProps) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
     
@@ -210,15 +211,6 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, onCh
             </div>
 
             <div className="flex-1 overflow-hidden selection:bg-[#5865f2]/30" ref={editorRef} />
-            
-            <div className="h-6 bg-[#0B0E14] border-t border-[#1e1f22] flex items-center px-4 justify-between text-[10px] text-gray-500 font-mono shrink-0">
-                <div className="flex gap-4">
-                    <span>UTF-8</span>
-                    <span className="text-[#5865f2]">{fileName.split('.').pop()?.toUpperCase()}</span>
-                </div>
-                {isDirty && <span className="text-yellow-500/70 italic">Modificado</span>}
-                <span>{content.length} caracteres</span>
-            </div>
         </div>
     );
 };

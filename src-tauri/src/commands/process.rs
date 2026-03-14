@@ -105,10 +105,10 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
 pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>) -> Result<String, String> {
     let mut lock = state.0.lock().unwrap();
     if let Some(mut child) = lock.take() {
-        let pid = child.id();
-
+        
         #[cfg(target_os = "windows")]
         {
+            let pid = child.id();
             let _ = Command::new("taskkill")
                 .arg("/F")
                 .arg("/T")

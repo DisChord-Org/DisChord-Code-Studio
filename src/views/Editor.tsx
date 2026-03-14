@@ -9,6 +9,7 @@ import { Sidebar } from "../components/Sidebar";
 import { CodeCanvas } from "../components/CodeCanvas";
 import { CodeMinimap } from "../components/CodeMinimap";
 import { TerminalPanel } from "../components/Terminal";
+import { StatusBar } from "../components/StatusBar";
 
 const appWindow = getCurrentWindow();
 
@@ -18,6 +19,7 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
     const [content, setContent] = useState<string>("");
     const [isRunning, setIsRunning] = useState(false);
     const [showTerminal, setShowTerminal] = useState(false);
+    const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
         appWindow.setResizable(true);
@@ -95,6 +97,7 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                 filePath: node.relative_path
             });
             setContent(text);
+            setIsDirty(false);
         } catch (error) {
             console.error("Error al leer archivo:", error);
             setContent("Error al cargar el contenido del archivo.");
@@ -139,7 +142,10 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                 onBack={onBack}
                 onRun={handleToggleRun}
                 isRunning={isRunning}
-                onSave={() => window.dispatchEvent(new CustomEvent("dischord-save"))}
+                onSave={() => {
+                    window.dispatchEvent(new CustomEvent("dischord-save"));
+                    setIsDirty(false);
+                }}
             />
 
             <div className="flex flex-1 overflow-hidden relative">
@@ -161,7 +167,12 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                                         relative_path={selectedNode.relative_path}
                                         fileName={selectedNode.name}
                                         content={content}
-                                        onChange={setContent}
+                                        isDirty={isDirty}
+                                        setIsDirty={setIsDirty}
+                                        onChange={(val) => {
+                                            setContent(val);
+                                            if (!isDirty) setIsDirty(true);
+                                        }}
                                     />
                                 </div>
                                 <CodeMinimap text={content} />
@@ -191,6 +202,12 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                             <TerminalPanel />
                         </div>
                     )}
+
+                    <StatusBar 
+                        fileName={selectedNode?.name}
+                        isDirty={isDirty}
+                        contentLength={content.length}
+                    />
                 </main>
             </div>
         </div>
