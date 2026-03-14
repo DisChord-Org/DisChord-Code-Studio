@@ -64,7 +64,10 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
     useEffect(() => {
         const triggerRun = (e: KeyboardEvent | CustomEvent) => {
             if (e instanceof KeyboardEvent) {
+                if (document.activeElement?.closest(".cm-editor")) return;
+
                 if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+                    e.preventDefault();
                     handleToggleRun();
                 }
             } else {
@@ -113,19 +116,20 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                 await invoke("stop_chord_project");
                 setIsRunning(false);
             } catch (e) { console.error(e); }
-        } else {
-            setShowTerminal(true);
-            setIsRunning(true);
-
-            setTimeout(async () => {
-                try {
-                    await invoke("run_chord_project", { projectName });
-                } catch (e) {
-                    setIsRunning(false);
-                    console.error(e);
-                }
-            }, 200);
+            return;
         }
+
+        setShowTerminal(true);
+        setIsRunning(true);
+
+        setTimeout(async () => {
+            try {
+                await invoke("run_chord_project", { projectName });
+            } catch (e) {
+                setIsRunning(false);
+                console.error("Error al ejecutar:", e);
+            }
+        }, 300);
     };
 
     return (
