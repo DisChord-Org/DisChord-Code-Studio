@@ -5,13 +5,6 @@ use std::process::Child;
 use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 use tauri_plugin_updater::UpdaterExt;
 
-#[cfg(target_os = "windows")]
-use winreg::enums::*;
-#[cfg(target_os = "windows")]
-use winreg::RegKey;
-#[cfg(target_os = "windows")]
-use windows_sys::Win32::UI::WindowsAndMessaging::{SendMessageTimeoutW, HWND_BROADCAST, WM_SETTINGCHANGE, SMTO_ABORTIFHUNG};
-
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
