@@ -54,7 +54,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName
     return (
         <header
             data-tauri-drag-region
-            className="h-10 border-b border-[#1e1f22] bg-[#0B0E14] flex items-center justify-between px-2 shrink-0 select-none"
+            className="h-10 border-b border-[#1e1f22] bg-[#0B0E14] flex items-center justify-between shrink-0 select-none"
         >
             <div className="flex items-center gap-1 flex-1">
                 <span className="text-[#5865F2] font-black text-xl px-2">D</span>
