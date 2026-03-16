@@ -4,6 +4,7 @@ use std::sync::{Arc, Mutex};
 use std::process::Child;
 use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 use tauri_plugin_updater::UpdaterExt;
+use tauri::Manager;
 
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
@@ -12,6 +13,10 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.center();
+            }
+
             let handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 if let Ok(Some(update)) = handle.updater().expect("Error al obtener updater").check().await {
