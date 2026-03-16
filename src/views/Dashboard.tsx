@@ -171,7 +171,7 @@ function Dashboard({ onSelectProject }: DashboardProps) {
                 onSubmit={handleCreateProject}
             />
 
-            <Title>DisChord Studio Code</Title>
+            <Title>DisChord Code Studio</Title>
 
             <div className="max-w-2xl">
                 {updating? (
