@@ -1,0 +1,22 @@
+name: Discord Notifier
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Notification
+        uses: sarisia/actions-status-discord@v1
+        with:
+          webhook: ${{ secrets.DISCORD_WEBHOOK }}
+          status: ${{ job.status }}
+          title: "Nuevo commit en ${{ github.repository }}"
+          description: |
+            **Mensaje:** ${{ github.event.head_commit.message }}
+            **Autor:** ${{ github.actor }}
+          color: 0x2ecc71
+          url: "${{ github.event.head_commit.url }}"
