@@ -4,7 +4,11 @@ import { FitAddon } from "@xterm/addon-fit";
 import { listen } from "@tauri-apps/api/event";
 import "@xterm/xterm/css/xterm.css";
 
-export const TerminalPanel = () => {
+interface TerminalPanelProps {
+    onClose: () => void;
+}
+
+export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<Terminal | null>(null);
 
@@ -66,6 +70,16 @@ export const TerminalPanel = () => {
                     >
                         <i className="bi bi-trash3 text-xs opacity-50 group-hover:opacity-100"></i>
                         <span>LIMPIAR</span>
+                    </button>
+
+                    <div className="w-[1px] h-3 bg-white/10" />
+
+                    <button 
+                        onClick={onClose}
+                        className="text-gray-500 hover:text-white transition-colors flex items-center justify-center"
+                        title="Cerrar Terminal"
+                    >
+                        <i className="bi bi-x-lg text-sm"></i>
                     </button>
                 </div>
             </div>

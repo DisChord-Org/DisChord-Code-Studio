@@ -188,14 +188,7 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
 
                     {showTerminal && (
                         <div className="h-72 shrink-0 flex flex-col border-t border-[#1e1f22] relative">
-                            <button 
-                                onClick={() => setShowTerminal(false)}
-                                className="absolute top-2 right-4 z-50 text-gray-500 hover:text-white transition-colors p-1"
-                                title="Cerrar Terminal"
-                            >
-                                <i className="bi bi-x-lg text-xs"></i>
-                            </button>
-                            <TerminalPanel />
+                            <TerminalPanel onClose={() => setShowTerminal(false)} />
                         </div>
                     )}
 
