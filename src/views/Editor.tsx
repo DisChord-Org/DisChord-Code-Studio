@@ -157,8 +157,8 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                 />
 
                 <main className="flex-1 flex flex-col bg-[#0B0E14] overflow-hidden">
-                    {selectedNode ? (
-                        <div className="flex-1 min-h-0 relative">
+                    <div className="flex-1 min-h-0 relative overflow-hidden">
+                        {selectedNode ? (
                             <div className="flex h-full">
                                 <div className="flex-1 overflow-hidden">
                                     <CodeCanvas
@@ -177,37 +177,35 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                                 </div>
                                 <CodeMinimap text={content} />
                             </div>
-                        </div>
-                    ) : (
-                        <div className="flex-1 relative bg-[radial-gradient(#1e1f22_1px,transparent_1px)] [background-size:20px_20px]">
-                            <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                        ) : (
+                            <div className="h-full w-full bg-[radial-gradient(#1e1f22_1px,transparent_1px)] [background-size:20px_20px] flex flex-col items-center justify-center pointer-events-none">
                                 <p className="text-[#1e1f22] font-black text-6xl uppercase tracking-tighter">
                                     DisChord
                                 </p>
                             </div>
-                        </div>
-                    )}
+                        )}
+                    </div>
 
-                    {/* terminal */}
                     {showTerminal && (
-                        <div className="h-72 flex flex-col">
-                            <div className="flex justify-end bg-[#0B0E14] border-t border-[#1e1f22] px-2 py-1">
-                                <button 
-                                    onClick={() => setShowTerminal(false)}
-                                    className="text-gray-500 hover:text-white"
-                                >
-                                    <i className="bi bi-x-lg text-xs"></i>
-                                </button>
-                            </div>
+                        <div className="h-72 shrink-0 flex flex-col border-t border-[#1e1f22] relative">
+                            <button 
+                                onClick={() => setShowTerminal(false)}
+                                className="absolute top-2 right-4 z-50 text-gray-500 hover:text-white transition-colors p-1"
+                                title="Cerrar Terminal"
+                            >
+                                <i className="bi bi-x-lg text-xs"></i>
+                            </button>
                             <TerminalPanel />
                         </div>
                     )}
 
-                    <StatusBar 
-                        fileName={selectedNode?.name}
-                        isDirty={isDirty}
-                        contentLength={content.length}
-                    />
+                    <div className="border-t border-[#1e1f22] shrink-0">
+                        <StatusBar 
+                            fileName={selectedNode?.name}
+                            isDirty={isDirty}
+                            contentLength={content.length}
+                        />
+                    </div>
                 </main>
             </div>
         </div>
