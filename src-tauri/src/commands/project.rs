@@ -1,11 +1,13 @@
 use std::fs;
 use std::time::SystemTime;
 use std::path::Path;
+use std::path::PathBuf;
 use std::process::Command;
 
 use tauri::Manager;
 
 use serde::Serialize;
+use log::{info, error, warn, debug};
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -14,21 +16,30 @@ use winreg::RegKey;
 #[cfg(target_os = "windows")]
 use windows_sys::Win32::UI::WindowsAndMessaging::{SendMessageTimeoutW, HWND_BROADCAST, WM_SETTINGCHANGE, SMTO_ABORTIFHUNG};
 
-#[tauri::command]
-pub fn create_projects_folder(app_handle: tauri::AppHandle) -> String {
-    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
-    path.push("DisChord-Workflows");
-
-    if !path.exists() {
-        fs::create_dir_all(&path).unwrap();
-    }
-    "done".into()
-}
-
 #[derive(Serialize)]
 pub struct ProjectInfo {
     name: String,
     last_modified: String,
+}
+
+fn get_base_path(app_handle: &tauri::AppHandle) -> PathBuf {
+    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
+    path.push("DisChord-Workflows");
+    path
+}
+
+#[tauri::command]
+pub fn create_projects_folder(app_handle: tauri::AppHandle) -> String {
+    let path = get_base_path(&app_handle);
+
+    if !path.exists() {
+        info!("Directorio base no encontrado. Creando: {:?}", path);
+        if let Err(e) = fs::create_dir_all(&path) {
+            error!("No se pudo crear el directorio base: {}", e);
+            return "error".into();
+        }
+    }
+    "done".into()
 }
 
 pub fn get_latest_modification(path: &Path) -> SystemTime {
@@ -39,6 +50,11 @@ pub fn get_latest_modification(path: &Path) -> SystemTime {
     if let Ok(entries) = fs::read_dir(path) {
         for entry in entries.flatten() {
             let entry_path = entry.path();
+
+            if entry_path.is_dir() && entry_path.ends_with("node_modules") {
+                continue;
+            }
+
             let mtime = if entry_path.is_dir() {
                 get_latest_modification(&entry_path)
             } else {
@@ -57,8 +73,8 @@ pub fn get_latest_modification(path: &Path) -> SystemTime {
 
 #[tauri::command]
 pub fn get_projects(app_handle: tauri::AppHandle) -> Vec<ProjectInfo> {
-    let mut root_path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
-    root_path.push("DisChord-Workflows");
+    let root_path = get_base_path(&app_handle);
+    debug!("Listando proyectos desde: {:?}", root_path);
 
     let mut projects = Vec::new();
 
@@ -77,6 +93,8 @@ pub fn get_projects(app_handle: tauri::AppHandle) -> Vec<ProjectInfo> {
                 });
             }
         }
+    } else {
+        warn!("No se pudo leer el directorio de proyectos");
     }
     
     projects.sort_by(|a, b| b.last_modified.cmp(&a.last_modified));
@@ -85,49 +103,62 @@ pub fn get_projects(app_handle: tauri::AppHandle) -> Vec<ProjectInfo> {
 
 #[tauri::command]
 pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
+    info!("Solicitud de creación de proyecto: {}", name);
+    
     let chord_check = Command::new("chord")
         .arg("-v")
         .output();
 
-    if chord_check.is_err() {
-        return Err("El comando 'chord' no está instalado en tu sistema.".into());
+    if let Err(e) = chord_check {
+        error!("El comando 'chord' falló o no está en el PATH: {}", e);
+        return Err("El motor 'chord' no está listo. Revisa la configuración.".into());
     }
 
-    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
-    path.push("DisChord-Workflows");
+    let mut path = get_base_path(&app_handle);
     path.push(&name);
 
     if path.exists() {
+        warn!("El proyecto '{}' ya existe en {:?}", name, path);
         return Err("El proyecto ya existe".into());
     }
 
-    // se supone que 'chord init <path>' ya crea la carpeta, próximamente será necesario usar esto 
-    /*if let Err(e) = fs::create_dir_all(&path) {
-        return Err(format!("Error al crear la carpeta: {}", e));
-    }*/
-
+    info!("Ejecutando 'chord init' para el proyecto: {}", name);
     let init_status = Command::new("chord")
         .arg("init")
         .arg(&path)
         .status();
 
     match init_status {
-        Ok(s) if s.success() => Ok(format!("Proyecto '{}' creado", name)),
-        Ok(_) => Err("'chord init' falló. Revisa los permisos de la carpeta.".into()),
-        Err(e) => Err(format!("Error al ejecutar chord init: {}", e)),
+        Ok(s) if s.success() => {
+            info!("Proyecto '{}' creado exitosamente", name);
+            Ok(format!("Proyecto '{}' creado", name))
+        },
+        Ok(s) => {
+            error!("'chord init' terminó con código de error: {}", s);
+            Err("'chord init' falló. Revisa los permisos.".into())
+        },
+        Err(e) => {
+            error!("Fallo fatal ejecutando 'chord init': {}", e);
+            Err(format!("Error de ejecución: {}", e))
+        },
     }
 }
 
 #[tauri::command]
 pub fn delete_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
-    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
-    path.push("DisChord-Workflows");
+    let mut path = get_base_path(&app_handle);
     path.push(&name);
 
     if path.exists() && path.is_dir() {
-        fs::remove_dir_all(&path).map_err(|e| format!("Error al borrar proyecto: {}", e))?;
+        info!("Eliminando proyecto completo: {:?}", path);
+        fs::remove_dir_all(&path).map_err(|e| {
+            error!("No se pudo borrar el proyecto {}: {}", name, e);
+            format!("Error al borrar: {}", e)
+        })?;
+        info!("Proyecto '{}' eliminado.", name);
         Ok("Proyecto eliminado".into())
     } else {
+        error!("Intento de borrar proyecto inexistente: {}", name);
         Err("El proyecto no existe".into())
     }
 }

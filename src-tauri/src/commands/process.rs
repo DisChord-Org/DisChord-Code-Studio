@@ -8,6 +8,8 @@ use tauri::Manager;
 use tauri::Emitter;
 use tauri::State;
 
+use log::{info, error, warn, debug};
+
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
 #[cfg(target_os = "windows")]
@@ -30,12 +32,14 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
     chord_file.push("index.chord");
 
     if !chord_file.exists() {
+        error!("Fallo al ejecutar: No existe index.chord en {:?}", chord_file);
         return Err(format!("No se encontró el archivo: {:?}", chord_file));
     }
 
+    info!("Iniciando ejecución del proyecto: {}", project_name);
+
     let mut command = Command::new("chord");
     command.current_dir(&project_dir);
-
     command.env("NODE_OPTIONS", "--experimental-default-type=module");
 
     if let Ok(path) = std::env::var("PATH") {
@@ -53,9 +57,16 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
         command.creation_flags(CREATE_NO_WINDOW);
     }
 
-    let mut child = command.spawn().map_err(|e| e.to_string())?;
-    let stdout = child.stdout.take().expect("Fallo stdout");
-    let stderr = child.stderr.take().expect("Fallo stderr");
+    let mut child = command.spawn().map_err(|e| {
+        error!("No se pudo spawnear el proceso 'chord': {}", e);
+        e.to_string()
+    })?;
+
+    let pid = child.id();
+    info!("Proceso 'chord' iniciado con PID: {}", pid);
+
+    let stdout = child.stdout.take().expect("Fallo al capturar stdout");
+    let stderr = child.stderr.take().expect("Fallo al capturar stderr");
 
     {
         let mut lock = state.0.lock().unwrap();
@@ -92,6 +103,7 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
         let mut lock = state_arc.lock().unwrap();
         if let Some(mut child) = lock.take() {
             let _ = child.wait();
+            info!("El proceso hijo {} ha finalizado", pid);
         }
 
         let _ = handle_clone.emit("terminal-data", "\x1b[1;32m[!] Ejecución finalizada.\x1b[0m\r\n");
@@ -105,6 +117,8 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
 pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>) -> Result<String, String> {
     let mut lock = state.0.lock().unwrap();
     if let Some(mut child) = lock.take() {
+        let pid = child.id();
+        info!("Solicitud de detención para proceso PID: {}", pid);
         
         #[cfg(target_os = "windows")]
         {
@@ -116,45 +130,60 @@ pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPr
                 .arg(pid.to_string())
                 .creation_flags(0x08000000)
                 .spawn();
+            
+            if res.is_err() {
+                error!("Fallo al ejecutar taskkill para PID {}", pid);
+            }
         }
 
         #[cfg(not(target_os = "windows"))]
         {
-            let _ = child.kill();
+            if let Err(e) = child.kill() {
+                error!("Fallo al matar el proceso {}: {}", pid, e);
+            }
         }
 
         let _ = app_handle.emit("terminal-data", "\x1b[1;31m[!] Proceso detenido.\x1b[0m\r\n");
+        info!("Proceso {} detenido correctamente.", pid);
         Ok("Proceso detenido".into())
     } else {
+        warn!("Se intentó detener un proceso, pero no hay ninguno activo");
         Err("No hay ningún proceso en ejecución".into())
     }
 }
 
 #[tauri::command]
 pub async fn update_chord_system(app_handle: tauri::AppHandle) -> Result<(), String> {
+    info!("Iniciando actualización del sistema Chord...");
     thread::spawn(move || {
-        let mut child = Command::new("chord")
+        let spawn_res = Command::new("chord")
             .arg("update")
             .arg("all")
             .stdout(Stdio::piped())
-            .spawn()
-            .map_err(|e| e.to_string())
-            .expect("Fallo al iniciar el comando de actualización");
+            .spawn();
 
-        let stdout = child.stdout.take().expect("Fallo al capturar stdout");
-        let reader = BufReader::new(stdout);
+        match spawn_res {
+            Ok(mut child) => {
+                let stdout = child.stdout.take().expect("Fallo al capturar stdout");
+                let reader = BufReader::new(stdout);
 
-        for line in reader.lines() {
-            if let Ok(l) = line {
-                let clean_line = l.trim().replace("────────", "").trim().to_string();
-                if !clean_line.is_empty() {
-                    let _ = app_handle.emit("update-status", clean_line);
+                for line in reader.lines() {
+                    if let Ok(l) = line {
+                        let clean_line = l.trim().replace("────────", "").trim().to_string();
+                        if !clean_line.is_empty() {
+                            let _ = app_handle.emit("update-status", clean_line);
+                        }
+                    }
                 }
+                let _ = child.wait();
+                info!("Actualización de Chord finalizada con éxito");
+                let _ = app_handle.emit("update-finished", "success");
+            },
+            Err(e) => {
+                error!("Fallo al ejecutar 'chord update': {}", e);
+                let _ = app_handle.emit("update-finished", "error");
             }
         }
-        
-        let _ = child.wait();
-        let _ = app_handle.emit("update-finished", "success");
     });
 
     Ok(())
@@ -167,23 +196,24 @@ pub fn open_in_explorer(app_handle: tauri::AppHandle, project_name: String) -> R
     path.push(project_name);
 
     if !path.exists() {
+        warn!("Intento de abrir explorador en ruta inexistente: {:?}", path);
         return Err("El proyecto no existe".to_string());
     }
 
-    #[cfg(target_os = "windows")]
-    {
-        Command::new("explorer").arg(path).spawn().map_err(|e| e.to_string())?;
-    }
+    info!("Abriendo explorador de archivos en: {:?}", path);
+    
+    let cmd = if cfg!(target_os = "windows") {
+        Command::new("explorer").arg(&path).spawn()
+    } else if cfg!(target_os = "macos") {
+        Command::new("open").arg(&path).spawn()
+    } else {
+        Command::new("xdg-open").arg(&path).spawn()
+    };
 
-    #[cfg(target_os = "macos")]
-    {
-        Command::new("open").arg(path).spawn().map_err(|e| e.to_string())?;
-    }
-
-    #[cfg(target_os = "linux")]
-    {
-        Command::new("xdg-open").arg(path).spawn().map_err(|e| e.to_string())?;
-    }
+    cmd.map_err(|e| {
+        error!("Fallo al abrir el explorador: {}", e);
+        e.to_string()
+    })?;
 
     Ok(())
 }
@@ -208,11 +238,13 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
         repo, name, target, ext
     );
 
-    println!("Descargando {} desde {}...", name, url);
+    info!("Descargando herramienta: {} desde {}", name, url);
     
     let mut response = reqwest::blocking::get(url)?;
     if !response.status().is_success() {
-        return Err(format!("Fallo al descargar: {}", response.status()).into());
+        let err_msg = format!("Error de descarga (HTTP {}): {}", response.status(), name);
+        error!("{}", err_msg);
+        return Err(err_msg.into());
     }
 
     let mut file = fs::File::create(dest)?;
@@ -224,8 +256,10 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
         let mut perms = fs::metadata(dest)?.permissions();
         perms.set_mode(0o755);
         fs::set_permissions(dest, perms)?;
+        debug!("Permisos 755 aplicados a {:?}", dest);
     }
 
+    info!("Herramienta {} descargada correctamente en {:?}", name, dest);
     Ok(())
 }
 
@@ -239,6 +273,7 @@ pub fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Err
     let bin_dir = home.join(".local").join("bin");
 
     if !bin_dir.exists() {
+        info!("Creando directorio de binarios: {:?}", bin_dir);
         fs::create_dir_all(&bin_dir)?;
     }
 
@@ -248,9 +283,12 @@ pub fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Err
         let dest_path = bin_dir.join(&tool_filename);
         
         if !dest_path.exists() {
+            info!("Herramienta {} no encontrada. Iniciando descarga", tool);
             if let Err(e) = download_tool(tool, &dest_path) {
-                eprintln!("Error descargando {}: {}", tool, e);
+                error!("No se pudo preparar la herramienta {}: {}", tool, e);
             }
+        } else {
+            debug!("Herramienta {} existe en el sistema", tool);
         }
     }
 
@@ -262,6 +300,7 @@ pub fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Err
         let bin_dir_str = bin_dir.to_string_lossy().to_string();
 
         if !current_path.contains(&bin_dir_str) {
+            info!("Añadiendo {:?} al PATH de Windows", bin_dir);
             let new_path = if current_path.is_empty() {
                 bin_dir_str
             } else {
@@ -289,6 +328,8 @@ pub fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Err
                     std::ptr::null_mut(),
                 );
             }
+            
+            info!("PATH actualizado y notificado al sistema.");
         }
     }
 
