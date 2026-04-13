@@ -122,8 +122,7 @@ pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPr
         
         #[cfg(target_os = "windows")]
         {
-            let pid = child.id();
-            let _ = Command::new("taskkill")
+            let res = Command::new("taskkill")
                 .arg("/F")
                 .arg("/T")
                 .arg("/PID")

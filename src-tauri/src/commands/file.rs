@@ -8,13 +8,6 @@ use serde::Serialize;
 use ignore::gitignore::GitignoreBuilder;
 use log::{info, error, warn};
 
-#[cfg(target_os = "windows")]
-use winreg::enums::*;
-#[cfg(target_os = "windows")]
-use winreg::RegKey;
-#[cfg(target_os = "windows")]
-use windows_sys::Win32::UI::WindowsAndMessaging::{SendMessageTimeoutW, HWND_BROADCAST, WM_SETTINGCHANGE, SMTO_ABORTIFHUNG};
-
 #[derive(Serialize)]
 pub struct ProjectFile {
     name: String,
