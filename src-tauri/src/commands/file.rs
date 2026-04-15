@@ -8,6 +8,8 @@ use serde::Serialize;
 use ignore::gitignore::GitignoreBuilder;
 use log::{info, error, warn};
 
+use crate::{DiscordState, update_presence};
+
 #[derive(Serialize)]
 pub struct ProjectFile {
     name: String,
@@ -87,9 +89,20 @@ pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<
 }
 
 #[tauri::command]
-pub fn read_file_content(app_handle: tauri::AppHandle, project_name: String, file_path: String) -> Result<String, String> {
+pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_, DiscordState>, project_name: String, file_path: String) -> Result<String, String> {
     let mut path = get_workflow_path(&app_handle, &project_name);
     path.push(&file_path);
+
+    let file_name = Path::new(&file_path)
+        .file_name()
+        .and_then(|os_str| os_str.to_str())
+        .unwrap_or(&file_path);
+
+    let _ = update_presence(
+        &discord.client,
+        &format!("Proyecto: {}", project_name),
+        &format!("Editando {}", file_name)
+    );
 
     info!("Leyendo contenido: {:?}", file_path);
     fs::read_to_string(&path).map_err(|e| {

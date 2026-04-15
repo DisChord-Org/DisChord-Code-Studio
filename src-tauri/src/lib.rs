@@ -10,11 +10,21 @@ use log::{info, error, warn};
 
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
+pub struct DiscordState {
+    pub client: Arc<Mutex<Option<DiscordIpcClient>>>,
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
+    let discord_client = Arc::new(Mutex::new(None));
+
+    let discord_state = discord_client.clone();
+    let setup_client = discord_client.clone();
+
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
-        .setup(|app| {
+        .manage(DiscordState { client: discord_state })
+        .setup(move |app| {
             // app_log_dir() resuelve automáticamente:
             // macOS: ~/Library/Logs/com.dischord.code.studio/
             // Linux: ~/.local/share/com.dischord.code.studio/logs/
@@ -54,22 +64,19 @@ pub fn run() {
                 }
             });
 
-            let mut client = DiscordIpcClient::new("1481205770489167973");
+            let inner_client_arc = setup_client.clone();
             
             std::thread::spawn(move || {
+                let mut client = DiscordIpcClient::new("1481205770489167973");
+
                 info!("Intentando conectar con Discord RPC");
+
                 if client.connect().is_ok() {
-                    let res = client.set_activity(activity::Activity::new()
-                        .state("Programando en DisChord")
-                        .assets(activity::Assets::new().large_image("logo_main"))
-                    );
-                    
-                    if res.is_ok() {
-                        info!("Discord Rich Presence activo");
-                        loop { std::thread::sleep(std::time::Duration::from_secs(15)); }
-                    } else {
-                        warn!("Discord conectado pero no se pudo establecer la actividad");
+                    if let Ok(mut guard) = inner_client_arc.lock() {
+                        *guard = Some(client);
                     }
+
+                    let _ = update_presence(&inner_client_arc, "Viendo proyectos", "Inicio");
                 } else {
                     warn!("No se pudo conectar con Discord");
                 }
@@ -107,4 +114,25 @@ pub fn run() {
         ])
         .run(tauri::generate_context!())
         .expect("Error fatal al ejecutar la aplicación Tauri");
+}
+
+pub fn update_presence(client_arc: &Arc<Mutex<Option<DiscordIpcClient>>>, state: &str, details: &str) -> Result<(), String> {
+    if let Ok(mut guard) = client_arc.lock() {
+        if let Some(client) = guard.as_mut() {
+            let res = client.set_activity(activity::Activity::new()
+                .state(state)
+                .details(details)
+                .assets(activity::Assets::new()
+                    .large_image("logo_main")
+                    .large_text("DisChord IDE")
+                )
+            );
+            
+            if res.is_ok() {
+                info!("Presencia de Discord actualizada: {} | {}", details, state);
+            }
+            return res.map_err(|e| e.to_string());
+        }
+    }
+    Ok(())
 }
