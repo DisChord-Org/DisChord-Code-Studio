@@ -49,6 +49,22 @@ jobs:
 
       - name: install frontend dependencies
         run: pnpm install --no-frozen-lockfile
+      
+      - name: Ad-hoc sign (macOS only)
+        if: matrix.platform == 'macos-latest'
+        run: |
+          # Compilamos primero para generar el bundle
+          pnpm tauri build --target aarch64-apple-darwin
+          
+          # Buscamos el .app y lo firmamos recursivamente (-s - es ad-hoc)
+          APP_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle/macos -name "*.app" | head -n 1)
+          if [ -d "$APP_PATH" ]; then
+            echo "Firmando ad-hoc: $APP_PATH"
+            codesign --force --deep -s - "$APP_PATH"
+          else
+            echo "No se encontró el .app para firmar"
+            exit 1
+          fi
 
       - uses: tauri-apps/tauri-action@v0
         env:
