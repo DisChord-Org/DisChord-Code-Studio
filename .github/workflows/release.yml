@@ -52,11 +52,12 @@ jobs:
       
       - name: Ad-hoc sign (macOS only)
         if: matrix.platform == 'macos-latest'
+        env:
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: |
-          # Compilamos primero para generar el bundle
           pnpm tauri build --target aarch64-apple-darwin
           
-          # Buscamos el .app y lo firmamos recursivamente (-s - es ad-hoc)
           APP_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle/macos -name "*.app" | head -n 1)
           if [ -d "$APP_PATH" ]; then
             echo "Firmando ad-hoc: $APP_PATH"
