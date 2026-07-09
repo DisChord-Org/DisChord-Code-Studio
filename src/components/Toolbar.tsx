@@ -7,22 +7,30 @@ import { MenuOption } from "./MenuOption";
 
 const appWindow = getCurrentWindow();
 
+type MenuKey = "file" | "edit" | null;
+
 export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName: string, onBack: () => void, onRun: () => void, isRunning: boolean, onSave: () => void }) => {
-    const [isFileMenuOpen, setIsFileMenuOpen] = useState(false);
-    const menuRef = useRef<HTMLDivElement>(null);
-    const [isEditMenuOpen, setIsEditMenuOpen] = useState(false);
-    const editMenuRef = useRef<HTMLDivElement>(null);
+    const [openMenu, setOpenMenu] = useState<MenuKey>(null);
+    const menuBarRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-                setIsFileMenuOpen(false);
+            if (menuBarRef.current && !menuBarRef.current.contains(event.target as Node)) {
+                setOpenMenu(null);
             }
         };
         document.addEventListener("mousedown", handleClickOutside);
         return () => document.removeEventListener("mousedown", handleClickOutside);
     }, []);
-    
+
+    const toggleMenu = (key: MenuKey) => {
+        setOpenMenu((current) => (current === key ? null : key));
+    };
+
+    const hoverMenu = (key: MenuKey) => {
+        if (openMenu !== null && openMenu !== key) setOpenMenu(key);
+    };
+
     const handleMinimize = async () => await appWindow.minimize();
     const handleToggleMaximize = async () => await appWindow.toggleMaximize();
     const handleClose = async () => await appWindow.close();
@@ -30,7 +38,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName
     const handleOpenExplorer = async () => {
         try {
             await invoke("open_in_explorer", { projectName });
-            setIsFileMenuOpen(false);
+            setOpenMenu(null);
         } catch (error) {
             alert("No se pudo abrir el explorador: " + error);
         }
@@ -38,7 +46,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName
 
     const handleSave = () => {
         window.dispatchEvent(new CustomEvent("dischord-save"));
-        setIsFileMenuOpen(false);
+        setOpenMenu(null);
     };
 
     const handleEditGitignore = () => {
@@ -48,7 +56,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName
                 relative_path: ".gitignore"
             }
         }));
-        setIsEditMenuOpen(false);
+        setOpenMenu(null);
     };
 
     return (
@@ -58,14 +66,14 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName
         >
             <div className="flex items-center gap-1 flex-1">
                 <span className="text-[#5865F2] font-black text-xl px-2">D</span>
-                <div className="flex items-center">
-                    <div className="relative" ref={menuRef}>
+                <div className="flex items-center" ref={menuBarRef}>
+                    <div className="relative" onMouseEnter={() => hoverMenu("file")}>
                         <ToolbarButton
                             label="Archivo"
-                            onClick={() => setIsFileMenuOpen(!isFileMenuOpen)}
+                            onClick={() => toggleMenu("file")}
                         />
-                        
-                        {isFileMenuOpen && (
+
+                        {openMenu === "file" && (
                             <div className="absolute top-full left-0 mt-1 w-48 bg-[#1e1f22] border border-[#2b2d31] rounded-lg shadow-2xl py-1 z-[200] animate-in fade-in zoom-in-95 duration-100">
                                 <MenuOption
                                     icon="bi bi-save"
@@ -89,18 +97,18 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning }: { projectName
                         )}
                     </div>
 
-                    <div className="relative" ref={editMenuRef}>
-                        <ToolbarButton 
-                            label="Editar" 
-                            onClick={() => setIsEditMenuOpen(!isEditMenuOpen)} 
+                    <div className="relative" onMouseEnter={() => hoverMenu("edit")}>
+                        <ToolbarButton
+                            label="Editar"
+                            onClick={() => toggleMenu("edit")}
                         />
 
-                        {isEditMenuOpen && (
+                        {openMenu === "edit" && (
                             <div className="absolute top-full left-0 mt-1 w-48 bg-[#1e1f22] border border-[#2b2d31] rounded-lg shadow-2xl py-1 z-[200] animate-in fade-in zoom-in-95 duration-100">
-                                <MenuOption 
-                                    icon="bi bi-gear" 
-                                    label="Configurar .gitignore" 
-                                    onClick={handleEditGitignore} 
+                                <MenuOption
+                                    icon="bi bi-gear"
+                                    label="Configurar .gitignore"
+                                    onClick={handleEditGitignore}
                                 />
                             </div>
                         )}
