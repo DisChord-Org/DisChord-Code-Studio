@@ -13,7 +13,11 @@ import { StatusBar } from "../components/StatusBar";
 
 const appWindow = getCurrentWindow();
 
-export const Editor = ({ projectName, onBack }: { projectName: string, onBack: () => void }) => {    
+export const Editor = ({ projectName, onBack, onSwitchProject }: {
+    projectName: string,
+    onBack: () => void,
+    onSwitchProject?: (name: string) => void
+}) => {
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
     const [selectedNode, setSelectedNode] = useState<FileNode | null>(null);
     const [content, setContent] = useState<string>("");
@@ -28,13 +32,25 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
         invoke<FileNode[]>("read_project_files", { name: projectName })
             .then(setFileTree)
             .catch(console.error);
-        
+
+       setSelectedNode(null);
+        setContent("");
+        setIsDirty(false);
+        setShowTerminal(false);
+
         return () => {
             appWindow.unmaximize();
             appWindow.setSize(new LogicalSize(800, 600));
             appWindow.center();
             appWindow.setResizable(false);
         };
+    }, [projectName]);
+
+    useEffect(() => {
+        if (isRunning) {
+            invoke("stop_chord_project").catch(console.error);
+            setIsRunning(false);
+        }
     }, [projectName]);
 
     useEffect(() => {
@@ -91,8 +107,8 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
 
         try {
             setSelectedNode(node);
-            
-            const text = await invoke<string>("read_file_content", { 
+
+            const text = await invoke<string>("read_file_content", {
                 projectName,
                 filePath: node.relative_path
             });
@@ -135,13 +151,32 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
         }, 300);
     };
 
+    const confirmLeaveProject = (): boolean => {
+        if (!isDirty) return true;
+        return window.confirm(
+            `Tienes cambios sin guardar en "${selectedNode?.name ?? "este archivo"}". ¿Quieres salir de todos modos? Se perderán.`
+        );
+    };
+
+    const handleBack = () => {
+        if (!confirmLeaveProject()) return;
+        onBack();
+    };
+
+    const handleSwitchProject = (name: string) => {
+        if (name === projectName) return;
+        if (!confirmLeaveProject()) return;
+        onSwitchProject?.(name);
+    };
+
     return (
         <div className="h-screen bg-[#0B0E14] flex flex-col text-white overflow-hidden">
             <Toolbar
                 projectName={projectName}
-                onBack={onBack}
+                onBack={handleBack}
                 onRun={handleToggleRun}
                 isRunning={isRunning}
+                onSwitchProject={handleSwitchProject}
                 onSave={() => {
                     window.dispatchEvent(new CustomEvent("dischord-save"));
                     setIsDirty(false);
@@ -162,7 +197,7 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                             <div className="flex h-full">
                                 <div className="flex-1 overflow-hidden">
                                     <CodeCanvas
-                                        key={selectedNode.relative_path}
+                                        key={`${projectName}:${selectedNode.relative_path}`}
                                         projectName={projectName}
                                         relative_path={selectedNode.relative_path}
                                         fileName={selectedNode.name}
@@ -193,7 +228,7 @@ export const Editor = ({ projectName, onBack }: { projectName: string, onBack: (
                     )}
 
                     <div className="border-t border-[#1e1f22] shrink-0">
-                        <StatusBar 
+                        <StatusBar
                             fileName={selectedNode?.name}
                             isDirty={isDirty}
                             contentLength={content.length}
