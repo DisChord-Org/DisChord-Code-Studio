@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { listen } from "@tauri-apps/api/event";
 import { getVersion } from "@tauri-apps/api/app";
 
 import { Button } from "../components/Button";
@@ -13,6 +12,8 @@ interface DashboardProps {
     onSelectProject: (name: string) => void;
 }
 
+type ViewMode = "list" | "grid";
+
 const appWindow = getCurrentWindow();
 
 function Dashboard({ onSelectProject }: DashboardProps) {
@@ -20,8 +21,8 @@ function Dashboard({ onSelectProject }: DashboardProps) {
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [updating, setUpdating] = useState(false);
-    const [statusLogs, setStatusLogs] = useState<{ [key: string]: string }>({});
     const [appVersion, setAppVersion] = useState<string>("");
+    const [viewMode, setViewMode] = useState<ViewMode>("list");
 
     useEffect(() => {
         getVersion().then(setAppVersion);
@@ -41,42 +42,6 @@ function Dashboard({ onSelectProject }: DashboardProps) {
 
     useEffect(() => {
         loadProjects();
-    }, []);
-
-    useEffect(() => {
-        const unlisten = listen<string>("update-status", (event) => {
-            const msg = event.payload;
-        
-            setStatusLogs((prev) => {
-                const next = { ...prev };
-            
-                if (msg.toLowerCase().includes("cli")) {
-                    next["cli"] = msg;
-                } else if (msg.toLowerCase().includes("compilador")) {
-                    next["compiler"] = msg;
-                } else if (msg.toLowerCase().includes("ide")) {
-                    next["ide"] = msg;
-                } else if (msg.includes("orden del día") && !msg.includes("Comprobando")) {
-                    next["last_status"] = msg;
-                } else {
-                    next["general"] = msg;
-                }
-
-                return next;
-            });
-        });
-        return () => { unlisten.then(f => f()); };
-    }, []);
-
-    useEffect(() => {
-        const unlisten = listen("update-finished", () => {
-            setTimeout(() => {
-                setUpdating(false);
-                setStatusLogs({});
-                loadProjects();
-            }, 1500);
-        });
-        return () => { unlisten.then(f => f()); };
     }, []);
 
     const handleCreateProject = async (name: string) => {
@@ -110,11 +75,14 @@ function Dashboard({ onSelectProject }: DashboardProps) {
     const handleUpdate = async () => {
         if (updating) return;
         setUpdating(true);
-        setStatusLogs({ "general": "Iniciando comprobación de sistema..." });
         try {
-            await invoke("update_chord_system");
+            // Abre la ventana de progreso y dispara la comprobación de
+            // IDE + CLI + Compilador. La UI de progreso vive ahora en
+            // esa ventana; el Dashboard solo dispara la acción.
+            await invoke("start_full_update");
         } catch (error) {
             alert("Error: " + error);
+        } finally {
             setUpdating(false);
         }
     };
@@ -174,72 +142,81 @@ function Dashboard({ onSelectProject }: DashboardProps) {
             <Title>DisChord Code Studio</Title>
 
             <div className="max-w-2xl">
-                {updating? (
-                    <div className="mt-12 animate-in fade-in duration-500">
-                        <div className="flex items-center gap-3 mb-8">
-                            <div className="relative flex items-center justify-center w-2 h-2 -mt-2"> 
-                                <div className="absolute w-2 h-2 rounded-full bg-[#5865F2] animate-ping" />
-                                <div className="relative w-2 h-2 rounded-full bg-[#5865F2]" />
-                            </div>
-    
-                            <Label>Actualizando componentes de DisChord</Label>
-                        </div>
-                        
-                        <div className="space-y-4 border-l-2 border-[#1e1f22] ml-1 pl-6">
-                            {Object.values(statusLogs).map((log, i) => (
-                                <p
-                                    key={i}
-                                    className="text-sm transition-all duration-300 text-white/80"
-                                >
-                                    {log.includes("orden del día") || log.includes("completada") ? (
-                                        <span className="text-green-500 mr-2">✓</span>
-                                    ) : (
-                                        <span className="text-[#5865F2] mr-2 animate-pulse">→</span>
-                                    )}
-                                    {log}
-                                </p>
-                            ))}
-                        </div>
-                    </div>
-                ) : (
-                    <>
-                        <div className="flex justify-between items-end mb-4">
-                            <Label>Tus Workflows</Label>
-                            <Button
-                                variant="ghost"
-                                className="text-xs"
-                                onClick={() => setIsModalOpen(true)}
+                <div className="flex justify-between items-end mb-4">
+                    <Label>Tus Workflows</Label>
+
+                    <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-0.5 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] rounded-md p-0.5 transition-colors duration-200">
+                            <button
+                                onClick={() => setViewMode("list")}
+                                title="Vista de lista"
+                                className={`relative flex items-center justify-center w-5 h-5 rounded transition-all duration-200 ${
+                                    viewMode === "list"
+                                        ? "bg-[#5865F2] text-white shadow-sm"
+                                        : "text-gray-600 hover:text-gray-300"
+                                }`}
                             >
-                                + Nuevo proyecto
-                            </Button>
+                                <i className="bi bi-list-ul text-[10px]"></i>
+                            </button>
+                            <button
+                                onClick={() => setViewMode("grid")}
+                                title="Vista de cuadrícula"
+                                className={`relative flex items-center justify-center w-5 h-5 rounded transition-all duration-200 ${
+                                    viewMode === "grid"
+                                        ? "bg-[#5865F2] text-white shadow-sm"
+                                        : "text-gray-600 hover:text-gray-300"
+                                }`}
+                            >
+                                <i className="bi bi-grid-3x3-gap-fill text-[10px]"></i>
+                            </button>
                         </div>
 
-                        {loading ? (
-                            <p className="text-gray-500 animate-pulse">Buscando en Documentos...</p>
-                        ) : projects.length > 0 ? (
-                            <div className="grid gap-3">
-                                {projects.map((project) => (
-                                    <Card
-                                        key={project.name}
-                                        title={project.name}
-                                        subtitle={`Última edición: ${formatRelativeTime(project.last_modified)}`}
-                                        onDelete={() => handleDeleteProject(project.name)}
-                                        onClick={() => onSelectProject(project.name)}
-                                    />
-                                ))}
+                        <Button
+                            variant="ghost"
+                            className="text-xs"
+                            onClick={() => setIsModalOpen(true)}
+                        >
+                            + Nuevo proyecto
+                        </Button>
+                    </div>
+                </div>
+
+                {loading ? (
+                    <p className="text-gray-500 animate-pulse">Buscando en Documentos...</p>
+                ) : projects.length > 0 ? (
+                    <div
+                        key={viewMode}
+                        className={`animate-in fade-in duration-300 ${
+                            viewMode === "grid"
+                                ? "grid grid-cols-2 gap-3"
+                                : "grid gap-3"
+                        }`}
+                    >
+                        {projects.map((project, i) => (
+                            <div
+                                key={project.name}
+                                className="animate-in fade-in zoom-in-95 duration-300"
+                                style={{ animationDelay: `${i * 30}ms`, animationFillMode: "backwards" }}
+                            >
+                                <Card
+                                    title={project.name}
+                                    subtitle={`Última edición: ${formatRelativeTime(project.last_modified)}`}
+                                    onDelete={() => handleDeleteProject(project.name)}
+                                    onClick={() => onSelectProject(project.name)}
+                                />
                             </div>
-                        ) : (
-                            <div className="p-8 border-2 border-dashed border-[#1e1f22] rounded-xl text-center">
-                                <p className="text-gray-500 text-sm">No existen proyectos.</p>
-                            </div>
-                        )}
-                    </>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="p-8 border-2 border-dashed border-[#1e1f22] rounded-xl text-center">
+                        <p className="text-gray-500 text-sm">No existen proyectos.</p>
+                    </div>
                 )}
             </div>
             
             <div className="absolute bottom-0 left-0 group z-50">
                 <div className="absolute bottom-full left-2 mb-1 bg-[#1e1f22] text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/5 whitespace-nowrap shadow-xl">
-                    {updating ? "Actualizando sistema..." : "Actualizar"}
+                    {updating ? "Abriendo actualizador..." : "Actualizar"}
                 </div>
                 <button
                     onClick={handleUpdate}

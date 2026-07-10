@@ -1,0 +1,17 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "update-window-capability",
+  "description": "Capability for the update progress window",
+  "windows": ["update"],
+  "permissions": [
+    "core:default",
+    "core:window:allow-close",
+    "core:window:allow-center",
+    "core:window:allow-start-dragging",
+    "core:window:allow-set-focus",
+    "core:window:allow-minimize",
+    "core:event:allow-listen",
+    "core:event:allow-emit",
+    "process:allow-restart"
+  ]
+}

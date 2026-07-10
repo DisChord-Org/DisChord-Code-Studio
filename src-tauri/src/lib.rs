@@ -1,18 +1,22 @@
 mod commands;
 mod logger;
 
+use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use std::process::Child;
 use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
-use tauri_plugin_updater::UpdaterExt;
 use tauri::Manager;
 use log::{info, error, warn};
+
+use commands::process::UpdateProgress;
 
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
 pub struct DiscordState {
     pub client: Arc<Mutex<Option<DiscordIpcClient>>>,
 }
+
+pub struct UpdateState(pub Arc<Mutex<HashMap<String, UpdateProgress>>>);
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -23,12 +27,10 @@ pub fn run() {
 
     tauri::Builder::default()
         .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(DiscordState { client: discord_state })
+        .manage(UpdateState(Arc::new(Mutex::new(HashMap::new()))))
         .setup(move |app| {
-            // app_log_dir() resuelve automáticamente:
-            // macOS: ~/Library/Logs/com.dischord.code.studio/
-            // Linux: ~/.local/share/com.dischord.code.studio/logs/
-            // Windows: %APPDATA%/com.dischord.code.studio/logs/
             if let Ok(log_dir) = app.path().app_log_dir() {
                 if let Err(e) = logger::setup_logger(log_dir) {
                     eprintln!("Error inicializando el logger: {}", e);
@@ -44,24 +46,10 @@ pub fn run() {
                 warn!("No se pudo encontrar la ventana principal 'main'");
             }
 
-            let handle = app.handle().clone();
+            let ide_check_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
-                info!("Comprobando actualizaciones");
-                match handle.updater() {
-                    Ok(updater) => {
-                        match updater.check().await {
-                            Ok(Some(update)) => {
-                                info!("Actualización encontrada: {}. Descargando", update.version);
-                                if let Err(e) = update.download_and_install(|_, _| {}, || {}).await {
-                                    error!("Error al instalar la actualización: {}", e);
-                                }
-                            },
-                            Ok(None) => info!("La aplicación está actualizada"),
-                            Err(e) => error!("Error al comprobar actualizaciones: {}", e),
-                        }
-                    },
-                    Err(e) => error!("No se pudo obtener el servicio de updater: {}", e),
-                }
+                info!("Comprobando actualización del IDE al iniciar");
+                commands::process::run_ide_update(ide_check_handle).await;
             });
 
             let inner_client_arc = setup_client.clone();
@@ -109,7 +97,8 @@ pub fn run() {
 
             commands::process::run_chord_project,
             commands::process::stop_chord_project,
-            commands::process::update_chord_system,
+            commands::process::start_full_update,
+            commands::process::get_update_state,
             commands::process::open_in_explorer,
         ])
         .run(tauri::generate_context!())

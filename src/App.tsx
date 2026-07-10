@@ -1,9 +1,17 @@
 import { useState } from "react";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import Dashboard from "./views/Dashboard";
 import Editor from "./views/Editor";
+import Update from "./views/Update";
+
+const windowLabel = getCurrentWindow().label;
 
 function App() {
     const [currentProject, setCurrentProject] = useState<string | null>(null);
+
+    if (windowLabel === "update") {
+        return <Update />;
+    }
 
     if (currentProject) {
         return (
