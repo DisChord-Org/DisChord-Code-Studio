@@ -115,13 +115,24 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
     }, [isRunning, projectName]);
 
     useEffect(() => {
-        const handleSaveEvent = () => {
+        const maybeRefreshForGitignore = () => {
             if (selectedNodeRef.current?.relative_path !== ".gitignore") return;
             setTimeout(() => { refreshFiles(); }, 150);
         };
 
+        const handleSaveEvent = () => maybeRefreshForGitignore();
+        const handleKeydown = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
+                maybeRefreshForGitignore();
+            }
+        };
+
         window.addEventListener("dischord-save", handleSaveEvent);
-        return () => window.removeEventListener("dischord-save", handleSaveEvent);
+        window.addEventListener("keydown", handleKeydown);
+        return () => {
+            window.removeEventListener("dischord-save", handleSaveEvent);
+            window.removeEventListener("keydown", handleKeydown);
+        };
     }, [projectName]);
 
     const handleFileSelect = async (node: FileNode) => {
