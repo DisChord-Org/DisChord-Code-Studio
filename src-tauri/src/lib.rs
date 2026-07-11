@@ -31,6 +31,10 @@ pub fn run() {
         .manage(DiscordState { client: discord_state })
         .manage(UpdateState(Arc::new(Mutex::new(HashMap::new()))))
         .setup(move |app| {
+            // app_log_dir() resuelve automáticamente:
+            // macOS: ~/Library/Logs/com.dischord.code.studio/
+            // Linux: ~/.local/share/com.dischord.code.studio/logs/
+            // Windows: %APPDATA%/com.dischord.code.studio/logs/
             if let Ok(log_dir) = app.path().app_log_dir() {
                 if let Err(e) = logger::setup_logger(log_dir) {
                     eprintln!("Error inicializando el logger: {}", e);
@@ -99,6 +103,7 @@ pub fn run() {
             commands::process::stop_chord_project,
             commands::process::start_full_update,
             commands::process::get_update_state,
+            commands::process::mark_update_window_ready,
             commands::process::open_in_explorer,
         ])
         .run(tauri::generate_context!())

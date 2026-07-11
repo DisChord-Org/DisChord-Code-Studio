@@ -41,9 +41,9 @@ const SETTLED_PHASES: Phase[] = ["up_to_date", "done", "error"];
 const ACTIVE_PHASES: Phase[] = ["checking", "downloading", "installing"];
 
 const TARGET_META: Record<TargetKey, { label: string; icon: string; desc: string }> = {
-    ide: { label: "DisChord Code Studio", icon: "bi-window-stack", desc: "El propio editor" },
+    ide: { label: "DisChord Code Studio", icon: "bi-window-stack", desc: "El propio editor de código" },
     cli: { label: "DisChord CLI", icon: "bi-terminal-fill", desc: "Herramienta de línea de comandos" },
-    compiler: { label: "Compilador", icon: "bi-cpu-fill", desc: "dischord-compiler" },
+    compiler: { label: "Compilador", icon: "bi-cpu-fill", desc: "DisChord en su nivel más bajo" },
 };
 
 const STATUS_TEXT: Record<Phase, string> = {
@@ -179,9 +179,13 @@ const UpdateRow = ({ target, state }: { target: TargetKey; state: TargetState })
     );
 };
 
-function UpdateWindow() {
+function Update() {
     const [states, setStates] = useState<Record<TargetKey, TargetState>>(initialState());
     const receivedLive = useRef<Set<TargetKey>>(new Set());
+
+    useEffect(() => {
+        invoke("mark_update_window_ready").catch((e) => console.error(e));
+    }, []);
 
     useEffect(() => {
         let cancelled = false;
@@ -200,14 +204,13 @@ function UpdateWindow() {
                 setStates((prev) => {
                     const next = { ...prev };
                     for (const p of snapshot) {
-                        // No pisar un evento en directo más reciente que ya llegó
-                        // mientras montábamos el listener y pedíamos el snapshot.
                         if (receivedLive.current.has(p.target)) continue;
                         next[p.target] = toTargetState(p);
                     }
                     return next;
                 });
-            } catch {}
+            } catch {
+            }
         })();
 
         return () => {
@@ -231,6 +234,38 @@ function UpdateWindow() {
         return () => clearTimeout(timer);
     }, [nothingChanged]);
 
+    const [autoRestartSeconds, setAutoRestartSeconds] = useState<number | null>(null);
+
+    const handleRelaunch = async () => {
+        try {
+            const { relaunch } = await import("@tauri-apps/plugin-process");
+            await relaunch();
+        } catch (e) {
+            console.error("No se pudo reiniciar automáticamente:", e);
+        }
+    };
+
+    useEffect(() => {
+        if (ideNeedsRestart) {
+            setAutoRestartSeconds(6);
+        } else {
+            setAutoRestartSeconds(null);
+        }
+    }, [ideNeedsRestart]);
+
+    useEffect(() => {
+        if (autoRestartSeconds === null) return;
+        if (autoRestartSeconds <= 0) {
+            handleRelaunch();
+            return;
+        }
+        const timer = setTimeout(() => {
+            setAutoRestartSeconds((s) => (s === null ? null : s - 1));
+        }, 1000);
+        return () => clearTimeout(timer);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoRestartSeconds]);
+
     const handleClose = () => {
         getCurrentWindow().close();
     };
@@ -241,14 +276,7 @@ function UpdateWindow() {
         invoke("start_full_update").catch((e) => console.error(e));
     };
 
-    const handleRelaunch = async () => {
-        try {
-            const { relaunch } = await import("@tauri-apps/plugin-process");
-            await relaunch();
-        } catch (e) {
-            console.error("No se pudo reiniciar automáticamente:", e);
-        }
-    };
+    const cancelAutoRestart = () => setAutoRestartSeconds(null);
 
     return (
         <div
@@ -270,14 +298,14 @@ function UpdateWindow() {
                 </button>
             </div>
 
-            <div className="mb-8">
+            <div className="mb-8 max-w-xl mx-auto w-full">
                 <Title>Actualizando DisChord</Title>
                 <p className="text-xs text-gray-500 -mt-4">
                     Comprobando el IDE, la CLI y el compilador. Esto puede tardar unos segundos.
                 </p>
             </div>
 
-            <div className="flex flex-col gap-3 max-w-xl">
+            <div className="flex flex-col gap-3 max-w-xl mx-auto w-full">
                 {TARGET_ORDER.map((key, i) => (
                     <div
                         key={key}
@@ -289,10 +317,12 @@ function UpdateWindow() {
                 ))}
             </div>
 
-            <div className="mt-auto pt-8 flex items-center justify-between max-w-xl">
+            <div className="mt-auto pt-8 flex items-center justify-between max-w-xl mx-auto w-full">
                 <span className="text-[10px] text-gray-600">
                     {hasError
                         ? "Hubo un problema con alguna actualización."
+                        : autoRestartSeconds !== null
+                        ? `El IDE se ha actualizado. Reiniciando en ${autoRestartSeconds}s…`
                         : allSettled
                         ? "Comprobación completada."
                         : "No cierres esta ventana todavía…"}
@@ -305,13 +335,26 @@ function UpdateWindow() {
                         </Button>
                     )}
                     {ideNeedsRestart ? (
-                        <Button
-                            variant="primary"
-                            className="text-xs animate-in fade-in duration-300"
-                            onClick={handleRelaunch}
-                        >
-                            Reiniciar ahora
-                        </Button>
+                        <>
+                            {autoRestartSeconds !== null && (
+                                <Button
+                                    variant="ghost"
+                                    className="text-xs animate-in fade-in duration-300"
+                                    onClick={cancelAutoRestart}
+                                >
+                                    Más tarde
+                                </Button>
+                            )}
+                            <Button
+                                variant="primary"
+                                className="text-xs animate-in fade-in duration-300"
+                                onClick={handleRelaunch}
+                            >
+                                {autoRestartSeconds !== null
+                                    ? `Reiniciar ahora (${autoRestartSeconds})`
+                                    : "Reiniciar ahora"}
+                            </Button>
+                        </>
                     ) : allSettled ? (
                         <Button variant="secondary" className="text-xs" onClick={handleClose}>
                             Cerrar
@@ -323,4 +366,4 @@ function UpdateWindow() {
     );
 }
 
-export default UpdateWindow;
+export default Update;

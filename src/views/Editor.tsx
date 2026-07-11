@@ -26,23 +26,27 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
     const [isDirty, setIsDirty] = useState(false);
 
     useEffect(() => {
-        appWindow.setResizable(true);
-        appWindow.maximize();
+        (async () => {
+            await appWindow.setResizable(true);
+            await appWindow.maximize();
+        })();
 
         invoke<FileNode[]>("read_project_files", { name: projectName })
             .then(setFileTree)
             .catch(console.error);
 
-       setSelectedNode(null);
+        setSelectedNode(null);
         setContent("");
         setIsDirty(false);
         setShowTerminal(false);
 
         return () => {
-            appWindow.unmaximize();
-            appWindow.setSize(new LogicalSize(800, 600));
-            appWindow.center();
-            appWindow.setResizable(false);
+            (async () => {
+                await appWindow.unmaximize();
+                await appWindow.setSize(new LogicalSize(800, 600));
+                await appWindow.center();
+                await appWindow.setResizable(false);
+            })();
         };
     }, [projectName]);
 
