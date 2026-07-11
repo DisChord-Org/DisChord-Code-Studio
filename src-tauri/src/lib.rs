@@ -7,7 +7,7 @@ use std::process::Child;
 use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 use tauri::Manager;
 use log::{info, error, warn};
-
+use sysinfo::System;
 use commands::process::UpdateProgress;
 
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
@@ -30,6 +30,7 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(DiscordState { client: discord_state })
         .manage(UpdateState(Arc::new(Mutex::new(HashMap::new()))))
+        .manage(Mutex::new(System::new_all()))
         .setup(move |app| {
             // app_log_dir() resuelve automáticamente:
             // macOS: ~/Library/Logs/com.dischord.code.studio/
@@ -105,6 +106,8 @@ pub fn run() {
             commands::process::get_update_state,
             commands::process::mark_update_window_ready,
             commands::process::open_in_explorer,
+
+            commands::system_stats::get_system_stats
         ])
         .run(tauri::generate_context!())
         .expect("Error fatal al ejecutar la aplicación Tauri");

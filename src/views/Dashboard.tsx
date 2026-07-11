@@ -8,6 +8,7 @@ import { Card } from "../components/ProjectCard";
 import { Title, Label } from "../components/Typography";
 import { Modal } from "../components/Modal";
 import { formatRelativeTime } from "../utils/Time";
+import { SystemMonitorRings } from "../components/SystemMonitorRings";
 
 interface DashboardProps {
     onSelectProject: (name: string) => void;
@@ -203,8 +204,9 @@ function Dashboard({ onSelectProject }: DashboardProps) {
                 </button>
             </div>
 
-            <div className="absolute bottom-4 right-6 pointer-events-none select-none">
-                <span className="text-[10px] font-mono text-gray-600 tracking-widest uppercase opacity-50">
+            <div className="absolute bottom-4 right-6 flex items-end gap-4 select-none">
+                <SystemMonitorRings size={40} />
+                <span className="text-[10px] font-mono text-gray-600 tracking-widest uppercase opacity-50 pb-[3px] pointer-events-none">
                     v{appVersion}
                 </span>
             </div>

@@ -5,6 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { Button } from "../components/Button";
 import { Title } from "../components/Typography";
+import { SystemMonitorRings } from "../components/SystemMonitorRings";
 
 type Phase =
     | "idle"
@@ -360,6 +361,10 @@ function Update() {
                             Cerrar
                         </Button>
                     ) : null}
+                </div>
+
+                <div className="absolute bottom-4 right-6 select-none">
+                    <SystemMonitorRings size={40} />
                 </div>
             </div>
         </div>
