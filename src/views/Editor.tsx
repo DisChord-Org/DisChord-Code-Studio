@@ -10,6 +10,7 @@ import { CodeCanvas, CodeCanvasHandle, MinimapViewport } from "../components/Cod
 import { CodeMinimap } from "../components/CodeMinimap";
 import { TerminalPanel } from "../components/Terminal";
 import { StatusBar } from "../components/StatusBar";
+import { EditorScrollbar } from "../components/EditorScrollbar";
 
 const appWindow = getCurrentWindow();
 
@@ -172,10 +173,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
     const handleSwitchProject = (name: string) => {
         if (name === projectName) return;
         if (!confirmLeaveProject()) return;
-        if (!onSwitchProject) {
-            console.warn("[DisChord] onSwitchProject no está conectado desde el componente padre");
-            return;
-        }
+        if (!onSwitchProject) return;
+
         onSwitchProject(name);
     };
 
@@ -224,6 +223,10 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
                                 </div>
                                 <CodeMinimap
                                     text={content}
+                                    viewport={minimapViewport}
+                                    onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
+                                />
+                                <EditorScrollbar
                                     viewport={minimapViewport}
                                     onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
                                 />

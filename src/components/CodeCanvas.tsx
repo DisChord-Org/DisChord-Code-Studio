@@ -44,9 +44,6 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
 
-    // Ref para tener siempre el callback más reciente sin tener que meter
-    // onViewportChange en las dependencias del efecto de montaje (eso
-    // recrearía el EditorView en cada render del padre).
     const onViewportChangeRef = useRef(onViewportChange);
     onViewportChangeRef.current = onViewportChange;
 
@@ -139,6 +136,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                         if (update.docChanged) {
                             setIsDirty(true);
                             onChange(update.state.doc.toString());
+                            reportViewport();
                         }
                     }),
                     EditorView.domEventHandlers({
@@ -169,7 +167,9 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                         ".cm-scroller": {
                             overflow: "auto",
                             backgroundColor: "#0B0E14",
-                            paddingTop: "10px"
+                            paddingTop: "10px",
+                            scrollbarWidth: "none",
+                            msOverflowStyle: "none"
                         },
                         ".cm-content": { 
                             fontFamily: "'JetBrains Mono', monospace", 
@@ -183,8 +183,16 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                             paddingTop: "0px",
                             minWidth: "40px"
                         },
-                        ".cm-activeLine": { backgroundColor: "#1e1f2233" },
-                        ".cm-activeLineGutter": { backgroundColor: "#1e1f22", color: "#5865f2" }
+                        ".cm-activeLine": {
+                            backgroundColor: "#1e1f2233"
+                        },
+                        ".cm-activeLineGutter": {
+                            backgroundColor: "#1e1f22",
+                            color: "#5865f2"
+                        },
+                        ".cm-scroller::-webkit-scrollbar": {
+                            display: "none"
+                        }
                     }, { dark: true })
                 ]
             }),
@@ -203,10 +211,9 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             });
         };
 
-        reportViewport();
+        requestAnimationFrame(() => requestAnimationFrame(reportViewport));
+
         scroller.addEventListener("scroll", reportViewport, { passive: true });
-        // Detecta cambios de tamaño del documento (más líneas, wrap, etc.)
-        // aunque no haya scroll de por medio.
         const resizeObserver = new ResizeObserver(reportViewport);
         resizeObserver.observe(scroller);
 

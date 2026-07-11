@@ -7,9 +7,6 @@ import {
     CHORD_ATOMS,
 } from "../languages/chord-language";
 
-// Palabras clave "genéricas" para cuando el archivo abierto es JS/TS/JSON,
-// no .chord. Las del lenguaje Chord vienen de chord-language.ts: una sola
-// fuente de verdad, nada duplicado entre el editor y el minimapa.
 const GENERIC_KEYWORDS = [
     "export", "import", "from", "const", "let", "var", "if", "else", "return",
     "class", "function", "interface", "type", "new", "this", "extends",
@@ -77,7 +74,7 @@ const CHAR_WIDTH = 2;
 const LINE_HEIGHT = 4;
 const MINIMAP_WIDTH = 80;
 const MAX_LINES = 5000;
-const MIN_RECT_HEIGHT = 18; // igual que VS Code: por debajo de esto, arrastrar se vuelve impreciso
+const MIN_RECT_HEIGHT = 18;
 
 export interface MinimapViewport {
     scrollTop: number;
@@ -105,8 +102,6 @@ export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) =>
 
     const canvasHeight = Math.max(lines.length * LINE_HEIGHT, 1);
 
-    // Mide el alto real visible del panel (no el del canvas, que puede ser
-    // mucho más alto que lo que cabe en pantalla).
     useEffect(() => {
         const el = containerRef.current;
         if (!el) return;
@@ -145,10 +140,6 @@ export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) =>
         });
     }, [linesTokens, canvasHeight]);
 
-    // --- Rectángulo de viewport + sincronía de scroll con el editor ---
-    // Si el minimapa es más alto que el panel visible, VS Code desplaza el
-    // propio minimapa para que el rectángulo (lo que estás viendo) nunca
-    // quede fuera de la pantalla. offsetY reproduce eso.
     const scrollableMinimap = Math.max(canvasHeight - containerHeight, 0);
     const scrollableEditor = viewport ? Math.max(viewport.scrollHeight - viewport.clientHeight, 0) : 0;
     const scrollRatio = scrollableEditor > 0 && viewport ? viewport.scrollTop / scrollableEditor : 0;
@@ -181,9 +172,6 @@ export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) =>
         const canvasY = pointerY - offsetY;
         const clickedInsideRect = canvasY >= rectTop && canvasY <= rectTop + rectHeight;
 
-        // Si hacés click dentro del rectángulo, se agarra donde clickeaste
-        // (como arrastrar un scrollbar). Si clickeás fuera, salta centrando
-        // el rectángulo en ese punto — igual que en VS Code.
         const grabOffset = clickedInsideRect ? canvasY - rectTop : rectHeight / 2;
 
         draggingRef.current = { grabOffset };
