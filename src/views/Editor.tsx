@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileNode } from "../types";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
@@ -6,7 +6,7 @@ import { listen } from "@tauri-apps/api/event";
 
 import { Toolbar } from "../components/Toolbar";
 import { Sidebar } from "../components/Sidebar";
-import { CodeCanvas } from "../components/CodeCanvas";
+import { CodeCanvas, CodeCanvasHandle, MinimapViewport } from "../components/CodeCanvas";
 import { CodeMinimap } from "../components/CodeMinimap";
 import { TerminalPanel } from "../components/Terminal";
 import { StatusBar } from "../components/StatusBar";
@@ -24,6 +24,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
     const [isRunning, setIsRunning] = useState(false);
     const [showTerminal, setShowTerminal] = useState(false);
     const [isDirty, setIsDirty] = useState(false);
+    const codeCanvasRef = useRef<CodeCanvasHandle>(null);
+    const [minimapViewport, setMinimapViewport] = useState<MinimapViewport | undefined>(undefined);
 
     useEffect(() => {
         (async () => {
@@ -205,6 +207,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
                             <div className="flex h-full">
                                 <div className="flex-1 overflow-hidden">
                                     <CodeCanvas
+                                        ref={codeCanvasRef}
                                         key={`${projectName}:${selectedNode.relative_path}`}
                                         projectName={projectName}
                                         relative_path={selectedNode.relative_path}
@@ -216,9 +219,14 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
                                             setContent(val);
                                             if (!isDirty) setIsDirty(true);
                                         }}
+                                        onViewportChange={setMinimapViewport}
                                     />
                                 </div>
-                                <CodeMinimap text={content} />
+                                <CodeMinimap
+                                    text={content}
+                                    viewport={minimapViewport}
+                                    onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
+                                />
                             </div>
                         ) : (
                             <div className="h-full w-full bg-[radial-gradient(#1e1f22_1px,transparent_1px)] [background-size:20px_20px] flex flex-col items-center justify-center pointer-events-none">

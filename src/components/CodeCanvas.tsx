@@ -1,4 +1,4 @@
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 import { EditorView, basicSetup } from "codemirror";
@@ -15,6 +15,15 @@ import { css } from "@codemirror/lang-css";
 import { json } from "@codemirror/lang-json";
 import { chord } from "../languages/chord-language";
 
+export interface MinimapViewport {
+    scrollTop: number;
+    scrollHeight: number;
+    clientHeight: number;
+}
+
+export interface CodeCanvasHandle {
+    scrollTo: (scrollTop: number) => void;
+}
 
 interface CodeCanvasProps {
     projectName: string;
@@ -24,14 +33,30 @@ interface CodeCanvasProps {
     setIsDirty: (value: boolean) => void;
     content: string;
     onChange: (value: string) => void;
+    onViewportChange?: (viewport: MinimapViewport) => void;
 }
 
 const languageConf = new Compartment();
 
-export const CodeCanvas = ({ projectName, relative_path, fileName, content, isDirty, setIsDirty, onChange }: CodeCanvasProps) => {
+export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
+    projectName, relative_path, fileName, content, isDirty, setIsDirty, onChange, onViewportChange
+}, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
-    
+
+    // Ref para tener siempre el callback más reciente sin tener que meter
+    // onViewportChange en las dependencias del efecto de montaje (eso
+    // recrearía el EditorView en cada render del padre).
+    const onViewportChangeRef = useRef(onViewportChange);
+    onViewportChangeRef.current = onViewportChange;
+
+    useImperativeHandle(ref, () => ({
+        scrollTo: (scrollTop: number) => {
+            const scroller = viewRef.current?.scrollDOM;
+            if (scroller) scroller.scrollTop = scrollTop;
+        }
+    }), []);
+
     const addFlash = StateEffect.define<{from: number, to: number}>();
     const clearFlash = StateEffect.define<null>();
     const flashField = StateField.define({
@@ -168,7 +193,26 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, isDi
 
         viewRef.current = view;
         setIsDirty(false);
+
+        const scroller = view.scrollDOM;
+        const reportViewport = () => {
+            onViewportChangeRef.current?.({
+                scrollTop: scroller.scrollTop,
+                scrollHeight: scroller.scrollHeight,
+                clientHeight: scroller.clientHeight,
+            });
+        };
+
+        reportViewport();
+        scroller.addEventListener("scroll", reportViewport, { passive: true });
+        // Detecta cambios de tamaño del documento (más líneas, wrap, etc.)
+        // aunque no haya scroll de por medio.
+        const resizeObserver = new ResizeObserver(reportViewport);
+        resizeObserver.observe(scroller);
+
         return () => {
+            scroller.removeEventListener("scroll", reportViewport);
+            resizeObserver.disconnect();
             view.destroy();
             viewRef.current = null;
         }
@@ -213,4 +257,6 @@ export const CodeCanvas = ({ projectName, relative_path, fileName, content, isDi
             <div className="flex-1 overflow-hidden selection:bg-[#5865f2]/30" ref={editorRef} />
         </div>
     );
-};
+});
+
+CodeCanvas.displayName = "CodeCanvas";

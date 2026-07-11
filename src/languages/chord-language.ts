@@ -1,20 +1,21 @@
-import { StreamLanguage, LanguageSupport } from "@codemirror/language";
+import { StreamLanguage, LanguageSupport, HighlightStyle, syntaxHighlighting } from "@codemirror/language";
+import { tags } from "@lezer/highlight";
+import { CHORD_THEME } from "./chord-theme";
 
-const keywords = [
+export const CHORD_KEYWORDS = [
     "clase", "extiende", "prop", "fijar", "esta", "super", "nuevo", "devolver",
     "var", "es", "funcion", "importar", "exportar", "desde", "js", "tipo",
     "encender", "bot", "evento", "crear", "comando", "recolector"
 ];
-const controlFlow = ["si", "sino", "ademas", "para", "en", "pasar", "salir"];
-const builtins = [
+export const CHORD_CONTROL_FLOW = ["si", "sino", "ademas", "para", "en", "pasar", "salir"];
+export const CHORD_BUILTINS = [
     "mas", "menos", "por", "entre", "resto", "exp", "intro", "espacio", "mayor",
     "menor", "mayor_igual", "menor_igual", "no", "igual_tipado", "igual", "y", "o",
-    
-    "token", "prefijo", "intenciones", "descripcion", "embed", "boton", 
+    "token", "prefijo", "intenciones", "descripcion", "embed", "boton",
     "etiqueta", "emoji", "estilo", "id", "alPulsarId", "imprimir", "mensaje",
     "usuario", "nombre"
 ];
-const atoms = ["verdadero", "falso", "indefinido"];
+export const CHORD_ATOMS = ["verdadero", "falso", "indefinido"];
 
 export const chordLanguage = StreamLanguage.define({
     name: "chord",
@@ -25,7 +26,6 @@ export const chordLanguage = StreamLanguage.define({
             else stream.next();
             return "comment";
         }
-        
         if (stream.match("/*")) {
             state.inBlockComment = true;
             return "comment";
@@ -40,7 +40,12 @@ export const chordLanguage = StreamLanguage.define({
         if (stream.match("@asincrono")) return "meta";
 
         if (stream.match(/"/)) {
-            while (stream.next() && !stream.eat(/"/)) {}
+            let escaped = false;
+            let ch: string | void;
+            while ((ch = stream.next()) != null) {
+                if (ch === '"' && !escaped) break;
+                escaped = !escaped && ch === "\\";
+            }
             return "string";
         }
 
@@ -48,22 +53,41 @@ export const chordLanguage = StreamLanguage.define({
 
         if (stream.match(/^[\w@_]+/)) {
             const word = stream.current();
-            
-            if (keywords.includes(word)) return "keyword";
-            if (controlFlow.includes(word)) return "controlKeyword";
-            if (builtins.includes(word)) return "builtin";
-            if (atoms.includes(word)) return "atom";
+            if (CHORD_KEYWORDS.includes(word)) return "keyword";
+            if (CHORD_CONTROL_FLOW.includes(word)) return "controlKeyword";
+            if (CHORD_BUILTINS.includes(word)) return "builtin";
+            if (CHORD_ATOMS.includes(word)) return "atom";
 
             return "variableName";
         }
 
         if (stream.match(/[{}()\[\].,;]/)) return "punctuation";
-    
         stream.next();
         return null;
-    }
+    },
+    tokenTable: {
+        controlKeyword: tags.controlKeyword,
+        punctuation: tags.punctuation,
+    },
 });
 
+const chordHighlightStyle = HighlightStyle.define([
+    { tag: tags.keyword, color: CHORD_THEME.keyword },
+    { tag: tags.controlKeyword, color: CHORD_THEME.controlKeyword, fontWeight: "600" },
+    { tag: tags.comment, color: CHORD_THEME.comment, fontStyle: "italic" },
+    { tag: tags.string, color: CHORD_THEME.string },
+    { tag: tags.number, color: CHORD_THEME.number },
+    { tag: tags.atom, color: CHORD_THEME.number },
+    { tag: tags.standard(tags.variableName), color: CHORD_THEME.function }, // builtins
+    { tag: tags.variableName, color: CHORD_THEME.default },
+    { tag: tags.punctuation, color: CHORD_THEME.punctuation },
+    { tag: tags.bracket, color: CHORD_THEME.punctuation },
+    { tag: tags.meta, color: CHORD_THEME.meta, fontStyle: "italic" },
+    { tag: tags.invalid, color: CHORD_THEME.invalid },
+]);
+
 export function chord() {
-    return new LanguageSupport(chordLanguage);
+    return new LanguageSupport(chordLanguage, [
+        syntaxHighlighting(chordHighlightStyle),
+    ]);
 }
