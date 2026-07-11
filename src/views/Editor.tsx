@@ -170,7 +170,11 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
     const handleSwitchProject = (name: string) => {
         if (name === projectName) return;
         if (!confirmLeaveProject()) return;
-        onSwitchProject?.(name);
+        if (!onSwitchProject) {
+            console.warn("[DisChord] onSwitchProject no está conectado desde el componente padre");
+            return;
+        }
+        onSwitchProject(name);
     };
 
     return (

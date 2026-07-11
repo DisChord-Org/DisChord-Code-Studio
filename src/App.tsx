@@ -16,8 +16,9 @@ function App() {
     if (currentProject) {
         return (
             <Editor 
-                projectName={currentProject} 
-                onBack={() => setCurrentProject(null)} 
+                projectName={currentProject}
+                onBack={() => setCurrentProject(null)}
+                onSwitchProject={(name) => setCurrentProject(name)}
             />
         );
     }
