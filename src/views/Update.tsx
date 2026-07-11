@@ -309,11 +309,17 @@ function Update() {
                 </button>
             </div>
 
-            <div className="mb-8 max-w-xl mx-auto w-full">
-                <Title>Actualizando DisChord</Title>
-                <p className="text-xs text-gray-500 -mt-4">
-                    Comprobando el IDE, la CLI y el compilador. Esto puede tardar unos segundos.
-                </p>
+            <div className="mb-8 max-w-xl mx-auto w-full flex items-end justify-between gap-6">
+                <div>
+                    <Title>Actualizando DisChord</Title>
+                    <p className="text-xs text-gray-500 -mt-4">
+                        Comprobando el IDE, la CLI y el compilador. Esto puede tardar unos segundos.
+                    </p>
+                </div>
+
+                <div className="shrink-0 pb-1">
+                    <SystemMonitorRings size={52} />
+                </div>
             </div>
 
             <div className="flex flex-col gap-3 max-w-xl mx-auto w-full">
@@ -371,10 +377,6 @@ function Update() {
                             Cerrar
                         </Button>
                     ) : null}
-                </div>
-
-                <div className="absolute bottom-4 right-6 select-none">
-                    <SystemMonitorRings size={40} />
                 </div>
             </div>
         </div>
