@@ -27,6 +27,11 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
     const [isDirty, setIsDirty] = useState(false);
     const codeCanvasRef = useRef<CodeCanvasHandle>(null);
     const [minimapViewport, setMinimapViewport] = useState<MinimapViewport | undefined>(undefined);
+    const selectedNodeRef = useRef<FileNode | null>(null);
+
+    useEffect(() => {
+        selectedNodeRef.current = selectedNode;
+    }, [selectedNode]);
 
     useEffect(() => {
         (async () => {
@@ -108,6 +113,16 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
             window.removeEventListener("dischord-run", triggerRun as EventListener);
         };
     }, [isRunning, projectName]);
+
+    useEffect(() => {
+        const handleSaveEvent = () => {
+            if (selectedNodeRef.current?.relative_path !== ".gitignore") return;
+            setTimeout(() => { refreshFiles(); }, 150);
+        };
+
+        window.addEventListener("dischord-save", handleSaveEvent);
+        return () => window.removeEventListener("dischord-save", handleSaveEvent);
+    }, [projectName]);
 
     const handleFileSelect = async (node: FileNode) => {
         if (node.is_dir) return;

@@ -70,6 +70,10 @@ function Dashboard({ onSelectProject }: DashboardProps) {
         }
     };
 
+    const handleMinimize = async () => {
+        await appWindow.minimize();
+    };
+
     const handleClose = async () => {
         await appWindow.close();
     };
@@ -78,9 +82,6 @@ function Dashboard({ onSelectProject }: DashboardProps) {
         if (updating) return;
         setUpdating(true);
         try {
-            // Abre la ventana de progreso y dispara la comprobación de
-            // IDE + CLI + Compilador. La UI de progreso vive ahora en
-            // esa ventana; el Dashboard solo dispara la acción.
             await invoke("start_full_update");
         } catch (error) {
             alert("Error: " + error);
@@ -93,6 +94,12 @@ function Dashboard({ onSelectProject }: DashboardProps) {
         <div data-tauri-drag-region className="relative min-h-screen bg-[#0B0E14] rounded-xl border border-[#1e1f22] p-12 overflow-hidden select-none">
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
                 <div className="flex items-center h-full ml-2">
+                    <button
+                        onClick={handleMinimize}
+                        className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 transition-colors"
+                    >
+                        <i className="bi bi-dash-lg text-lg"></i>
+                    </button>
                     <button 
                         onClick={handleClose}
                         className="w-10 h-10 flex items-center justify-center hover:bg-red-500 hover:text-white text-gray-400 transition-colors"

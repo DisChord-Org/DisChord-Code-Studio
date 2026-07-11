@@ -267,6 +267,10 @@ function Update() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [autoRestartSeconds]);
 
+    const handleMinimize = async () => {
+        await getCurrentWindow().minimize();
+    };
+
     const handleClose = () => {
         getCurrentWindow().close();
     };
@@ -285,6 +289,12 @@ function Update() {
             className="relative min-h-screen bg-[#0B0E14] rounded-xl border border-[#1e1f22] p-10 overflow-hidden select-none flex flex-col"
         >
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
+                <button
+                    onClick={handleMinimize}
+                    className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 transition-colors"
+                >
+                    <i className="bi bi-dash-lg text-lg"></i>
+                </button>
                 <button
                     onClick={handleClose}
                     disabled={ideInstalling}
