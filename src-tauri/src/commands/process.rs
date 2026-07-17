@@ -2,7 +2,7 @@ use std::fs;
 use std::process::{Command, Stdio};
 use std::io::{BufRead, BufReader};
 use std::thread;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
 
@@ -215,12 +215,94 @@ pub async fn run_ide_update(app_handle: tauri::AppHandle) {
     }
 }
 
+fn cli_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    let home = app_handle.path().home_dir().ok()?;
+
+    #[cfg(target_os = "windows")]
+    let bin_dir = home.join(".dischord").join("bin");
+    #[cfg(not(target_os = "windows"))]
+    let bin_dir = home.join(".local").join("bin");
+
+    let tool_filename = if cfg!(windows) { "chord.exe" } else { "chord" };
+    Some(bin_dir.join(tool_filename))
+}
+
+pub fn is_cli_installed(app_handle: &tauri::AppHandle) -> bool {
+    cli_binary_path(app_handle).map(|p| p.exists()).unwrap_or(false)
+}
+
+pub fn install_cli_binary(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
+    let dest_path = cli_binary_path(app_handle)
+        .ok_or_else(|| "No se pudo determinar la ruta de instalación de la CLI".to_string())?;
+
+    let bin_dir = dest_path.parent()
+        .ok_or_else(|| "Ruta de instalación de la CLI inválida".to_string())?;
+
+    if !bin_dir.exists() {
+        fs::create_dir_all(bin_dir).map_err(|e| e.to_string())?;
+    }
+
+    download_tool("chord", &dest_path).map_err(|e| e.to_string())?;
+    register_bin_dir_in_path(bin_dir).map_err(|e| e.to_string())?;
+
+    Ok(dest_path)
+}
+
+pub fn run_initial_cli_install(app_handle: tauri::AppHandle) {
+    if let Some(main) = app_handle.get_webview_window("main") {
+        let _ = main.hide();
+    }
+
+    if let Err(e) = open_update_window(&app_handle) {
+        error!("No se pudo abrir la ventana de actualización para instalar la CLI: {}", e);
+        if let Some(main) = app_handle.get_webview_window("main") {
+            let _ = main.show();
+        }
+        return;
+    }
+
+    emit_progress(&app_handle, "cli", "installing", None, None, None, None,
+        Some("Instalando la CLI de DisChord por primera vez...".into()));
+
+    thread::spawn(move || {
+        match install_cli_binary(&app_handle) {
+            Ok(installed_path) => {
+                info!("CLI instalada correctamente en el primer arranque");
+                run_cli_compiler_update_inner(app_handle.clone(), Some(installed_path), true);
+
+                let ide_handle = app_handle.clone();
+                tauri::async_runtime::spawn(async move {
+                    run_ide_update(ide_handle).await;
+                });
+            },
+            Err(e) => {
+                error!("No se pudo instalar la CLI en el primer arranque: {}", e);
+                emit_progress(&app_handle, "cli", "error", None, None, None, None, Some(e.clone()));
+                emit_progress(&app_handle, "compiler", "error", None, None, None, None, Some(e));
+            }
+        }
+    });
+}
+
 pub fn run_cli_compiler_update(app_handle: tauri::AppHandle) {
+    run_cli_compiler_update_inner(app_handle, None, false);
+}
+
+fn run_cli_compiler_update_inner(
+    app_handle: tauri::AppHandle,
+    binary_override: Option<PathBuf>,
+    already_retried: bool,
+) {
     emit_progress(&app_handle, "cli", "checking", None, None, None, None, None);
     emit_progress(&app_handle, "compiler", "checking", None, None, None, None, None);
 
     thread::spawn(move || {
-        let mut command = Command::new("chord");
+        let binary: std::ffi::OsString = binary_override
+            .clone()
+            .map(|p| p.into_os_string())
+            .unwrap_or_else(|| "chord".into());
+
+        let mut command = Command::new(&binary);
         command.arg("update").arg("all").arg("--json");
         command.stdout(Stdio::piped());
         command.stderr(Stdio::piped());
@@ -275,6 +357,23 @@ pub fn run_cli_compiler_update(app_handle: tauri::AppHandle) {
                     },
                     _ => {
                         warn!("'chord update all --json' terminó con un código no exitoso");
+                    }
+                }
+            },
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound && !already_retried => {
+                warn!("'{}' no se encontró al intentar actualizar. Instalando la CLI ahora.", binary.to_string_lossy());
+                emit_progress(&app_handle, "cli", "installing", None, None, None, None,
+                    Some("La CLI no estaba instalada. Instalándola ahora...".into()));
+
+                match install_cli_binary(&app_handle) {
+                    Ok(installed_path) => {
+                        info!("CLI instalada tras detectar que faltaba; reintentando la actualización");
+                        run_cli_compiler_update_inner(app_handle.clone(), Some(installed_path), true);
+                    },
+                    Err(install_err) => {
+                        error!("Fallo al instalar la CLI tras detectar que faltaba: {}", install_err);
+                        emit_progress(&app_handle, "cli", "error", None, None, None, None, Some(install_err.clone()));
+                        emit_progress(&app_handle, "compiler", "error", None, None, None, None, Some(install_err));
                     }
                 }
             },
@@ -519,61 +618,55 @@ pub fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Err
         fs::create_dir_all(&bin_dir)?;
     }
 
-    let tools = vec!["chord", "dischord-compiler"];
-    for tool in tools {
-        let tool_filename = if cfg!(windows) { format!("{}.exe", tool) } else { tool.to_string() };
-        let dest_path = bin_dir.join(&tool_filename);
-        
-        if !dest_path.exists() {
-            info!("Herramienta {} no encontrada. Iniciando descarga", tool);
-            if let Err(e) = download_tool(tool, &dest_path) {
-                error!("No se pudo preparar la herramienta {}: {}", tool, e);
-            }
+    register_bin_dir_in_path(&bin_dir)?;
+
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn register_bin_dir_in_path(bin_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+    let (env, _) = hkcu.create_subkey("Environment")?;
+    let current_path: String = env.get_value::<String, _>("Path").unwrap_or_default();
+    let bin_dir_str = bin_dir.to_string_lossy().to_string();
+
+    if !current_path.contains(&bin_dir_str) {
+        info!("Añadiendo {:?} al PATH de Windows", bin_dir);
+        let new_path = if current_path.is_empty() {
+            bin_dir_str
         } else {
-            debug!("Herramienta {} existe en el sistema", tool);
+            format!("{};{}", current_path, bin_dir_str)
+        };
+        env.set_value("Path", &new_path)?;
+
+        let paths = std::env::var_os("PATH").unwrap_or_default();
+        let mut split_paths: Vec<_> = std::env::split_paths(&paths).collect();
+        if !split_paths.contains(&bin_dir.to_path_buf()) {
+            split_paths.push(bin_dir.to_path_buf());
+            let new_os_path = std::env::join_paths(split_paths)?;
+            std::env::set_var("PATH", new_os_path);
         }
+
+        unsafe {
+            let env_str: Vec<u16> = "Environment\0".encode_utf16().collect();
+            SendMessageTimeoutW(
+                HWND_BROADCAST as _,
+                WM_SETTINGCHANGE,
+                0,
+                env_str.as_ptr() as isize,
+                SMTO_ABORTIFHUNG,
+                5000,
+                std::ptr::null_mut(),
+            );
+        }
+        
+        info!("PATH actualizado y notificado al sistema.");
     }
 
-    #[cfg(target_os = "windows")]
-    {
-        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
-        let (env, _) = hkcu.create_subkey("Environment")?;
-        let current_path: String = env.get_value::<String, _>("Path").unwrap_or_default();
-        let bin_dir_str = bin_dir.to_string_lossy().to_string();
+    Ok(())
+}
 
-        if !current_path.contains(&bin_dir_str) {
-            info!("Añadiendo {:?} al PATH de Windows", bin_dir);
-            let new_path = if current_path.is_empty() {
-                bin_dir_str
-            } else {
-                format!("{};{}", current_path, bin_dir_str)
-            };
-            env.set_value("Path", &new_path)?;
-
-            let paths = std::env::var_os("PATH").unwrap_or_default();
-            let mut split_paths: Vec<_> = std::env::split_paths(&paths).collect();
-            if !split_paths.contains(&bin_dir) {
-                split_paths.push(bin_dir);
-                let new_os_path = std::env::join_paths(split_paths)?;
-                std::env::set_var("PATH", new_os_path);
-            }
-
-            unsafe {
-                let env_str: Vec<u16> = "Environment\0".encode_utf16().collect();
-                SendMessageTimeoutW(
-                    HWND_BROADCAST as _,
-                    WM_SETTINGCHANGE,
-                    0,
-                    env_str.as_ptr() as isize,
-                    SMTO_ABORTIFHUNG,
-                    5000,
-                    std::ptr::null_mut(),
-                );
-            }
-            
-            info!("PATH actualizado y notificado al sistema.");
-        }
-    }
-
+#[cfg(not(target_os = "windows"))]
+fn register_bin_dir_in_path(_bin_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     Ok(())
 }

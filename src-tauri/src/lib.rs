@@ -82,6 +82,17 @@ pub fn run() {
                 info!("Entorno configurado correctamente");
             }
             
+            let boot_handle = app.handle().clone();
+            if commands::process::is_cli_installed(&boot_handle) {
+                info!("CLI encontrada, comprobando actualización del IDE al iniciar");
+                tauri::async_runtime::spawn(async move {
+                    commands::process::run_ide_update(boot_handle).await;
+                });
+            } else {
+                warn!("No se encontró la CLI de DisChord. Instalándola y abriendo la ventana de actualización.");
+                commands::process::run_initial_cli_install(boot_handle);
+            }
+
             Ok(())
         })
         .manage(ChildProcessState(Arc::new(Mutex::new(None))))
