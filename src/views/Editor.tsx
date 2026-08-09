@@ -336,18 +336,16 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
                     </div>
 
                     {showTerminal && (
-                        <div className="h-72 shrink-0 flex flex-col border-t border-[#1e1f22] relative">
+                        <div className="h-72 shrink-0 flex flex-col relative">
                             <TerminalPanel onClose={() => setShowTerminal(false)} />
                         </div>
                     )}
 
-                    <div className="border-t border-[#1e1f22] shrink-0">
-                        <StatusBar
-                            fileName={activeTab?.name}
-                            isDirty={activeTab?.isDirty ?? false}
-                            contentLength={activeTab?.content.length ?? 0}
-                        />
-                    </div>
+                    <StatusBar
+                        fileName={activeTab?.name}
+                        isDirty={activeTab?.isDirty ?? false}
+                        contentLength={activeTab?.content.length ?? 0}
+                    />
                 </main>
             </div>
         </div>

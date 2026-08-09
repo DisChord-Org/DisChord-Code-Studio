@@ -11,7 +11,7 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
     if (tabs.length === 0) return null;
 
     return (
-        <div className="flex items-stretch bg-[#0B0E14] border-b border-[#1e1f22] overflow-x-auto shrink-0 select-none">
+        <div className="flex items-stretch bg-[#12151c] shadow-[0_1px_3px_0_rgba(0,0,0,0.3)] overflow-x-auto shrink-0 select-none relative z-[5]">
             {tabs.map((tab) => {
                 const isActive = tab.relative_path === activePath;
 
@@ -20,9 +20,9 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                         key={tab.relative_path}
                         onClick={() => onSelect(tab.relative_path)}
                         title={tab.relative_path}
-                        className={`group flex items-center gap-2 pl-3 pr-2 py-2 text-[12px] border-r border-[#1e1f22] border-t-2 cursor-pointer shrink-0 max-w-[180px] transition-colors
+                        className={`group flex items-center gap-2 pl-3 pr-2 py-2 text-[12px] border-r border-white/[0.04] border-t-2 cursor-pointer shrink-0 max-w-[180px] transition-colors
                             ${isActive
-                                ? "bg-[#111214] text-white border-t-[#5865F2]"
+                                ? "bg-[#0B0E14] text-white border-t-[#5865F2]"
                                 : "text-gray-500 hover:bg-white/[0.03] hover:text-gray-300 border-t-transparent"
                             }`}
                     >

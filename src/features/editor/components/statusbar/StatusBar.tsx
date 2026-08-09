@@ -8,7 +8,7 @@ interface StatusBarProps {
 
 export const StatusBar = ({ fileName, isDirty, contentLength }: StatusBarProps) => {
     return (
-        <div className="h-6 bg-[#0B0E14] border-t border-[#1e1f22] flex items-center px-4 justify-between text-[10px] text-gray-500 font-mono shrink-0">
+        <div className="h-6 bg-[#12151c] shadow-[0_-1px_3px_0_rgba(0,0,0,0.35)] flex items-center px-4 justify-between text-[10px] text-gray-500 font-mono shrink-0 relative z-10">
             <div className="flex items-center gap-4">
                 {fileName && (
                     <>
@@ -20,9 +20,9 @@ export const StatusBar = ({ fileName, isDirty, contentLength }: StatusBarProps) 
                 )}
 
                 {isDirty && (
-                    <div className="flex items-center gap-2">
-                        <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" />
-                        <span className="text-yellow-500/70 italic">Modificado</span>
+                    <div className="flex items-center gap-1.5 px-1.5 py-[1px] rounded bg-[#5865F2]/10 text-[#8992f5]">
+                        <span className="w-1.5 h-1.5 rounded-full bg-[#8992f5]" />
+                        <span className="font-medium tracking-wide">Modificado</span>
                     </div>
                 )}
             </div>

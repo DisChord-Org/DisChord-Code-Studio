@@ -57,7 +57,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
     };
 
     return (
-        <aside className="w-60 border-r border-[#1e1f22] bg-[#0B0E14] flex flex-col shrink-0 select-none">
+        <aside className="w-60 bg-[#12151c] shadow-[1px_0_3px_0_rgba(0,0,0,0.35)] flex flex-col shrink-0 select-none relative z-10">
             <div className="px-3 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500">
                 Explorador
             </div>

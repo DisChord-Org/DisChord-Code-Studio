@@ -194,7 +194,7 @@ export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) =>
     return (
         <div
             ref={containerRef}
-            className={`border-l border-[#1e1f22] bg-[#0B0E14] select-none overflow-hidden opacity-60 hover:opacity-100 transition-opacity duration-300 h-full shrink-0 relative ${viewport && onScrollTo ? "cursor-ns-resize" : ""}`}
+            className={`shadow-[-1px_0_3px_0_rgba(0,0,0,0.25)] bg-[#0B0E14] select-none overflow-hidden opacity-60 hover:opacity-100 transition-opacity duration-300 h-full shrink-0 relative ${viewport && onScrollTo ? "cursor-ns-resize" : ""}`}
             style={{ width: MINIMAP_WIDTH }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
