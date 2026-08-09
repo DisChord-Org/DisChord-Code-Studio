@@ -80,6 +80,64 @@ pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<
 }
 
 #[tauri::command]
+pub fn read_hidden_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
+    let root_path = project_path(&app_handle, &name);
+    info!("Escaneando ficheros ocultos del proyecto: {:?}", root_path);
+
+    let root_str = root_path.to_string_lossy().to_string();
+    let mut builder = GitignoreBuilder::new(&root_path);
+
+    let gitignore_path = root_path.join(".gitignore");
+    if gitignore_path.exists() {
+        let _ = builder.add(&gitignore_path);
+    }
+
+    let matcher = builder.build().map_err(|e| {
+        error!("Error al construir el matcher de gitignore: {}", e);
+        e.to_string()
+    })?;
+
+    fn collect_hidden(path: &Path, root_str: &str, matcher: &ignore::gitignore::Gitignore, out: &mut Vec<ProjectFile>) {
+        if let Ok(entries) = std::fs::read_dir(path) {
+            for entry in entries.flatten() {
+                let file_path = entry.path();
+                let file_name = entry.file_name().to_string_lossy().to_string();
+
+                if file_name == ".gitignore" || file_name == ".git" || file_name == "node_modules" {
+                    continue;
+                }
+
+                let is_dir = file_path.is_dir();
+
+                if !is_dir && matcher.matched(&file_path, false).is_ignore() {
+                    let relative_path = file_path.to_string_lossy()
+                        .replace(root_str, "")
+                        .trim_start_matches(|c| c == '/' || c == '\\')
+                        .to_string();
+
+                    out.push(ProjectFile {
+                        name: file_name,
+                        is_dir: false,
+                        relative_path,
+                        children: None,
+                    });
+                }
+
+                if is_dir {
+                    collect_hidden(&file_path, root_str, matcher, out);
+                }
+            }
+        }
+    }
+
+    let mut hidden = Vec::new();
+    collect_hidden(&root_path, &root_str, &matcher, &mut hidden);
+    hidden.sort_by(|a, b| a.name.cmp(&b.name));
+
+    Ok(hidden)
+}
+
+#[tauri::command]
 pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_, DiscordState>, project_name: String, file_path: String) -> Result<String, String> {
     let mut path = project_path(&app_handle, &project_name);
     path.push(&file_path);

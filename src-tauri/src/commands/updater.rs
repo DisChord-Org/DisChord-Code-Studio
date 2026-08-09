@@ -76,8 +76,6 @@ fn emit_progress(
     let _ = app_handle.emit("update-progress", payload);
 }
 
-/// Emite el mismo error para "cli" y "compiler" a la vez: ambos vienen
-/// del mismo binario, así que un fallo instalándolo/ejecutándolo afecta a los dos.
 fn emit_error_both(app_handle: &tauri::AppHandle, message: String) {
     emit_progress(app_handle, "cli", "error", None, None, None, None, Some(message.clone()));
     emit_progress(app_handle, "compiler", "error", None, None, None, None, Some(message));

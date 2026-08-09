@@ -19,7 +19,6 @@ use std::os::windows::process::CommandExt;
 #[cfg(target_os = "windows")]
 pub const CREATE_NO_WINDOW: u32 = 0x08000000;
 
-/// Crea un `Command` que, en Windows, no hace parpadear una consola al ejecutarse.
 pub fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
     let mut command = Command::new(program);
     #[cfg(target_os = "windows")]

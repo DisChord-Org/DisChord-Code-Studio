@@ -8,6 +8,7 @@ import { EditMenu } from "./menus/EditMenu";
 import { ProjectSwitcher } from "./menus/ProjectSwitcher";
 import { WindowControls } from "../../../../components/ui/WindowControls";
 import type { ProjectSummary } from "../../../../types";
+import type { FileNode } from "../../types";
 
 const appWindow = getCurrentWindow();
 
@@ -85,11 +86,11 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
         setOpenMenu(null);
     };
 
-    const handleEditGitignore = () => {
+    const handleOpenHiddenFile = (node: FileNode) => {
         window.dispatchEvent(new CustomEvent("open-hidden-file", {
             detail: {
-                name: ".gitignore",
-                relative_path: ".gitignore"
+                name: node.name,
+                relative_path: node.relative_path
             }
         }));
         setOpenMenu(null);
@@ -116,7 +117,8 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
                         isOpen={openMenu === "edit"}
                         onToggle={() => toggleMenu("edit")}
                         onHover={() => hoverMenu("edit")}
-                        onEditGitignore={handleEditGitignore}
+                        projectName={projectName}
+                        onOpenHiddenFile={handleOpenHiddenFile}
                     />
 
                     <ToolbarButton

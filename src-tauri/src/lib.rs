@@ -112,6 +112,7 @@ pub fn run() {
             commands::project::delete_project,
 
             commands::file::read_project_files,
+            commands::file::read_hidden_files,
             commands::file::read_file_content,
             commands::file::save_file_content,
             commands::file::create_new_file,
