@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { EditorView, basicSetup } from "codemirror";
 import { EditorState, Compartment, StateEffect, StateField } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { Decoration, keymap } from "@codemirror/view";
+import { Decoration, keymap, scrollPastEnd } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { autocompletion } from "@codemirror/autocomplete";
 import { chordCompletionSource, chordVariableCompletionSource } from "../../../../languages/chord-completions";
@@ -122,6 +122,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                 extensions: [
                     basicSetup,
                     oneDark,
+                    scrollPastEnd(),
                     flashField,
                     languageConf.of(getLanguage(fileName)),
                     getCompletionExtension(fileName),
