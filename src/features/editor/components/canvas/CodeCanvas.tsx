@@ -7,7 +7,7 @@ import { oneDark } from "@codemirror/theme-one-dark";
 import { Decoration, keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { autocompletion } from "@codemirror/autocomplete";
-import { chordCompletionSource } from "../../../../languages/chord-completions";
+import { chordCompletionSource, chordVariableCompletionSource } from "../../../../languages/chord-completions";
 import type { MinimapViewport, CodeCanvasHandle } from "../../types";
 
 import { javascript } from "@codemirror/lang-javascript";
@@ -92,6 +92,14 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         }
     };
 
+    const getCompletionExtension = (fname: string) => {
+        const ext = fname.split('.').pop()?.toLowerCase();
+        if (ext === 'chord') {
+            return autocompletion({ override: [chordCompletionSource, chordVariableCompletionSource] });
+        }
+        return autocompletion();
+    };
+
     const handleSave = async (currentContent: string) => {
         try {
             await invoke("save_file_content", { 
@@ -116,7 +124,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     oneDark,
                     flashField,
                     languageConf.of(getLanguage(fileName)),
-                    autocompletion({ override: [ chordCompletionSource ] }),
+                    getCompletionExtension(fileName),
                     keymap.of([
                         indentWithTab,
                         { key: "Ctrl-s", run: (v) => { handleSave(v.state.doc.toString()); return true; } },
