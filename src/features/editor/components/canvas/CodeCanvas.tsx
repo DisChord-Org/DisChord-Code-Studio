@@ -20,7 +20,6 @@ interface CodeCanvasProps {
     projectName: string;
     relative_path: string;
     fileName: string;
-    isDirty: boolean;
     setIsDirty: (value: boolean) => void;
     content: string;
     onChange: (value: string) => void;
@@ -30,7 +29,7 @@ interface CodeCanvasProps {
 const languageConf = new Compartment();
 
 export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
-    projectName, relative_path, fileName, content, isDirty, setIsDirty, onChange, onViewportChange
+    projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange
 }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
@@ -245,15 +244,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     }, [relative_path, projectName]);
 
     return (
-        <div className="flex flex-col h-full bg-[#0B0E14] overflow-hidden">
-            <div className={`flex items-center gap-2 bg-[#0B0E14] px-4 py-2 text-[11px] border-b border-[#1e1f22] w-fit text-[#5865f2] font-medium shrink-0`}>
-                <span className="opacity-70">📄</span>
-                {fileName}
-                {isDirty && <span className="w-1.5 h-1.5 bg-[#5865f2] rounded-full ml-1 animate-pulse" />}
-            </div>
-
-            <div className="flex-1 overflow-hidden selection:bg-[#5865f2]/30" ref={editorRef} />
-        </div>
+        <div className="h-full overflow-hidden selection:bg-[#5865f2]/30" ref={editorRef} />
     );
 });
 

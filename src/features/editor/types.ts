@@ -14,3 +14,10 @@ export interface MinimapViewport {
 export interface CodeCanvasHandle {
     scrollTo: (scrollTop: number) => void;
 }
+
+export interface OpenTab {
+    relative_path: string;
+    name: string;
+    content: string;
+    isDirty: boolean;
+}

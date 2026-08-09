@@ -11,9 +11,11 @@ import {
     TerminalPanel,
     StatusBar,
     EditorScrollbar,
+    TabBar,
     type FileNode,
     type CodeCanvasHandle,
     type MinimapViewport,
+    type OpenTab,
 } from "../features/editor";
 
 const appWindow = getCurrentWindow();
@@ -24,18 +26,23 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
     onSwitchProject?: (name: string) => void
 }) => {
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
-    const [selectedNode, setSelectedNode] = useState<FileNode | null>(null);
-    const [content, setContent] = useState<string>("");
+    const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
+    const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
     const [isRunning, setIsRunning] = useState(false);
     const [showTerminal, setShowTerminal] = useState(false);
-    const [isDirty, setIsDirty] = useState(false);
     const codeCanvasRef = useRef<CodeCanvasHandle>(null);
     const [minimapViewport, setMinimapViewport] = useState<MinimapViewport | undefined>(undefined);
-    const selectedNodeRef = useRef<FileNode | null>(null);
+
+    const openTabsRef = useRef<OpenTab[]>([]);
+    const activeTabPathRef = useRef<string | null>(null);
 
     useEffect(() => {
-        selectedNodeRef.current = selectedNode;
-    }, [selectedNode]);
+        openTabsRef.current = openTabs;
+    }, [openTabs]);
+
+    useEffect(() => {
+        activeTabPathRef.current = activeTabPath;
+    }, [activeTabPath]);
 
     useEffect(() => {
         (async () => {
@@ -47,9 +54,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
             .then(setFileTree)
             .catch(console.error);
 
-        setSelectedNode(null);
-        setContent("");
-        setIsDirty(false);
+        setOpenTabs([]);
+        setActiveTabPath(null);
         setShowTerminal(false);
 
         return () => {
@@ -120,7 +126,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
 
     useEffect(() => {
         const maybeRefreshForGitignore = () => {
-            if (selectedNodeRef.current?.relative_path !== ".gitignore") return;
+            if (activeTabPathRef.current !== ".gitignore") return;
             setTimeout(() => { refreshFiles(); }, 150);
         };
 
@@ -139,22 +145,77 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
         };
     }, [projectName]);
 
+    useEffect(() => {
+        const handleCloseTab = (e: KeyboardEvent) => {
+            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "w") {
+                e.preventDefault();
+                if (activeTabPathRef.current) closeTab(activeTabPathRef.current);
+            }
+        };
+
+        window.addEventListener("keydown", handleCloseTab);
+        return () => window.removeEventListener("keydown", handleCloseTab);
+    }, []);
+
     const handleFileSelect = async (node: FileNode) => {
         if (node.is_dir) return;
 
-        try {
-            setSelectedNode(node);
+        setActiveTabPath(node.relative_path);
 
+        if (openTabsRef.current.some(t => t.relative_path === node.relative_path)) return;
+
+        try {
             const text = await invoke<string>("read_file_content", {
                 projectName,
                 filePath: node.relative_path
             });
-            setContent(text);
-            setIsDirty(false);
+
+            setOpenTabs(prev => {
+                if (prev.some(t => t.relative_path === node.relative_path)) return prev;
+                return [...prev, {
+                    relative_path: node.relative_path,
+                    name: node.name,
+                    content: text,
+                    isDirty: false,
+                }];
+            });
         } catch (error) {
             console.error("Error al leer archivo:", error);
-            setContent("Error al cargar el contenido del archivo.");
         }
+    };
+
+    const closeTab = (path: string) => {
+        const tab = openTabsRef.current.find(t => t.relative_path === path);
+        if (tab?.isDirty) {
+            const confirmed = window.confirm(
+                `Tienes cambios sin guardar en "${tab.name}". ¿Quieres cerrarlo de todos modos? Se perderán.`
+            );
+            if (!confirmed) return;
+        }
+
+        setOpenTabs(prev => {
+            const idx = prev.findIndex(t => t.relative_path === path);
+            const next = prev.filter(t => t.relative_path !== path);
+
+            if (activeTabPathRef.current === path) {
+                const fallback = next[idx] ?? next[idx - 1] ?? null;
+                setActiveTabPath(fallback?.relative_path ?? null);
+            }
+
+            return next;
+        });
+    };
+
+    const updateActiveTabContent = (value: string) => {
+        setOpenTabs(prev => prev.map(t =>
+            t.relative_path === activeTabPathRef.current ? { ...t, content: value, isDirty: true } : t
+        ));
+    };
+
+    const setActiveTabDirty = (value: boolean) => {
+        setOpenTabs(prev => prev.map(t =>
+            t.relative_path === activeTabPathRef.current ? { ...t, isDirty: value } : t
+        ));
     };
 
     const refreshFiles = async () => {
@@ -189,9 +250,12 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
     };
 
     const confirmLeaveProject = (): boolean => {
-        if (!isDirty) return true;
+        const dirtyTabs = openTabs.filter(t => t.isDirty);
+        if (dirtyTabs.length === 0) return true;
         return window.confirm(
-            `Tienes cambios sin guardar en "${selectedNode?.name ?? "este archivo"}". ¿Quieres salir de todos modos? Se perderán.`
+            dirtyTabs.length === 1
+                ? `Tienes cambios sin guardar en "${dirtyTabs[0].name}". ¿Quieres salir de todos modos? Se perderán.`
+                : `Tienes cambios sin guardar en ${dirtyTabs.length} ficheros. ¿Quieres salir de todos modos? Se perderán.`
         );
     };
 
@@ -208,6 +272,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
         onSwitchProject(name);
     };
 
+    const activeTab = openTabs.find(t => t.relative_path === activeTabPath) ?? null;
+
     return (
         <div className="h-screen bg-[#0B0E14] flex flex-col text-white overflow-hidden">
             <Toolbar
@@ -216,10 +282,6 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
                 onRun={handleToggleRun}
                 isRunning={isRunning}
                 onSwitchProject={handleSwitchProject}
-                onSave={() => {
-                    window.dispatchEvent(new CustomEvent("dischord-save"));
-                    setIsDirty(false);
-                }}
             />
 
             <div className="flex flex-1 overflow-hidden relative">
@@ -231,28 +293,31 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
                 />
 
                 <main className="flex-1 flex flex-col bg-[#0B0E14] overflow-hidden">
+                    <TabBar
+                        tabs={openTabs}
+                        activePath={activeTabPath}
+                        onSelect={setActiveTabPath}
+                        onClose={closeTab}
+                    />
+
                     <div className="flex-1 min-h-0 relative overflow-hidden">
-                        {selectedNode ? (
+                        {activeTab ? (
                             <div className="flex h-full">
                                 <div className="flex-1 overflow-hidden">
                                     <CodeCanvas
                                         ref={codeCanvasRef}
-                                        key={`${projectName}:${selectedNode.relative_path}`}
+                                        key={`${projectName}:${activeTab.relative_path}`}
                                         projectName={projectName}
-                                        relative_path={selectedNode.relative_path}
-                                        fileName={selectedNode.name}
-                                        content={content}
-                                        isDirty={isDirty}
-                                        setIsDirty={setIsDirty}
-                                        onChange={(val) => {
-                                            setContent(val);
-                                            if (!isDirty) setIsDirty(true);
-                                        }}
+                                        relative_path={activeTab.relative_path}
+                                        fileName={activeTab.name}
+                                        content={activeTab.content}
+                                        setIsDirty={setActiveTabDirty}
+                                        onChange={updateActiveTabContent}
                                         onViewportChange={setMinimapViewport}
                                     />
                                 </div>
                                 <CodeMinimap
-                                    text={content}
+                                    text={activeTab.content}
                                     viewport={minimapViewport}
                                     onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
                                 />
@@ -278,9 +343,9 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
 
                     <div className="border-t border-[#1e1f22] shrink-0">
                         <StatusBar
-                            fileName={selectedNode?.name}
-                            isDirty={isDirty}
-                            contentLength={content.length}
+                            fileName={activeTab?.name}
+                            isDirty={activeTab?.isDirty ?? false}
+                            contentLength={activeTab?.content.length ?? 0}
                         />
                     </div>
                 </main>

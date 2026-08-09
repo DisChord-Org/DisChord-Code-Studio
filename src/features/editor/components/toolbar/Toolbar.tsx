@@ -19,7 +19,6 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
     onBack: () => void,
     onRun: () => void,
     isRunning: boolean,
-    onSave: () => void,
     onSwitchProject?: (name: string) => void
 }) => {
     const [openMenu, setOpenMenu] = useState<MenuKey>(null);

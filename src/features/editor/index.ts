@@ -5,5 +5,6 @@ export { CodeMinimap } from "./components/canvas/CodeMinimap";
 export { EditorScrollbar } from "./components/canvas/EditorScrollbar";
 export { TerminalPanel } from "./components/terminal/Terminal";
 export { StatusBar } from "./components/statusbar/StatusBar";
+export { TabBar } from "./components/tabs/TabBar";
 
-export type { FileNode, MinimapViewport, CodeCanvasHandle } from "./types";
+export type { FileNode, MinimapViewport, CodeCanvasHandle, OpenTab } from "./types";
