@@ -189,9 +189,9 @@ function Dashboard({ onSelectProject }: DashboardProps) {
                 </button>
             </div>
 
-            <div className="absolute bottom-4 right-6 flex items-end gap-4 select-none">
+            <div className="absolute bottom-4 right-6 flex flex-col items-center gap-2 select-none">
                 <SystemMonitorRings size={40} />
-                <span className="text-[10px] font-mono text-gray-600 tracking-widest uppercase opacity-50 pb-[3px] pointer-events-none">
+                <span className="text-[10px] font-mono text-gray-600 tracking-widest uppercase opacity-50 pointer-events-none">
                     v{appVersion}
                 </span>
             </div>
