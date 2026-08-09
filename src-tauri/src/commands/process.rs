@@ -1,8 +1,10 @@
+use std::fs;
+use std::path::Path;
 use std::process::{Command, Stdio};
 use std::io::{BufRead, BufReader};
 use std::thread;
 
-use tauri::{Emitter, State};
+use tauri::{Emitter, Manager, State};
 use log::{info, error, warn};
 
 use crate::ChildProcessState;
@@ -131,6 +133,23 @@ pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPr
     }
 }
 
+fn open_path_in_explorer(path: &Path) -> Result<(), String> {
+    let cmd = if cfg!(target_os = "windows") {
+        Command::new("explorer").arg(path).spawn()
+    } else if cfg!(target_os = "macos") {
+        Command::new("open").arg(path).spawn()
+    } else {
+        Command::new("xdg-open").arg(path).spawn()
+    };
+
+    cmd.map_err(|e| {
+        error!("Fallo al abrir el explorador: {}", e);
+        e.to_string()
+    })?;
+
+    Ok(())
+}
+
 #[tauri::command]
 pub fn open_in_explorer(app_handle: tauri::AppHandle, project_name: String) -> Result<(), String> {
     let path = project_path(&app_handle, &project_name);
@@ -141,19 +160,28 @@ pub fn open_in_explorer(app_handle: tauri::AppHandle, project_name: String) -> R
     }
 
     info!("Abriendo explorador de archivos en: {:?}", path);
+    open_path_in_explorer(&path)
+}
 
-    let cmd = if cfg!(target_os = "windows") {
-        Command::new("explorer").arg(&path).spawn()
-    } else if cfg!(target_os = "macos") {
-        Command::new("open").arg(&path).spawn()
-    } else {
-        Command::new("xdg-open").arg(&path).spawn()
-    };
+/// Abre la carpeta donde el logger escribe los ficheros de log.
+#[tauri::command]
+pub fn open_logs_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let dir = app_handle.path().app_log_dir().map_err(|e| e.to_string())?;
 
-    cmd.map_err(|e| {
-        error!("Fallo al abrir el explorador: {}", e);
-        e.to_string()
-    })?;
+    if !dir.exists() {
+        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    }
 
-    Ok(())
+    info!("Abriendo carpeta de logs en: {:?}", dir);
+    open_path_in_explorer(&dir)
+}
+
+/// Abre la carpeta donde está instalado el propio IDE (donde vive el ejecutable).
+#[tauri::command]
+pub fn open_ide_folder() -> Result<(), String> {
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let dir = exe.parent().ok_or("No se pudo determinar la carpeta del IDE")?;
+
+    info!("Abriendo carpeta del IDE en: {:?}", dir);
+    open_path_in_explorer(dir)
 }

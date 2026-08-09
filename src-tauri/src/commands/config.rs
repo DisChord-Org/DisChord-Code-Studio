@@ -5,15 +5,22 @@ use tauri::Manager;
 use serde::{Serialize, Deserialize};
 use log::{info, error, warn};
 
+/// Config de la app persistida en disco. `#[serde(default)]` en cada campo
+/// permite añadir opciones nuevas en el futuro sin romper la lectura de un
+/// config.json guardado por una versión anterior del IDE.
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
     pub view_mode: String,
+    pub log_rotation: String,
 }
 
 impl Default for AppConfig {
     fn default() -> Self {
-        Self { view_mode: "list".to_string() }
+        Self {
+            view_mode: "list".to_string(),
+            log_rotation: "daily".to_string(),
+        }
     }
 }
 
@@ -22,9 +29,11 @@ fn config_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
     Ok(dir.join("config.json"))
 }
 
-#[tauri::command]
-pub fn get_config(app_handle: tauri::AppHandle) -> AppConfig {
-    let path = match config_path(&app_handle) {
+/// Lee la config desde disco. Función normal (no comando) para poder
+/// llamarla también durante el arranque de la app, antes de que el
+/// `invoke_handler` esté disponible (p.ej. para elegir la rotación de logs).
+pub fn load_config(app_handle: &tauri::AppHandle) -> AppConfig {
+    let path = match config_path(app_handle) {
         Ok(p) => p,
         Err(e) => {
             warn!("No se pudo resolver la ruta de config.json: {}", e);
@@ -39,6 +48,11 @@ pub fn get_config(app_handle: tauri::AppHandle) -> AppConfig {
         }),
         Err(_) => AppConfig::default(),
     }
+}
+
+#[tauri::command]
+pub fn get_config(app_handle: tauri::AppHandle) -> AppConfig {
+    load_config(&app_handle)
 }
 
 #[tauri::command]

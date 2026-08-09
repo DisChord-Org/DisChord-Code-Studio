@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { AppConfig } from "./types";
 
-const DEFAULT_CONFIG: AppConfig = { view_mode: "list" };
+const DEFAULT_CONFIG: AppConfig = { view_mode: "list", log_rotation: "daily" };
 
 export const useConfig = () => {
     const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
