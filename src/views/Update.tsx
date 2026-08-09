@@ -151,11 +151,13 @@ const UpdateRow = ({ target, state }: { target: TargetKey; state: TargetState })
                 <div className="mt-3 animate-in fade-in duration-300">
                     <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                         <div
-                            className={`h-full rounded-full bg-[#5865F2] transition-all duration-500 ease-out ${
+                            className={`relative h-full rounded-full bg-[#5865F2] overflow-hidden transition-all duration-500 ease-out ${
                                 state.phase === "checking" || state.phase === "installing" ? "animate-pulse" : ""
                             }`}
                             style={{ width: `${barWidth}%` }}
-                        />
+                        >
+                            <span className="progress-shimmer" />
+                        </div>
                     </div>
                     <div className="flex justify-between mt-1.5">
                         <span className="text-[10px] text-gray-600">

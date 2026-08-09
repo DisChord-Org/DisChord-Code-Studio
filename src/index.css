@@ -10,3 +10,21 @@
 .custom-scrollbar::-webkit-scrollbar-thumb:hover {
     background: #5865F2;
 }
+
+@keyframes progress-shimmer {
+    0% { left: -40%; opacity: 0; }
+    8% { opacity: 1; }
+    45% { left: 110%; opacity: 1; }
+    55% { opacity: 0; }
+    100% { left: 110%; opacity: 0; }
+}
+
+.progress-shimmer {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 35%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.75), transparent);
+    animation: progress-shimmer 3s ease-in-out infinite;
+    pointer-events: none;
+}
