@@ -1,5 +1,7 @@
 mod commands;
 mod logger;
+mod paths;
+mod platform;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -8,7 +10,7 @@ use discord_rich_presence::{activity, DiscordIpc, DiscordIpcClient};
 use tauri::Manager;
 use log::{info, error, warn};
 use sysinfo::System;
-use commands::process::UpdateProgress;
+use commands::updater::UpdateProgress;
 
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
@@ -17,6 +19,36 @@ pub struct DiscordState {
 }
 
 pub struct UpdateState(pub Arc<Mutex<HashMap<String, UpdateProgress>>>);
+
+fn spawn_discord_rpc(client_arc: Arc<Mutex<Option<DiscordIpcClient>>>) {
+    std::thread::spawn(move || {
+        let mut client = DiscordIpcClient::new("1481205770489167973");
+
+        info!("Intentando conectar con Discord RPC");
+
+        if client.connect().is_ok() {
+            if let Ok(mut guard) = client_arc.lock() {
+                *guard = Some(client);
+            }
+
+            let _ = update_presence(&client_arc, "Viendo proyectos", "Inicio");
+        } else {
+            warn!("No se pudo conectar con Discord");
+        }
+    });
+}
+
+fn bootstrap_cli_and_updates(app_handle: tauri::AppHandle) {
+    if commands::updater::is_cli_installed(&app_handle) {
+        info!("CLI encontrada, comprobando actualización del IDE al iniciar");
+        tauri::async_runtime::spawn(async move {
+            commands::updater::run_ide_update(app_handle).await;
+        });
+    } else {
+        warn!("No se encontró la CLI de DisChord. Instalándola y abriendo la ventana de actualización.");
+        commands::updater::run_initial_cli_install(app_handle);
+    }
+}
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
@@ -54,44 +86,19 @@ pub fn run() {
             let ide_check_handle = app.handle().clone();
             tauri::async_runtime::spawn(async move {
                 info!("Comprobando actualización del IDE al iniciar");
-                commands::process::run_ide_update(ide_check_handle).await;
+                commands::updater::run_ide_update(ide_check_handle).await;
             });
 
-            let inner_client_arc = setup_client.clone();
-            
-            std::thread::spawn(move || {
-                let mut client = DiscordIpcClient::new("1481205770489167973");
-
-                info!("Intentando conectar con Discord RPC");
-
-                if client.connect().is_ok() {
-                    if let Ok(mut guard) = inner_client_arc.lock() {
-                        *guard = Some(client);
-                    }
-
-                    let _ = update_presence(&inner_client_arc, "Viendo proyectos", "Inicio");
-                } else {
-                    warn!("No se pudo conectar con Discord");
-                }
-            });
+            spawn_discord_rpc(setup_client.clone());
 
             info!("Configurando entorno de comandos");
-            if let Err(e) = commands::process::setup_environment(app) {
+            if let Err(e) = commands::updater::setup_environment(app) {
                 error!("ERROR CRÍTICO instalando herramientas: {}", e);
             } else {
                 info!("Entorno configurado correctamente");
             }
-            
-            let boot_handle = app.handle().clone();
-            if commands::process::is_cli_installed(&boot_handle) {
-                info!("CLI encontrada, comprobando actualización del IDE al iniciar");
-                tauri::async_runtime::spawn(async move {
-                    commands::process::run_ide_update(boot_handle).await;
-                });
-            } else {
-                warn!("No se encontró la CLI de DisChord. Instalándola y abriendo la ventana de actualización.");
-                commands::process::run_initial_cli_install(boot_handle);
-            }
+
+            bootstrap_cli_and_updates(app.handle().clone());
 
             Ok(())
         })
@@ -113,10 +120,11 @@ pub fn run() {
 
             commands::process::run_chord_project,
             commands::process::stop_chord_project,
-            commands::process::start_full_update,
-            commands::process::get_update_state,
-            commands::process::mark_update_window_ready,
             commands::process::open_in_explorer,
+
+            commands::updater::start_full_update,
+            commands::updater::get_update_state,
+            commands::updater::mark_update_window_ready,
 
             commands::system_stats::get_system_stats
         ])
@@ -135,7 +143,7 @@ pub fn update_presence(client_arc: &Arc<Mutex<Option<DiscordIpcClient>>>, state:
                     .large_text("DisChord IDE")
                 )
             );
-            
+
             if res.is_ok() {
                 info!("Presencia de Discord actualizada: {} | {}", details, state);
             }

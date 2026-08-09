@@ -1,14 +1,12 @@
 use std::fs;
 use std::path::Path;
-use std::path::PathBuf;
-
-use tauri::Manager;
 
 use serde::Serialize;
 use ignore::gitignore::GitignoreBuilder;
 use log::{info, error, warn};
 
 use crate::{DiscordState, update_presence};
+use crate::paths::project_path;
 
 #[derive(Serialize)]
 pub struct ProjectFile {
@@ -18,18 +16,11 @@ pub struct ProjectFile {
     children: Option<Vec<ProjectFile>>,
 }
 
-fn get_workflow_path(app_handle: &tauri::AppHandle, project_name: &str) -> PathBuf {
-    let mut path = app_handle.path().document_dir().unwrap_or_else(|_| std::env::current_dir().unwrap());
-    path.push("DisChord-Workflows");
-    path.push(project_name);
-    path
-}
-
 #[tauri::command]
 pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
-    let root_path = get_workflow_path(&app_handle, &name);
+    let root_path = project_path(&app_handle, &name);
     info!("Escaneando archivos del proyecto: {:?}", root_path);
-    
+
     let root_str = root_path.to_string_lossy().to_string();
     let mut builder = GitignoreBuilder::new(&root_path);
 
@@ -70,10 +61,10 @@ pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<
                     name: file_name,
                     is_dir,
                     relative_path,
-                    children: if is_dir { 
-                        Some(scan_dir(&file_path, root_str, matcher)) 
-                    } else { 
-                        None 
+                    children: if is_dir {
+                        Some(scan_dir(&file_path, root_str, matcher))
+                    } else {
+                        None
                     },
                 });
             }
@@ -90,7 +81,7 @@ pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<
 
 #[tauri::command]
 pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_, DiscordState>, project_name: String, file_path: String) -> Result<String, String> {
-    let mut path = get_workflow_path(&app_handle, &project_name);
+    let mut path = project_path(&app_handle, &project_name);
     path.push(&file_path);
 
     let file_name = Path::new(&file_path)
@@ -113,21 +104,21 @@ pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_,
 
 #[tauri::command]
 pub fn save_file_content(app_handle: tauri::AppHandle, project_name: String, file_path: String, content: String) -> Result<String, String> {
-    let mut path = get_workflow_path(&app_handle, &project_name);
+    let mut path = project_path(&app_handle, &project_name);
     path.push(&file_path);
 
     fs::write(&path, content).map_err(|e| {
         error!("Error al guardar archivo {:?}: {}", path, e);
         format!("Error al guardar: {}", e)
     })?;
-    
+
     info!("Archivo guardado correctamente: {:?}", file_path);
     Ok("Archivo guardado".into())
 }
 
 #[tauri::command]
 pub fn create_new_file(app_handle: tauri::AppHandle, project_name: String, parent_path: String, name: String) -> Result<String, String> {
-    let mut path = get_workflow_path(&app_handle, &project_name);
+    let mut path = project_path(&app_handle, &project_name);
     path.push(parent_path);
     path.push(&name);
 
@@ -147,7 +138,7 @@ pub fn create_new_file(app_handle: tauri::AppHandle, project_name: String, paren
 
 #[tauri::command]
 pub fn create_new_folder(app_handle: tauri::AppHandle, project_name: String, parent_path: String, name: String) -> Result<String, String> {
-    let mut path = get_workflow_path(&app_handle, &project_name);
+    let mut path = project_path(&app_handle, &project_name);
     path.push(parent_path);
     path.push(&name);
 
@@ -167,7 +158,7 @@ pub fn create_new_folder(app_handle: tauri::AppHandle, project_name: String, par
 
 #[tauri::command]
 pub fn delete_item(app_handle: tauri::AppHandle, project_name: String, path: String) -> Result<String, String> {
-    let mut full_path = get_workflow_path(&app_handle, &project_name);
+    let mut full_path = project_path(&app_handle, &project_name);
     full_path.push(&path);
 
     if !full_path.exists() {
