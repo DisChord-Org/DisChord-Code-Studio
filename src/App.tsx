@@ -3,11 +3,13 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import Dashboard from "./views/Dashboard";
 import Editor from "./views/Editor";
 import Update from "./views/Update";
+import Settings from "./views/Settings";
 
 const windowLabel = getCurrentWindow().label;
 
 function App() {
     const [currentProject, setCurrentProject] = useState<string | null>(null);
+    const [showSettings, setShowSettings] = useState(false);
 
     if (windowLabel === "update") {
         return <Update />;
@@ -15,7 +17,7 @@ function App() {
 
     if (currentProject) {
         return (
-            <Editor 
+            <Editor
                 projectName={currentProject}
                 onBack={() => setCurrentProject(null)}
                 onSwitchProject={(name) => setCurrentProject(name)}
@@ -23,8 +25,15 @@ function App() {
         );
     }
 
+    if (showSettings) {
+        return <Settings onBack={() => setShowSettings(false)} />;
+    }
+
     return (
-        <Dashboard onSelectProject={(name) => setCurrentProject(name)} />
+        <Dashboard
+            onSelectProject={(name) => setCurrentProject(name)}
+            onOpenSettings={() => setShowSettings(true)}
+        />
     );
 }
 

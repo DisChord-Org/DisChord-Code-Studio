@@ -9,21 +9,21 @@ import { Modal } from "../components/ui/Modal";
 import { WindowControls } from "../components/ui/WindowControls";
 import { formatRelativeTime } from "../utils/Time";
 import { SystemMonitorRings } from "../features/system-monitor/SystemMonitorRings";
+import { ViewModeToggle, useConfig } from "../features/settings";
 import type { ProjectSummary } from "../types";
 
 interface DashboardProps {
     onSelectProject: (name: string) => void;
+    onOpenSettings: () => void;
 }
 
-type ViewMode = "list" | "grid";
-
-function Dashboard({ onSelectProject }: DashboardProps) {
+function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [updating, setUpdating] = useState(false);
     const [appVersion, setAppVersion] = useState<string>("");
-    const [viewMode, setViewMode] = useState<ViewMode>("list");
+    const { config, updateConfig } = useConfig();
 
     useEffect(() => {
         getVersion().then(setAppVersion);
@@ -103,30 +103,10 @@ function Dashboard({ onSelectProject }: DashboardProps) {
                     <Label>Tus Workflows</Label>
 
                     <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-0.5 bg-white/[0.03] hover:bg-white/[0.06] border border-white/[0.06] rounded-md p-0.5 transition-colors duration-200">
-                            <button
-                                onClick={() => setViewMode("list")}
-                                title="Vista de lista"
-                                className={`relative flex items-center justify-center w-5 h-5 rounded transition-all duration-200 ${
-                                    viewMode === "list"
-                                        ? "bg-[#5865F2] text-white shadow-sm"
-                                        : "text-gray-600 hover:text-gray-300"
-                                }`}
-                            >
-                                <i className="bi bi-list-ul text-[10px]"></i>
-                            </button>
-                            <button
-                                onClick={() => setViewMode("grid")}
-                                title="Vista de cuadrícula"
-                                className={`relative flex items-center justify-center w-5 h-5 rounded transition-all duration-200 ${
-                                    viewMode === "grid"
-                                        ? "bg-[#5865F2] text-white shadow-sm"
-                                        : "text-gray-600 hover:text-gray-300"
-                                }`}
-                            >
-                                <i className="bi bi-grid-3x3-gap-fill text-[10px]"></i>
-                            </button>
-                        </div>
+                        <ViewModeToggle
+                            value={config.view_mode}
+                            onChange={(mode) => updateConfig({ view_mode: mode })}
+                        />
 
                         <Button
                             variant="ghost"
@@ -142,9 +122,9 @@ function Dashboard({ onSelectProject }: DashboardProps) {
                     <p className="text-gray-500 animate-pulse">Buscando en Documentos...</p>
                 ) : projects.length > 0 ? (
                     <div
-                        key={viewMode}
+                        key={config.view_mode}
                         className={`animate-in fade-in duration-300 ${
-                            viewMode === "grid"
+                            config.view_mode === "grid"
                                 ? "grid grid-cols-2 gap-3"
                                 : "grid gap-3"
                         }`}
@@ -171,22 +151,36 @@ function Dashboard({ onSelectProject }: DashboardProps) {
                 )}
             </div>
             
-            <div className="absolute bottom-0 left-0 group z-50">
-                <div className="absolute bottom-full left-2 mb-1 bg-[#1e1f22] text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/5 whitespace-nowrap shadow-xl">
-                    {updating ? "Abriendo actualizador..." : "Actualizar"}
+            <div className="absolute bottom-0 left-0 flex items-center z-50">
+                <div className="group relative">
+                    <div className="absolute bottom-full left-2 mb-1 bg-[#1e1f22] text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/5 whitespace-nowrap shadow-xl">
+                        Configuración
+                    </div>
+                    <button
+                        onClick={onOpenSettings}
+                        className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
+                    >
+                        <i className="bi bi-gear text-lg"></i>
+                    </button>
                 </div>
-                <button
-                    onClick={handleUpdate}
-                    disabled={loading || updating}
-                    className={`
-                        w-10 h-10 flex items-center justify-center
-                        hover:bg-white/5 text-gray-400 hover:text-white
-                        transition-colors
-                        ${(loading || updating) ? 'opacity-50 cursor-not-allowed' : ''}
-                    `}
-                >
-                    <i className={`bi bi-arrow-clockwise text-lg ${(loading || updating) ? 'animate-spin' : ''}`}></i>
-                </button>
+
+                <div className="group relative">
+                    <div className="absolute bottom-full left-2 mb-1 bg-[#1e1f22] text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/5 whitespace-nowrap shadow-xl">
+                        {updating ? "Abriendo actualizador..." : "Actualizar"}
+                    </div>
+                    <button
+                        onClick={handleUpdate}
+                        disabled={loading || updating}
+                        className={`
+                            w-10 h-10 flex items-center justify-center
+                            hover:bg-white/5 text-gray-400 hover:text-white
+                            transition-colors
+                            ${(loading || updating) ? 'opacity-50 cursor-not-allowed' : ''}
+                        `}
+                    >
+                        <i className={`bi bi-arrow-clockwise text-lg ${(loading || updating) ? 'animate-spin' : ''}`}></i>
+                    </button>
+                </div>
             </div>
 
             <div className="absolute bottom-4 right-6 flex flex-col items-center gap-2 select-none">

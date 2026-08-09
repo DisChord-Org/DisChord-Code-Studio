@@ -127,7 +127,10 @@ pub fn run() {
             commands::updater::get_update_state,
             commands::updater::mark_update_window_ready,
 
-            commands::system_stats::get_system_stats
+            commands::system_stats::get_system_stats,
+
+            commands::config::get_config,
+            commands::config::save_config
         ])
         .run(tauri::generate_context!())
         .expect("Error fatal al ejecutar la aplicación Tauri");

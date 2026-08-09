@@ -7,6 +7,7 @@ import { FileMenu } from "./menus/FileMenu";
 import { EditMenu } from "./menus/EditMenu";
 import { ProjectSwitcher } from "./menus/ProjectSwitcher";
 import { WindowControls } from "../../../../components/ui/WindowControls";
+import { BackButton } from "../../../../components/ui/BackButton";
 import type { ProjectSummary } from "../../../../types";
 import type { FileNode } from "../../types";
 
@@ -141,12 +142,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
             </div>
 
             <div className="flex items-center justify-end flex-1 h-full">
-                <button
-                    onClick={onBack}
-                    className="text-[11px] text-gray-500 hover:text-white transition-colors mr-4 flex items-center gap-1"
-                >
-                    <i className="bi bi-arrow-left"></i> Volver
-                </button>
+                <BackButton onClick={onBack} className="mr-4" />
 
                 <WindowControls showMaximize className="ml-2" />
             </div>
