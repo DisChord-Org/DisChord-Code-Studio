@@ -1,4 +1,4 @@
-import { SystemMonitorRings } from "./SystemMonitorRings";
+import { SystemMonitorRings } from "../../../system-monitor/SystemMonitorRings";
 
 interface StatusBarProps {
     fileName?: string;

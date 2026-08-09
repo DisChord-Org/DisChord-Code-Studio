@@ -5,11 +5,11 @@ import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 
 import { Toolbar } from "../features/editor/components/toolbar/Toolbar";
-import { Sidebar } from "../components/Sidebar";
-import { CodeCanvas, CodeCanvasHandle, MinimapViewport } from "../components/CodeCanvas";
-import { CodeMinimap } from "../components/CodeMinimap";
+import { Sidebar } from "../features/editor/components/sidebar/Sidebar";
+import { CodeCanvas, CodeCanvasHandle, MinimapViewport } from "../features/editor/components/canvas/CodeCanvas";
+import { CodeMinimap } from "../features/editor/components/canvas/CodeMinimap";
 import { TerminalPanel } from "../features/editor/components/terminal/Terminal";
-import { StatusBar } from "../components/StatusBar";
+import { StatusBar } from "../features/editor/components/statusbar/StatusBar";
 import { EditorScrollbar } from "../features/editor/components/canvas/EditorScrollbar";
 
 const appWindow = getCurrentWindow();

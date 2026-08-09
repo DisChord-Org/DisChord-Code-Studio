@@ -1,11 +1,11 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
-import { CHORD_THEME } from "../languages/chord-theme";
+import { CHORD_THEME } from "../../../../languages/chord-theme";
 import {
     CHORD_KEYWORDS,
     CHORD_CONTROL_FLOW,
     CHORD_BUILTINS,
     CHORD_ATOMS,
-} from "../languages/chord-language";
+} from "../../../../languages/chord-language";
 
 const GENERIC_KEYWORDS = [
     "export", "import", "from", "const", "let", "var", "if", "else", "return",
