@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { ToolbarButton } from "./ToolbarButton";
 import { MenuOption } from "./MenuOption";
+import { WindowControls } from "../../../../components/ui/WindowControls";
 import { formatRelativeTime } from "../../../../utils/Time";
 import type { ProjectSummary } from "../../../../types";
 
@@ -67,8 +68,6 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
         if (name !== projectName) onSwitchProject?.(name);
     };
 
-    const handleMinimize = async () => await appWindow.minimize();
-    const handleToggleMaximize = async () => await appWindow.toggleMaximize();
     const handleClose = async () => await appWindow.close();
 
     const handleOpenExplorer = async () => {
@@ -229,26 +228,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
                     <i className="bi bi-arrow-left"></i> Volver
                 </button>
 
-                <div className="flex items-center h-full ml-2">
-                    <button 
-                        onClick={handleMinimize}
-                        className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 transition-colors"
-                    >
-                        <i className="bi bi-dash-lg text-lg"></i>
-                    </button>
-                    <button 
-                        onClick={handleToggleMaximize}
-                        className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 transition-colors"
-                    >
-                        <i className="bi bi-square text-[10px]"></i>
-                    </button>
-                    <button 
-                        onClick={handleClose}
-                        className="w-10 h-10 flex items-center justify-center hover:bg-red-500 hover:text-white text-gray-400 transition-colors"
-                    >
-                        <i className="bi bi-x-lg"></i>
-                    </button>
-                </div>
+                <WindowControls showMaximize className="ml-2" />
             </div>
         </header>
     );

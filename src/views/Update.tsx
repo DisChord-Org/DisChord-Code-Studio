@@ -5,6 +5,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 
 import { Button } from "../components/ui/Button";
 import { Title } from "../components/ui/Typography";
+import { WindowControls } from "../components/ui/WindowControls";
 import { SystemMonitorRings } from "../features/system-monitor/SystemMonitorRings";
 
 type Phase =
@@ -267,10 +268,6 @@ function Update() {
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [autoRestartSeconds]);
 
-    const handleMinimize = async () => {
-        await getCurrentWindow().minimize();
-    };
-
     const handleClose = () => {
         getCurrentWindow().close();
     };
@@ -289,24 +286,10 @@ function Update() {
             className="relative min-h-screen bg-[#0B0E14] rounded-xl border border-[#1e1f22] p-10 overflow-hidden select-none flex flex-col"
         >
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
-                <button
-                    onClick={handleMinimize}
-                    className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 transition-colors"
-                >
-                    <i className="bi bi-dash-lg text-lg"></i>
-                </button>
-                <button
-                    onClick={handleClose}
-                    disabled={ideInstalling}
-                    title={ideInstalling ? "Espera a que termine la instalación del IDE" : "Cerrar"}
-                    className={`w-10 h-10 flex items-center justify-center transition-colors ${
-                        ideInstalling
-                            ? "text-gray-700 cursor-not-allowed"
-                            : "hover:bg-red-500 hover:text-white text-gray-400"
-                    }`}
-                >
-                    <i className="bi bi-x-lg"></i>
-                </button>
+                <WindowControls
+                    closeDisabled={ideInstalling}
+                    closeTitle={ideInstalling ? "Espera a que termine la instalación del IDE" : "Cerrar"}
+                />
             </div>
 
             <div className="mb-8 max-w-xl mx-auto w-full flex items-end justify-between gap-6">

@@ -1,12 +1,12 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getVersion } from "@tauri-apps/api/app";
 
 import { Button } from "../components/ui/Button";
 import { Card } from "../features/dashboard/ProjectCard";
 import { Title, Label } from "../components/ui/Typography";
 import { Modal } from "../components/ui/Modal";
+import { WindowControls } from "../components/ui/WindowControls";
 import { formatRelativeTime } from "../utils/Time";
 import { SystemMonitorRings } from "../features/system-monitor/SystemMonitorRings";
 import type { ProjectSummary } from "../types";
@@ -16,8 +16,6 @@ interface DashboardProps {
 }
 
 type ViewMode = "list" | "grid";
-
-const appWindow = getCurrentWindow();
 
 function Dashboard({ onSelectProject }: DashboardProps) {
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -71,14 +69,6 @@ function Dashboard({ onSelectProject }: DashboardProps) {
         }
     };
 
-    const handleMinimize = async () => {
-        await appWindow.minimize();
-    };
-
-    const handleClose = async () => {
-        await appWindow.close();
-    };
-
     const handleUpdate = async () => {
         if (updating) return;
         setUpdating(true);
@@ -94,20 +84,7 @@ function Dashboard({ onSelectProject }: DashboardProps) {
     return (
         <div data-tauri-drag-region className="relative min-h-screen bg-[#0B0E14] rounded-xl border border-[#1e1f22] p-12 overflow-hidden select-none">
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
-                <div className="flex items-center h-full ml-2">
-                    <button
-                        onClick={handleMinimize}
-                        className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 transition-colors"
-                    >
-                        <i className="bi bi-dash-lg text-lg"></i>
-                    </button>
-                    <button 
-                        onClick={handleClose}
-                        className="w-10 h-10 flex items-center justify-center hover:bg-red-500 hover:text-white text-gray-400 transition-colors"
-                    >
-                        <i className="bi bi-x-lg"></i>
-                    </button>
-                </div>
+                <WindowControls className="ml-2" />
             </div>
             
             <Modal 

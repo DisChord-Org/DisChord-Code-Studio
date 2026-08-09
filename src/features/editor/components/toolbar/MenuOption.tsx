@@ -1,4 +1,12 @@
-export const MenuOption = ({ icon, label, shortcut, onClick, variant = "default" }: any) => (
+interface MenuOptionProps {
+    icon: string;
+    label: string;
+    shortcut?: string;
+    onClick: () => void;
+    variant?: "default" | "danger";
+}
+
+export const MenuOption = ({ icon, label, shortcut, onClick, variant = "default" }: MenuOptionProps) => (
     <button
         onClick={onClick}
         className={`w-full px-3 py-1.5 text-[11px] flex items-center gap-3 transition-colors
