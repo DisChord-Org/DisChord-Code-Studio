@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileNode } from "../../../../types";
+import { FileNode } from "../../types";
 import { invoke } from "@tauri-apps/api/core";
 
 import { Modal } from "../../../../components/ui/Modal";

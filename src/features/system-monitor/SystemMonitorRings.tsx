@@ -1,12 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-
-interface SystemStats {
-    cpu_percent: number;
-    ram_used_mb: number;
-    ram_total_mb: number;
-    ram_percent: number;
-}
+import type { SystemStats } from "./types";
 
 const POLL_INTERVAL = 1500;
 

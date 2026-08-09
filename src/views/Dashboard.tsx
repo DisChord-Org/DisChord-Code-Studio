@@ -9,6 +9,7 @@ import { Title, Label } from "../components/ui/Typography";
 import { Modal } from "../components/ui/Modal";
 import { formatRelativeTime } from "../utils/Time";
 import { SystemMonitorRings } from "../features/system-monitor/SystemMonitorRings";
+import type { ProjectSummary } from "../types";
 
 interface DashboardProps {
     onSelectProject: (name: string) => void;
@@ -19,7 +20,7 @@ type ViewMode = "list" | "grid";
 const appWindow = getCurrentWindow();
 
 function Dashboard({ onSelectProject }: DashboardProps) {
-    const [projects, setProjects] = useState<{name: string, last_modified: string}[]>([]);
+    const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [loading, setLoading] = useState(true);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [updating, setUpdating] = useState(false);
@@ -33,7 +34,7 @@ function Dashboard({ onSelectProject }: DashboardProps) {
     const loadProjects = async () => {
         try {
             await invoke("create_projects_folder");
-            const list = await invoke<{name: string, last_modified: string}[]>("get_projects");
+            const list = await invoke<ProjectSummary[]>("get_projects");
             setProjects(list);
         } catch (error) {
             console.error("Fallo al cargar proyectos:", error);

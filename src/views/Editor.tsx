@@ -1,16 +1,20 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { FileNode } from "../types";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 
-import { Toolbar } from "../features/editor/components/toolbar/Toolbar";
-import { Sidebar } from "../features/editor/components/sidebar/Sidebar";
-import { CodeCanvas, CodeCanvasHandle, MinimapViewport } from "../features/editor/components/canvas/CodeCanvas";
-import { CodeMinimap } from "../features/editor/components/canvas/CodeMinimap";
-import { TerminalPanel } from "../features/editor/components/terminal/Terminal";
-import { StatusBar } from "../features/editor/components/statusbar/StatusBar";
-import { EditorScrollbar } from "../features/editor/components/canvas/EditorScrollbar";
+import {
+    Toolbar,
+    Sidebar,
+    CodeCanvas,
+    CodeMinimap,
+    TerminalPanel,
+    StatusBar,
+    EditorScrollbar,
+    type FileNode,
+    type CodeCanvasHandle,
+    type MinimapViewport,
+} from "../features/editor";
 
 const appWindow = getCurrentWindow();
 

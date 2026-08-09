@@ -6,6 +6,7 @@ import {
     CHORD_BUILTINS,
     CHORD_ATOMS,
 } from "../../../../languages/chord-language";
+import type { MinimapViewport } from "../../types";
 
 const GENERIC_KEYWORDS = [
     "export", "import", "from", "const", "let", "var", "if", "else", "return",
@@ -75,12 +76,6 @@ const LINE_HEIGHT = 4;
 const MINIMAP_WIDTH = 80;
 const MAX_LINES = 5000;
 const MIN_RECT_HEIGHT = 18;
-
-export interface MinimapViewport {
-    scrollTop: number;
-    scrollHeight: number;
-    clientHeight: number;
-}
 
 interface CodeMinimapProps {
     text: string;

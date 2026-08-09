@@ -8,22 +8,13 @@ import { Decoration, keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { autocompletion } from "@codemirror/autocomplete";
 import { chordCompletionSource } from "../../../../languages/chord-completions";
+import type { MinimapViewport, CodeCanvasHandle } from "../../types";
 
 import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { json } from "@codemirror/lang-json";
 import { chord } from "../../../../languages/chord-language";
-
-export interface MinimapViewport {
-    scrollTop: number;
-    scrollHeight: number;
-    clientHeight: number;
-}
-
-export interface CodeCanvasHandle {
-    scrollTo: (scrollTop: number) => void;
-}
 
 interface CodeCanvasProps {
     projectName: string;

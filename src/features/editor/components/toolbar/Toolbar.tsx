@@ -5,15 +5,11 @@ import { invoke } from "@tauri-apps/api/core";
 import { ToolbarButton } from "./ToolbarButton";
 import { MenuOption } from "./MenuOption";
 import { formatRelativeTime } from "../../../../utils/Time";
+import type { ProjectSummary } from "../../../../types";
 
 const appWindow = getCurrentWindow();
 
 type MenuKey = "file" | "edit" | "project" | null;
-
-interface ProjectSummary {
-    name: string;
-    last_modified: string;
-}
 
 export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject }: {
     projectName: string,

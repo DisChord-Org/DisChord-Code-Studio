@@ -1,5 +1,5 @@
 import { useRef, useState, useEffect } from "react";
-import type { MinimapViewport } from "./CodeCanvas";
+import type { MinimapViewport } from "../../types";
 
 const TRACK_WIDTH = 14;
 const THUMB_WIDTH = 10;

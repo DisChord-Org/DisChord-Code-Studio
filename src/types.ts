@@ -1,6 +1,4 @@
-export interface FileNode {
+export interface ProjectSummary {
     name: string;
-    is_dir: boolean;
-    relative_path: string;
-    children?: FileNode[];
+    last_modified: string;
 }
