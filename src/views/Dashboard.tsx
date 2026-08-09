@@ -3,12 +3,12 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { getVersion } from "@tauri-apps/api/app";
 
-import { Button } from "../components/Button";
-import { Card } from "../components/ProjectCard";
-import { Title, Label } from "../components/Typography";
-import { Modal } from "../components/Modal";
+import { Button } from "../components/ui/Button";
+import { Card } from "../features/dashboard/ProjectCard";
+import { Title, Label } from "../components/ui/Typography";
+import { Modal } from "../components/ui/Modal";
 import { formatRelativeTime } from "../utils/Time";
-import { SystemMonitorRings } from "../components/SystemMonitorRings";
+import { SystemMonitorRings } from "../features/system-monitor/SystemMonitorRings";
 
 interface DashboardProps {
     onSelectProject: (name: string) => void;

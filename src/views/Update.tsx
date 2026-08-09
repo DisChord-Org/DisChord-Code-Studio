@@ -3,9 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import { Button } from "../components/Button";
-import { Title } from "../components/Typography";
-import { SystemMonitorRings } from "../components/SystemMonitorRings";
+import { Button } from "../components/ui/Button";
+import { Title } from "../components/ui/Typography";
+import { SystemMonitorRings } from "../features/system-monitor/SystemMonitorRings";
 
 type Phase =
     | "idle"

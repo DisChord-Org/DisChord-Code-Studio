@@ -4,13 +4,13 @@ import { FileNode } from "../types";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 
-import { Toolbar } from "../components/Toolbar";
+import { Toolbar } from "../features/editor/components/toolbar/Toolbar";
 import { Sidebar } from "../components/Sidebar";
 import { CodeCanvas, CodeCanvasHandle, MinimapViewport } from "../components/CodeCanvas";
 import { CodeMinimap } from "../components/CodeMinimap";
-import { TerminalPanel } from "../components/Terminal";
+import { TerminalPanel } from "../features/editor/components/terminal/Terminal";
 import { StatusBar } from "../components/StatusBar";
-import { EditorScrollbar } from "../components/EditorScrollbar";
+import { EditorScrollbar } from "../features/editor/components/canvas/EditorScrollbar";
 
 const appWindow = getCurrentWindow();
 

@@ -2,7 +2,7 @@ import { useState } from "react";
 import { FileNode } from "../types";
 import { invoke } from "@tauri-apps/api/core";
 
-import { Modal } from "./Modal";
+import { Modal } from "./ui/Modal";
 
 const getFileIcon = (name: string): { icon: string; color: string } => {
     const ext = name.toLowerCase().split('.').pop() ?? '';

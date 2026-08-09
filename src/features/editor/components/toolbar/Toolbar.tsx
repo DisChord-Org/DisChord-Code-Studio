@@ -4,7 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { ToolbarButton } from "./ToolbarButton";
 import { MenuOption } from "./MenuOption";
-import { formatRelativeTime } from "../utils/Time";
+import { formatRelativeTime } from "../../../../utils/Time";
 
 const appWindow = getCurrentWindow();
 
