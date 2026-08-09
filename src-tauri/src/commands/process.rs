@@ -96,7 +96,7 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
 #[tauri::command]
 pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>) -> Result<String, String> {
     let mut lock = state.0.lock().unwrap();
-    if let Some(mut child) = lock.take() {
+    if let Some(child) = lock.take() {
         let pid = child.id();
         info!("Solicitud de detención para proceso PID: {}", pid);
 
@@ -116,6 +116,7 @@ pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPr
 
         #[cfg(not(target_os = "windows"))]
         {
+            let mut child = child;
             if let Err(e) = child.kill() {
                 error!("Fallo al matar el proceso {}: {}", pid, e);
             }

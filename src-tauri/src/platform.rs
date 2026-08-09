@@ -3,7 +3,9 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use tauri::Manager;
-use log::{info, debug, error};
+use log::{info, error};
+#[cfg(unix)]
+use log::debug;
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
