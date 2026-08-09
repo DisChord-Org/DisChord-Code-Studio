@@ -6,6 +6,7 @@ import {
     SettingsSidebar,
     DashboardSettings,
     LogsSettings,
+    JsonFileEditor,
     useConfig,
     type SettingsSection,
 } from "../features/settings";
@@ -22,6 +23,7 @@ const SECTION_TITLES: Record<SettingsSection, string> = {
 function Settings({ onBack }: SettingsProps) {
     const { config, updateConfig } = useConfig();
     const [section, setSection] = useState<SettingsSection>("dashboard");
+    const [editingJson, setEditingJson] = useState(false);
 
     return (
         <div data-tauri-drag-region className="h-screen bg-[#0B0E14] flex flex-col text-white overflow-hidden select-none">
@@ -31,19 +33,29 @@ function Settings({ onBack }: SettingsProps) {
                 <WindowControls className="ml-2" />
             </div>
 
-            <div className="flex flex-1 overflow-hidden">
-                <SettingsSidebar activeSection={section} onSelect={setSection} />
+            {editingJson ? (
+                <div className="flex-1 overflow-hidden">
+                    <JsonFileEditor />
+                </div>
+            ) : (
+                <div className="flex flex-1 overflow-hidden">
+                    <SettingsSidebar
+                        activeSection={section}
+                        onSelect={setSection}
+                        onEditJson={() => setEditingJson(true)}
+                    />
 
-                <main className="flex-1 overflow-y-auto p-10">
-                    <Title>{SECTION_TITLES[section]}</Title>
+                    <main className="flex-1 overflow-y-auto p-10">
+                        <Title>{SECTION_TITLES[section]}</Title>
 
-                    {section === "dashboard" ? (
-                        <DashboardSettings config={config} updateConfig={updateConfig} />
-                    ) : (
-                        <LogsSettings config={config} updateConfig={updateConfig} />
-                    )}
-                </main>
-            </div>
+                        {section === "dashboard" ? (
+                            <DashboardSettings config={config} updateConfig={updateConfig} />
+                        ) : (
+                            <LogsSettings config={config} updateConfig={updateConfig} />
+                        )}
+                    </main>
+                </div>
+            )}
         </div>
     );
 }
