@@ -43,11 +43,13 @@ const RingGauge = ({
     percent,
     tooltip,
     size = 44,
+    showNumber = true,
 }: {
     label: string;
     percent: number;
     tooltip: string;
     size?: number;
+    showNumber?: boolean;
 }) => {
     const [hovered, setHovered] = useState(false);
     const stroke = Math.max(size * 0.08, 2);
@@ -87,12 +89,14 @@ const RingGauge = ({
                         style={{ transition: "stroke-dashoffset 0.6s ease, stroke 0.6s ease" }}
                     />
                 </svg>
-                <span
-                    className="absolute inset-0 flex items-center justify-center font-mono font-medium"
-                    style={{ color, fontSize }}
-                >
-                    {Math.round(clamped)}
-                </span>
+                {showNumber && (
+                    <span
+                        className="absolute inset-0 flex items-center justify-center font-mono font-medium"
+                        style={{ color, fontSize }}
+                    >
+                        {Math.round(clamped)}
+                    </span>
+                )}
             </div>
             {size >= 30 && (
                 <span className="text-[9px] text-gray-600 font-mono uppercase tracking-wide mt-0.5">
@@ -109,7 +113,7 @@ const RingGauge = ({
     );
 };
 
-export const SystemMonitorRings = ({ size = 44 }: { size?: number }) => {
+export const SystemMonitorRings = ({ size = 44, showNumbers = true }: { size?: number; showNumbers?: boolean }) => {
     const stats = useSystemStats();
 
     if (!stats) return null;
@@ -123,12 +127,14 @@ export const SystemMonitorRings = ({ size = 44 }: { size?: number }) => {
                 percent={stats.cpu_percent}
                 tooltip={`Consumo de CPU: ${stats.cpu_percent.toFixed(1)}%`}
                 size={size}
+                showNumber={showNumbers}
             />
             <RingGauge
                 label="RAM"
                 percent={stats.ram_percent}
                 tooltip={`Consumo de RAM: ${ramGb(stats.ram_used_mb)} GB / ${ramGb(stats.ram_total_mb)} GB (${stats.ram_percent.toFixed(1)}%)`}
                 size={size}
+                showNumber={showNumbers}
             />
         </div>
     );

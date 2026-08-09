@@ -29,7 +29,7 @@ export const StatusBar = ({ fileName, isDirty, contentLength }: StatusBarProps) 
 
             <div className="flex items-center gap-4">
                 {fileName && <span>{contentLength} caracteres</span>}
-                <SystemMonitorRings size={16} />
+                <SystemMonitorRings size={16} showNumbers={false} />
             </div>
         </div>
     );
