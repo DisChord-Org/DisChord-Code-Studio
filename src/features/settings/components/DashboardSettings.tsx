@@ -9,11 +9,19 @@ interface DashboardSettingsProps {
 }
 
 export const DashboardSettings = ({ config, updateConfig }: DashboardSettingsProps) => {
-    const handleOpenIdeFolder = async () => {
+    const handleOpenAppDataFolder = async () => {
         try {
-            await invoke("open_ide_folder");
+            await invoke("open_app_data_folder");
         } catch (error) {
-            alert("No se pudo abrir la carpeta del IDE: " + error);
+            alert("No se pudo abrir la carpeta de datos del IDE: " + error);
+        }
+    };
+
+    const handleOpenBinariesFolder = async () => {
+        try {
+            await invoke("open_binaries_folder");
+        } catch (error) {
+            alert("No se pudo abrir la carpeta de binarios: " + error);
         }
     };
 
@@ -33,11 +41,23 @@ export const DashboardSettings = ({ config, updateConfig }: DashboardSettingsPro
 
             <div className="flex items-center justify-between py-3 border-b border-white/5">
                 <div>
-                    <p className="text-sm text-gray-200 font-medium">Ficheros del IDE</p>
-                    <p className="text-xs text-gray-500 mt-0.5">Abre la carpeta donde está instalado DisChord Code Studio.</p>
+                    <p className="text-sm text-gray-200 font-medium">Datos del IDE</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Abre la carpeta de AppData donde se guardan la configuración y los logs.</p>
                 </div>
 
-                <Button variant="ghost" className="text-xs" onClick={handleOpenIdeFolder}>
+                <Button variant="ghost" className="text-xs" onClick={handleOpenAppDataFolder}>
+                    <i className="bi bi-folder2-open mr-1.5"></i>
+                    Abrir carpeta
+                </Button>
+            </div>
+
+            <div className="flex items-center justify-between py-3 border-b border-white/5">
+                <div>
+                    <p className="text-sm text-gray-200 font-medium">Binarios</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Abre la carpeta donde el IDE instala chord, Node.js y pnpm.</p>
+                </div>
+
+                <Button variant="ghost" className="text-xs" onClick={handleOpenBinariesFolder}>
                     <i className="bi bi-folder2-open mr-1.5"></i>
                     Abrir carpeta
                 </Button>

@@ -76,9 +76,10 @@ pub fn run() {
         .manage(Mutex::new(System::new_all()))
         .setup(move |app| {
             // app_log_dir() resuelve automáticamente:
-            // macOS: ~/Library/Logs/com.dischord.code.studio/
-            // Linux: ~/.local/share/com.dischord.code.studio/logs/
-            // Windows: %APPDATA%/com.dischord.code.studio/logs/
+            // macOS: ~/Library/Logs/<identifier>/
+            // Linux: ~/.local/share/<identifier>/logs/
+            // Windows: %LOCALAPPDATA%\<identifier>\logs\ (nota: distinto de
+            // app_config_dir(), que en Windows vive en %APPDATA% - Roaming)
             if let Ok(log_dir) = app.path().app_log_dir() {
                 let rotation = commands::config::load_config(app.handle()).log_rotation;
                 if let Err(e) = logger::setup_logger(log_dir, rotation) {
@@ -130,7 +131,8 @@ pub fn run() {
             commands::process::stop_chord_project,
             commands::process::open_in_explorer,
             commands::process::open_logs_folder,
-            commands::process::open_ide_folder,
+            commands::process::open_app_data_folder,
+            commands::process::open_binaries_folder,
 
             commands::updater::start_full_update,
             commands::updater::get_update_state,

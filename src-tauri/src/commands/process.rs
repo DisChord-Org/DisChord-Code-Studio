@@ -9,7 +9,7 @@ use log::{info, error, warn};
 
 use crate::ChildProcessState;
 use crate::paths::project_path;
-use crate::platform::{silent_command, resolve_chord_command, node_dir, strip_npm_env};
+use crate::platform::{silent_command, resolve_chord_command, node_dir, strip_npm_env, bin_dir};
 use crate::log_err::LogErr;
 
 #[tauri::command]
@@ -178,10 +178,26 @@ pub fn open_logs_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn open_ide_folder() -> Result<(), String> {
-    let exe = std::env::current_exe().log_err("No se pudo determinar la carpeta del IDE")?;
-    let dir = exe.parent().ok_or("No se pudo determinar la carpeta del IDE")?;
+pub fn open_app_data_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let log_dir = app_handle.path().app_log_dir().map_err(|e| e.to_string())?;
+    let dir = log_dir.parent().ok_or("No se pudo determinar la carpeta de datos de la app")?;
 
-    info!("Abriendo carpeta del IDE en: {:?}", dir);
+    if !dir.exists() {
+        fs::create_dir_all(dir).log_err("No se pudo crear la carpeta de datos de la app")?;
+    }
+
+    info!("Abriendo carpeta de datos de la app en: {:?}", dir);
     open_path_in_explorer(dir)
+}
+
+#[tauri::command]
+pub fn open_binaries_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
+    let dir = bin_dir(&app_handle).ok_or("No se pudo determinar la carpeta de binarios")?;
+
+    if !dir.exists() {
+        fs::create_dir_all(&dir).log_err("No se pudo crear la carpeta de binarios")?;
+    }
+
+    info!("Abriendo carpeta de binarios en: {:?}", dir);
+    open_path_in_explorer(&dir)
 }
