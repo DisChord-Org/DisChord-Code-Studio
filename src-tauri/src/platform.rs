@@ -37,17 +37,12 @@ pub fn bin_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     Some(dir)
 }
 
-/// Ruta donde el IDE instala (y por tanto sabe encontrar) el binario de `chord`.
 pub fn chord_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     let dir = bin_dir(app_handle)?;
     let filename = if cfg!(windows) { "chord.exe" } else { "chord" };
     Some(dir.join(filename))
 }
 
-/// Comando para invocar `chord` sin depender del PATH del proceso: usa la
-/// ruta donde el propio IDE lo instala si existe ahí, y solo cae al nombre
-/// pelado (resuelto por el PATH del sistema) si no la encuentra — por si el
-/// usuario tiene una instalación manual propia.
 pub fn resolve_chord_command(app_handle: &tauri::AppHandle) -> Command {
     match chord_binary_path(app_handle).filter(|p| p.exists()) {
         Some(path) => silent_command(path),
@@ -104,42 +99,56 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
 pub fn register_bin_dir_in_path(bin_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let hkcu = RegKey::predef(HKEY_CURRENT_USER);
     let (env, _) = hkcu.create_subkey("Environment")?;
-    let current_path: String = env.get_value::<String, _>("Path").unwrap_or_default();
+
+    let current_path: String = env.get_value("Path").unwrap_or_default();
+    let value_type = env.get_raw_value("Path").map(|v| v.vtype).unwrap_or(REG_EXPAND_SZ);
     let bin_dir_str = bin_dir.to_string_lossy().to_string();
 
-    if !current_path.contains(&bin_dir_str) {
-        info!("Añadiendo {:?} al PATH de Windows", bin_dir);
-        let new_path = if current_path.is_empty() {
-            bin_dir_str
-        } else {
-            format!("{};{}", current_path, bin_dir_str)
-        };
-        env.set_value("Path", &new_path)?;
+    let already_present = current_path
+        .split(';')
+        .map(str::trim)
+        .any(|entry| entry.eq_ignore_ascii_case(&bin_dir_str));
 
-        let paths = std::env::var_os("PATH").unwrap_or_default();
-        let mut split_paths: Vec<_> = std::env::split_paths(&paths).collect();
-        if !split_paths.contains(&bin_dir.to_path_buf()) {
-            split_paths.push(bin_dir.to_path_buf());
-            let new_os_path = std::env::join_paths(split_paths)?;
-            std::env::set_var("PATH", new_os_path);
-        }
-
-        unsafe {
-            let env_str: Vec<u16> = "Environment\0".encode_utf16().collect();
-            SendMessageTimeoutW(
-                HWND_BROADCAST as _,
-                WM_SETTINGCHANGE,
-                0,
-                env_str.as_ptr() as isize,
-                SMTO_ABORTIFHUNG,
-                5000,
-                std::ptr::null_mut(),
-            );
-        }
-
-        info!("PATH actualizado y notificado al sistema.");
+    if already_present {
+        return Ok(());
     }
 
+    info!("Añadiendo {:?} al PATH de Windows", bin_dir);
+    let new_path = if current_path.is_empty() {
+        bin_dir_str
+    } else {
+        format!("{};{}", current_path.trim_end_matches(';'), bin_dir_str)
+    };
+
+    let bytes: Vec<u8> = new_path
+        .encode_utf16()
+        .chain(std::iter::once(0))
+        .flat_map(|unit| unit.to_le_bytes())
+        .collect();
+    env.set_raw_value("Path", &winreg::RegValue { bytes, vtype: value_type })?;
+
+    let paths = std::env::var_os("PATH").unwrap_or_default();
+    let mut split_paths: Vec<_> = std::env::split_paths(&paths).collect();
+    if !split_paths.iter().any(|p| p == bin_dir) {
+        split_paths.push(bin_dir.to_path_buf());
+        let new_os_path = std::env::join_paths(split_paths)?;
+        std::env::set_var("PATH", new_os_path);
+    }
+
+    unsafe {
+        let env_str: Vec<u16> = "Environment\0".encode_utf16().collect();
+        SendMessageTimeoutW(
+            HWND_BROADCAST as _,
+            WM_SETTINGCHANGE,
+            0,
+            env_str.as_ptr() as isize,
+            SMTO_ABORTIFHUNG,
+            5000,
+            std::ptr::null_mut(),
+        );
+    }
+
+    info!("PATH actualizado y notificado al sistema.");
     Ok(())
 }
 

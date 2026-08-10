@@ -1,10 +1,5 @@
 use log::error;
 
-/// Extensión de `Result` para el patrón repetido en casi todos los comandos:
-/// loggear el error con contexto y convertirlo a `String` para el frontend.
-///
-/// `resultado.map_err(|e| { error!("Fallo X: {}", e); format!("Fallo X: {}", e) })?`
-/// se queda en `resultado.log_err("Fallo X")?`.
 pub trait LogErr<T> {
     fn log_err(self, context: &str) -> Result<T, String>;
 }
