@@ -26,8 +26,8 @@ pub fn open_update_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
 
     let window = WebviewWindowBuilder::new(app_handle, "update", WebviewUrl::App("index.html".into()))
         .title("Actualizando DisChord")
-        .inner_size(800.0, 600.0)
-        .min_inner_size(800.0, 600.0)
+        .inner_size(800.0, 720.0)
+        .min_inner_size(800.0, 720.0)
         .resizable(true)
         .decorations(false)
         .transparent(true)

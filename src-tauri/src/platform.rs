@@ -3,9 +3,7 @@ use std::path::{Path, PathBuf};
 use std::process::Command;
 
 use tauri::Manager;
-use log::{info, error};
-#[cfg(unix)]
-use log::debug;
+use log::{info, error, debug};
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -24,6 +22,31 @@ pub fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
     #[cfg(target_os = "windows")]
     command.creation_flags(CREATE_NO_WINDOW);
     command
+}
+
+const NPM_ENV_VARS_TO_STRIP: &[&str] = &[
+    "COREPACK_ROOT",
+    "COREPACK_ENABLE_STRICT",
+    "COREPACK_ENABLE_AUTO_PIN",
+    "COREPACK_ENABLE_NETWORK",
+    "COREPACK_NPM_REGISTRY",
+    "COREPACK_NPM_TOKEN",
+    "npm_config_user_agent",
+    "npm_execpath",
+    "npm_node_execpath",
+    "npm_config_prefix",
+    "npm_config_global_prefix",
+    "npm_package_json",
+    "npm_lifecycle_event",
+    "npm_lifecycle_script",
+    "PNPM_HOME",
+    "PNPM_SCRIPT_SRC_DIR",
+];
+
+pub fn strip_npm_env(cmd: &mut Command) {
+    for var in NPM_ENV_VARS_TO_STRIP {
+        cmd.env_remove(var);
+    }
 }
 
 pub fn bin_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
@@ -48,6 +71,107 @@ pub fn resolve_chord_command(app_handle: &tauri::AppHandle) -> Command {
         Some(path) => silent_command(path),
         None => silent_command("chord"),
     }
+}
+
+pub fn node_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    Some(bin_dir(app_handle)?.join("node"))
+}
+
+#[cfg(target_os = "windows")]
+pub fn node_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    Some(node_dir(app_handle)?.join("node.exe"))
+}
+#[cfg(not(target_os = "windows"))]
+pub fn node_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    Some(node_dir(app_handle)?.join("bin").join("node"))
+}
+
+#[cfg(target_os = "windows")]
+pub fn npm_shim_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    Some(node_dir(app_handle)?.join("npm.cmd"))
+}
+#[cfg(not(target_os = "windows"))]
+pub fn npm_shim_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    Some(node_dir(app_handle)?.join("bin").join("npm"))
+}
+
+#[cfg(target_os = "windows")]
+fn pnpm_cjs_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    Some(node_dir(app_handle)?.join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"))
+}
+#[cfg(not(target_os = "windows"))]
+fn pnpm_cjs_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    Some(node_dir(app_handle)?.join("lib").join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"))
+}
+
+pub fn pnpm_command(app_handle: &tauri::AppHandle) -> Option<Command> {
+    let node = node_binary_path(app_handle)?;
+    let cjs = pnpm_cjs_path(app_handle)?;
+    if !node.exists() || !cjs.exists() {
+        return None;
+    }
+    let mut cmd = silent_command(&node);
+    cmd.arg(&cjs);
+    strip_npm_env(&mut cmd);
+    Some(cmd)
+}
+
+fn command_works(mut cmd: Command, label: &str) -> bool {
+    use std::process::Stdio;
+    match cmd.arg("--version").stdout(Stdio::piped()).stderr(Stdio::piped()).output() {
+        Ok(output) if output.status.success() => true,
+        Ok(output) => {
+            debug!(
+                "Comprobación de '{}' falló (código {:?}). stdout: {:?} | stderr: {:?}",
+                label,
+                output.status.code(),
+                String::from_utf8_lossy(&output.stdout).trim(),
+                String::from_utf8_lossy(&output.stderr).trim()
+            );
+            false
+        }
+        Err(e) => {
+            debug!("No se pudo lanzar la comprobación de '{}': {}", label, e);
+            false
+        }
+    }
+}
+
+pub fn is_node_installed(app_handle: &tauri::AppHandle) -> bool {
+    match node_binary_path(app_handle) {
+        Some(path) if path.exists() => command_works(silent_command(&path), "node"),
+        _ => false,
+    }
+}
+
+pub fn is_pnpm_installed(app_handle: &tauri::AppHandle) -> bool {
+    match pnpm_command(app_handle) {
+        Some(cmd) => command_works(cmd, "pnpm"),
+        None => false,
+    }
+}
+
+pub fn node_platform_id() -> &'static str {
+    if cfg!(target_os = "windows") {
+        if cfg!(target_arch = "aarch64") { "win-arm64" } else { "win-x64" }
+    } else if cfg!(target_os = "macos") {
+        if cfg!(target_arch = "aarch64") { "darwin-arm64" } else { "darwin-x64" }
+    } else if cfg!(target_arch = "aarch64") {
+        "linux-arm64"
+    } else {
+        "linux-x64"
+    }
+}
+
+#[cfg(target_os = "windows")]
+pub fn shim_command(path: &Path) -> Command {
+    let mut cmd = silent_command("cmd");
+    cmd.arg("/C").arg(path);
+    cmd
+}
+#[cfg(not(target_os = "windows"))]
+pub fn shim_command(path: &Path) -> Command {
+    silent_command(path)
 }
 
 pub fn get_target_triple() -> &'static str {

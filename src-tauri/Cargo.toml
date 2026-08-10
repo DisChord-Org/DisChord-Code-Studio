@@ -6,9 +6,6 @@ authors = ["you"]
 edition = "2021"
 
 [lints.rust]
-# En Windows, link.exe imprime un mensaje informativo al generar la .dll
-# (crear biblioteca + objeto de importación). Cargo lo reporta como warning
-# desde la lint `linker_messages`, pero no indica ningún problema real.
 linker_messages = "allow"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
@@ -38,6 +35,9 @@ discord-rich-presence = "1.1.0"
 log = "0.4"
 fern = "0.6"
 sysinfo = "0.38.4"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+flate2 = "1"
+tar = "0.4"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
 windows-sys = { version = "0.52", features = [

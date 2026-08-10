@@ -41,14 +41,24 @@ fn spawn_discord_rpc(client_arc: Arc<Mutex<Option<DiscordIpcClient>>>) {
 
 fn bootstrap_cli_and_updates(app_handle: tauri::AppHandle) {
     if commands::updater::is_cli_installed(&app_handle) {
-        info!("CLI encontrada, comprobando actualización del IDE al iniciar");
+        info!("CLI encontrada, comprobando actualizaciones al iniciar");
+
+        let ide_handle = app_handle.clone();
         tauri::async_runtime::spawn(async move {
-            commands::updater::run_ide_update(app_handle).await;
+            commands::updater::run_ide_update(ide_handle).await;
         });
+
+        commands::updater::run_cli_compiler_update(app_handle);
     } else {
         warn!("No se encontró la CLI de DisChord. Instalándola y abriendo la ventana de actualización.");
         commands::updater::run_initial_cli_install(app_handle);
     }
+}
+
+fn bootstrap_runtime(app_handle: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        commands::updater::ensure_runtime(app_handle);
+    });
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -95,6 +105,7 @@ pub fn run() {
             }
 
             bootstrap_cli_and_updates(app.handle().clone());
+            bootstrap_runtime(app.handle().clone());
 
             Ok(())
         })

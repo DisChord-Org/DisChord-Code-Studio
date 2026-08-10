@@ -9,7 +9,7 @@ use log::{info, error, warn};
 
 use crate::ChildProcessState;
 use crate::paths::project_path;
-use crate::platform::{silent_command, resolve_chord_command};
+use crate::platform::{silent_command, resolve_chord_command, node_dir, strip_npm_env};
 use crate::log_err::LogErr;
 
 #[tauri::command]
@@ -30,9 +30,17 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
     let mut command = resolve_chord_command(&app_handle);
     command.current_dir(&project_dir);
     command.env("NODE_OPTIONS", "--experimental-default-type=module");
+    strip_npm_env(&mut command);
 
-    if let Ok(path) = std::env::var("PATH") {
-        command.env("PATH", path);
+    let mut path_entries = Vec::new();
+    if let Some(dir) = node_dir(&app_handle) {
+        path_entries.push(dir);
+    }
+    if let Some(system_path) = std::env::var_os("PATH") {
+        path_entries.extend(std::env::split_paths(&system_path));
+    }
+    if let Ok(joined) = std::env::join_paths(path_entries) {
+        command.env("PATH", joined);
     }
 
     command.arg("run")

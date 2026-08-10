@@ -1,6 +1,7 @@
 mod window;
 mod ide;
 mod cli;
+mod runtime;
 
 use tauri::{Emitter, Manager};
 use serde::{Serialize, Deserialize};
@@ -8,7 +9,8 @@ use serde::{Serialize, Deserialize};
 use crate::UpdateState;
 
 pub use ide::run_ide_update;
-pub use cli::{is_cli_installed, run_initial_cli_install, setup_environment};
+pub use cli::{is_cli_installed, run_initial_cli_install, run_cli_compiler_update, setup_environment};
+pub use runtime::ensure_runtime;
 pub use window::*;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -77,7 +79,12 @@ pub async fn start_full_update(app_handle: tauri::AppHandle) -> Result<(), Strin
         run_ide_update(ide_handle).await;
     });
 
-    cli::run_cli_compiler_update(app_handle);
+    cli::run_cli_compiler_update(app_handle.clone());
+
+    let runtime_handle = app_handle.clone();
+    std::thread::spawn(move || {
+        runtime::ensure_runtime(runtime_handle);
+    });
 
     Ok(())
 }

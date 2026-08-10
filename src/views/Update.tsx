@@ -17,7 +17,7 @@ type Phase =
     | "done"
     | "error";
 
-type TargetKey = "ide" | "cli" | "compiler";
+type TargetKey = "ide" | "cli" | "compiler" | "node" | "pnpm";
 
 interface UpdateProgressPayload {
     target: TargetKey;
@@ -38,7 +38,7 @@ interface TargetState {
     message?: string;
 }
 
-const TARGET_ORDER: TargetKey[] = ["ide", "cli", "compiler"];
+const TARGET_ORDER: TargetKey[] = ["ide", "cli", "compiler", "node", "pnpm"];
 const SETTLED_PHASES: Phase[] = ["up_to_date", "done", "error"];
 const ACTIVE_PHASES: Phase[] = ["checking", "downloading", "installing"];
 
@@ -46,6 +46,8 @@ const TARGET_META: Record<TargetKey, { label: string; icon: string; desc: string
     ide: { label: "DisChord Code Studio", icon: "bi-window-stack", desc: "El propio editor de código" },
     cli: { label: "DisChord CLI", icon: "bi-terminal-fill", desc: "Herramienta de línea de comandos" },
     compiler: { label: "Compilador", icon: "bi-cpu-fill", desc: "DisChord en su nivel más bajo" },
+    node: { label: "Node.js", icon: "bi-hexagon-fill", desc: "Entorno de ejecución (embebido)" },
+    pnpm: { label: "pnpm", icon: "bi-box-seam-fill", desc: "Gestor de paquetes de tus proyectos (embebido)" },
 };
 
 const STATUS_TEXT: Record<Phase, string> = {
@@ -62,6 +64,8 @@ const initialState = (): Record<TargetKey, TargetState> => ({
     ide: { phase: "idle" },
     cli: { phase: "idle" },
     compiler: { phase: "idle" },
+    node: { phase: "idle" },
+    pnpm: { phase: "idle" },
 });
 
 function formatBytes(bytes: number): string {
@@ -298,7 +302,7 @@ function Update() {
                 <div>
                     <Title>Actualizando DisChord</Title>
                     <p className="text-xs text-gray-500 -mt-4">
-                        Comprobando el IDE, la CLI y el compilador. Esto puede tardar unos segundos.
+                        Comprobando el IDE, la CLI, el compilador y el entorno de ejecución. Esto puede tardar unos segundos.
                     </p>
                 </div>
 
@@ -307,7 +311,7 @@ function Update() {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-3 max-w-xl mx-auto w-full">
+            <div className="flex flex-col gap-3 max-w-xl mx-auto w-full overflow-y-auto">
                 {TARGET_ORDER.map((key, i) => (
                     <div
                         key={key}
