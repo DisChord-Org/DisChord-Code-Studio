@@ -21,7 +21,10 @@ crate-type = ["staticlib", "cdylib", "rlib"]
 tauri-build = { version = "2", features = [] }
 
 [dependencies]
-tauri = { version = "2.11", features = [] }
+# macos-private-api: necesaria para poder usar ventanas transparentes
+# (`.transparent(true)` / "transparent": true en tauri.conf.json) en macOS;
+# en Windows no hace falta, pero activarla ahí no tiene ningún efecto negativo.
+tauri = { version = "2.11", features = ["macos-private-api"] }
 tauri-plugin-opener = "2"
 tauri-plugin-updater = "2"
 tauri-plugin-process = "2"
