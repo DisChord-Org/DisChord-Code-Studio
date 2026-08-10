@@ -2,6 +2,7 @@ mod commands;
 mod logger;
 mod paths;
 mod platform;
+mod log_err;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
@@ -70,7 +71,7 @@ pub fn run() {
             // Windows: %APPDATA%/com.dischord.code.studio/logs/
             if let Ok(log_dir) = app.path().app_log_dir() {
                 let rotation = commands::config::load_config(app.handle()).log_rotation;
-                if let Err(e) = logger::setup_logger(log_dir, &rotation) {
+                if let Err(e) = logger::setup_logger(log_dir, rotation) {
                     eprintln!("Error inicializando el logger: {}", e);
                 }
             }

@@ -2,11 +2,12 @@ use std::fs;
 use std::path::Path;
 
 use serde::Serialize;
-use ignore::gitignore::GitignoreBuilder;
+use ignore::gitignore::{Gitignore, GitignoreBuilder};
 use log::{info, error, warn};
 
 use crate::{DiscordState, update_presence};
 use crate::paths::project_path;
+use crate::log_err::LogErr;
 
 #[derive(Serialize)]
 pub struct ProjectFile {
@@ -16,26 +17,26 @@ pub struct ProjectFile {
     children: Option<Vec<ProjectFile>>,
 }
 
+fn build_gitignore_matcher(root_path: &Path) -> Result<Gitignore, String> {
+    let mut builder = GitignoreBuilder::new(root_path);
+
+    let gitignore_path = root_path.join(".gitignore");
+    if gitignore_path.exists() {
+        let _ = builder.add(&gitignore_path);
+    }
+
+    builder.build().log_err("Error al construir el matcher de gitignore")
+}
+
 #[tauri::command]
 pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
     let root_path = project_path(&app_handle, &name);
     info!("Escaneando archivos del proyecto: {:?}", root_path);
 
     let root_str = root_path.to_string_lossy().to_string();
-    let mut builder = GitignoreBuilder::new(&root_path);
+    let matcher = build_gitignore_matcher(&root_path)?;
 
-    let gitignore_path = root_path.join(".gitignore");
-    if gitignore_path.exists() {
-        let _ = builder.add(&gitignore_path);
-        info!("Se encontró .gitignore, aplicando filtros");
-    }
-
-    let matcher = builder.build().map_err(|e| {
-        error!("Error al construir el matcher de gitignore: {}", e);
-        e.to_string()
-    })?;
-
-    fn scan_dir(path: &Path, root_str: &str, matcher: &ignore::gitignore::Gitignore) -> Vec<ProjectFile> {
+    fn scan_dir(path: &Path, root_str: &str, matcher: &Gitignore) -> Vec<ProjectFile> {
         let mut files = Vec::new();
 
         if let Ok(entries) = std::fs::read_dir(path) {
@@ -79,25 +80,18 @@ pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<
     Ok(result)
 }
 
+/// Lista los ficheros (no carpetas) que el .gitignore del proyecto oculta,
+/// para poder editarlos desde el menú "Editar > Ficheros ocultos" aunque
+/// no aparezcan en el árbol normal del explorador.
 #[tauri::command]
 pub fn read_hidden_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
     let root_path = project_path(&app_handle, &name);
     info!("Escaneando ficheros ocultos del proyecto: {:?}", root_path);
 
     let root_str = root_path.to_string_lossy().to_string();
-    let mut builder = GitignoreBuilder::new(&root_path);
+    let matcher = build_gitignore_matcher(&root_path)?;
 
-    let gitignore_path = root_path.join(".gitignore");
-    if gitignore_path.exists() {
-        let _ = builder.add(&gitignore_path);
-    }
-
-    let matcher = builder.build().map_err(|e| {
-        error!("Error al construir el matcher de gitignore: {}", e);
-        e.to_string()
-    })?;
-
-    fn collect_hidden(path: &Path, root_str: &str, matcher: &ignore::gitignore::Gitignore, out: &mut Vec<ProjectFile>) {
+    fn collect_hidden(path: &Path, root_str: &str, matcher: &Gitignore, out: &mut Vec<ProjectFile>) {
         if let Ok(entries) = std::fs::read_dir(path) {
             for entry in entries.flatten() {
                 let file_path = entry.path();
@@ -154,10 +148,7 @@ pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_,
     );
 
     info!("Leyendo contenido: {:?}", file_path);
-    fs::read_to_string(&path).map_err(|e| {
-        error!("Error leyendo archivo {:?}: {}", path, e);
-        format!("No se pudo leer el archivo: {}", e)
-    })
+    fs::read_to_string(&path).log_err(&format!("No se pudo leer el archivo {:?}", path))
 }
 
 #[tauri::command]
@@ -165,10 +156,7 @@ pub fn save_file_content(app_handle: tauri::AppHandle, project_name: String, fil
     let mut path = project_path(&app_handle, &project_name);
     path.push(&file_path);
 
-    fs::write(&path, content).map_err(|e| {
-        error!("Error al guardar archivo {:?}: {}", path, e);
-        format!("Error al guardar: {}", e)
-    })?;
+    fs::write(&path, content).log_err(&format!("Error al guardar archivo {:?}", path))?;
 
     info!("Archivo guardado correctamente: {:?}", file_path);
     Ok("Archivo guardado".into())
@@ -185,10 +173,7 @@ pub fn create_new_file(app_handle: tauri::AppHandle, project_name: String, paren
         return Err("El archivo ya existe".into());
     }
 
-    fs::write(&path, "").map_err(|e| {
-        error!("Fallo al crear archivo {:?}: {}", path, e);
-        format!("Error al crear el archivo: {}", e)
-    })?;
+    fs::write(&path, "").log_err(&format!("Fallo al crear archivo {:?}", path))?;
 
     info!("Nuevo archivo creado: {:?}", name);
     Ok("Archivo creado".into())
@@ -205,10 +190,7 @@ pub fn create_new_folder(app_handle: tauri::AppHandle, project_name: String, par
         return Err("La carpeta ya existe".into());
     }
 
-    fs::create_dir_all(&path).map_err(|e| {
-        error!("Fallo al crear carpeta {:?}: {}", path, e);
-        format!("Error al crear la carpeta: {}", e)
-    })?;
+    fs::create_dir_all(&path).log_err(&format!("Fallo al crear carpeta {:?}", path))?;
 
     info!("Nueva carpeta creada: {:?}", name);
     Ok("Carpeta creada".into())
@@ -232,10 +214,7 @@ pub fn delete_item(app_handle: tauri::AppHandle, project_name: String, path: Str
         fs::remove_file(&full_path)
     };
 
-    res.map_err(|e| {
-        error!("Error al eliminar {:?}: {}", full_path, e);
-        e.to_string()
-    })?;
+    res.log_err(&format!("Error al eliminar {:?}", full_path))?;
 
     Ok("Eliminado correctamente".into())
 }

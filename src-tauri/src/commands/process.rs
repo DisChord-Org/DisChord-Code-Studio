@@ -10,6 +10,7 @@ use log::{info, error, warn};
 use crate::ChildProcessState;
 use crate::paths::project_path;
 use crate::platform::silent_command;
+use crate::log_err::LogErr;
 
 #[tauri::command]
 pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>, project_name: String) -> Result<(), String> {
@@ -39,10 +40,7 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    let mut child = command.spawn().map_err(|e| {
-        error!("No se pudo spawnear el proceso 'chord': {}", e);
-        e.to_string()
-    })?;
+    let mut child = command.spawn().log_err("No se pudo spawnear el proceso 'chord'")?;
 
     let pid = child.id();
     info!("Proceso 'chord' iniciado con PID: {}", pid);
@@ -142,11 +140,7 @@ fn open_path_in_explorer(path: &Path) -> Result<(), String> {
         Command::new("xdg-open").arg(path).spawn()
     };
 
-    cmd.map_err(|e| {
-        error!("Fallo al abrir el explorador: {}", e);
-        e.to_string()
-    })?;
-
+    cmd.log_err("Fallo al abrir el explorador")?;
     Ok(())
 }
 
@@ -169,7 +163,7 @@ pub fn open_logs_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
     let dir = app_handle.path().app_log_dir().map_err(|e| e.to_string())?;
 
     if !dir.exists() {
-        fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+        fs::create_dir_all(&dir).log_err("No se pudo crear la carpeta de logs")?;
     }
 
     info!("Abriendo carpeta de logs en: {:?}", dir);
@@ -179,7 +173,7 @@ pub fn open_logs_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
 /// Abre la carpeta donde está instalado el propio IDE (donde vive el ejecutable).
 #[tauri::command]
 pub fn open_ide_folder() -> Result<(), String> {
-    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let exe = std::env::current_exe().log_err("No se pudo determinar la carpeta del IDE")?;
     let dir = exe.parent().ok_or("No se pudo determinar la carpeta del IDE")?;
 
     info!("Abriendo carpeta del IDE en: {:?}", dir);

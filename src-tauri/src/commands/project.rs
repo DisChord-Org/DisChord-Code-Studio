@@ -1,12 +1,13 @@
 use std::fs;
 use std::time::SystemTime;
 use std::path::Path;
-use std::process::Command;
 
 use serde::Serialize;
 use log::{info, error, warn, debug};
 
 use crate::paths::{workflows_root, project_path};
+use crate::platform::silent_command;
+use crate::log_err::LogErr;
 
 #[derive(Serialize)]
 pub struct ProjectInfo {
@@ -20,8 +21,7 @@ pub fn create_projects_folder(app_handle: tauri::AppHandle) -> String {
 
     if !path.exists() {
         info!("Directorio base no encontrado. Creando: {:?}", path);
-        if let Err(e) = fs::create_dir_all(&path) {
-            error!("No se pudo crear el directorio base: {}", e);
+        if fs::create_dir_all(&path).log_err("No se pudo crear el directorio base").is_err() {
             return "error".into();
         }
     }
@@ -91,11 +91,7 @@ pub fn get_projects(app_handle: tauri::AppHandle) -> Vec<ProjectInfo> {
 pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
     info!("Solicitud de creación de proyecto: {}", name);
 
-    let chord_check = Command::new("chord")
-        .arg("-v")
-        .output();
-
-    if let Err(e) = chord_check {
+    if let Err(e) = silent_command("chord").arg("-v").output() {
         error!("El comando 'chord' falló o no está en el PATH: {}", e);
         return Err("El motor 'chord' no está listo. Revisa la configuración.".into());
     }
@@ -108,7 +104,7 @@ pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<
     }
 
     info!("Ejecutando 'chord init' para el proyecto: {}", name);
-    let init_status = Command::new("chord")
+    let init_status = silent_command("chord")
         .arg("init")
         .arg(&path)
         .status();
@@ -135,10 +131,7 @@ pub fn delete_project(app_handle: tauri::AppHandle, name: String) -> Result<Stri
 
     if path.exists() && path.is_dir() {
         info!("Eliminando proyecto completo: {:?}", path);
-        fs::remove_dir_all(&path).map_err(|e| {
-            error!("No se pudo borrar el proyecto {}: {}", name, e);
-            format!("Error al borrar: {}", e)
-        })?;
+        fs::remove_dir_all(&path).log_err(&format!("No se pudo borrar el proyecto {}", name))?;
         info!("Proyecto '{}' eliminado.", name);
         Ok("Proyecto eliminado".into())
     } else {
