@@ -1,4 +1,5 @@
 import { SystemMonitorRings } from "../../../system-monitor/SystemMonitorRings";
+import { ModifiedBadge } from "../../../../components/ui/ModifiedBadge";
 
 interface StatusBarProps {
     fileName?: string;
@@ -19,12 +20,7 @@ export const StatusBar = ({ fileName, isDirty, contentLength }: StatusBarProps) 
                     </>
                 )}
 
-                {isDirty && (
-                    <div className="flex items-center gap-1.5 px-1.5 py-[1px] rounded bg-[#5865F2]/10 text-[#8992f5]">
-                        <span className="w-1.5 h-1.5 rounded-full bg-[#8992f5]" />
-                        <span className="font-medium tracking-wide">Modificado</span>
-                    </div>
-                )}
+                {isDirty && <ModifiedBadge />}
             </div>
 
             <div className="flex items-center gap-4">
