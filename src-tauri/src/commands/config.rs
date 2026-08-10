@@ -27,9 +27,6 @@ pub enum LogRotation {
     Hourly,
 }
 
-/// Deserializa un campo cayendo a su valor por defecto si el JSON trae algo
-/// inválido (p.ej. editado a mano desde "Editar como JSON"), en vez de
-/// tirar abajo la lectura de *toda* la config por un solo campo suelto.
 fn lenient<'de, D, T>(deserializer: D) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,
@@ -39,10 +36,6 @@ where
     Ok(serde_json::from_value(value).unwrap_or_default())
 }
 
-/// Config de la app persistida en disco. `#[serde(default)]` en el struct
-/// (junto al deserializador `lenient` de cada campo) permite añadir opciones
-/// nuevas en el futuro, y tolera valores ausentes o inválidos campo a campo
-/// sin romper la lectura del resto del fichero.
 #[derive(Clone, Serialize, Deserialize, Default)]
 #[serde(default)]
 pub struct AppConfig {
@@ -66,9 +59,6 @@ fn ensure_parent_dir(path: &Path) -> Result<(), String> {
     Ok(())
 }
 
-/// Lee la config desde disco. Función normal (no comando) para poder
-/// llamarla también durante el arranque de la app, antes de que el
-/// `invoke_handler` esté disponible (p.ej. para elegir la rotación de logs).
 pub fn load_config(app_handle: &tauri::AppHandle) -> AppConfig {
     let path = match config_path(app_handle) {
         Ok(p) => p,
@@ -104,8 +94,6 @@ pub fn save_config(app_handle: tauri::AppHandle, config: AppConfig) -> Result<()
     Ok(())
 }
 
-/// Lee config.json tal cual está en disco, para editarlo a mano.
-/// Si todavía no existe, lo crea primero con los valores por defecto.
 #[tauri::command]
 pub fn get_config_raw(app_handle: tauri::AppHandle) -> Result<String, String> {
     let path = config_path(&app_handle)?;
@@ -117,8 +105,6 @@ pub fn get_config_raw(app_handle: tauri::AppHandle) -> Result<String, String> {
     fs::read_to_string(&path).log_err("No se pudo leer config.json")
 }
 
-/// Guarda el contenido tal cual lo ha editado el usuario, validando antes
-/// que sea JSON sintácticamente correcto.
 #[tauri::command]
 pub fn save_config_raw(app_handle: tauri::AppHandle, content: String) -> Result<(), String> {
     serde_json::from_str::<serde_json::Value>(&content)

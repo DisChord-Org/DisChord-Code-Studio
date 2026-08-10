@@ -157,7 +157,6 @@ pub fn open_in_explorer(app_handle: tauri::AppHandle, project_name: String) -> R
     open_path_in_explorer(&path)
 }
 
-/// Abre la carpeta donde el logger escribe los ficheros de log.
 #[tauri::command]
 pub fn open_logs_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
     let dir = app_handle.path().app_log_dir().map_err(|e| e.to_string())?;
@@ -170,7 +169,6 @@ pub fn open_logs_folder(app_handle: tauri::AppHandle) -> Result<(), String> {
     open_path_in_explorer(&dir)
 }
 
-/// Abre la carpeta donde está instalado el propio IDE (donde vive el ejecutable).
 #[tauri::command]
 pub fn open_ide_folder() -> Result<(), String> {
     let exe = std::env::current_exe().log_err("No se pudo determinar la carpeta del IDE")?;

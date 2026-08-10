@@ -80,9 +80,6 @@ pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<
     Ok(result)
 }
 
-/// Lista los ficheros (no carpetas) que el .gitignore del proyecto oculta,
-/// para poder editarlos desde el menú "Editar > Ficheros ocultos" aunque
-/// no aparezcan en el árbol normal del explorador.
 #[tauri::command]
 pub fn read_hidden_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
     let root_path = project_path(&app_handle, &name);

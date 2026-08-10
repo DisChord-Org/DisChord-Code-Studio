@@ -9,10 +9,6 @@ use crate::UpdateState;
 
 pub use ide::run_ide_update;
 pub use cli::{is_cli_installed, run_initial_cli_install, setup_environment};
-// `mark_update_window_ready` es #[tauri::command]: la macro genera un ítem
-// auxiliar junto a la función que `generate_handler!` necesita resolver en
-// esta misma ruta, así que hace falta un re-export por glob (uno nombrado
-// solo trae la función, no el ítem oculto de la macro).
 pub use window::*;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -31,8 +27,6 @@ pub struct UpdateProgress {
     pub message: Option<String>,
 }
 
-/// Compartida por `ide` y `cli`: registra el progreso en `UpdateState` (para
-/// que `get_update_state` pueda dar una foto instantánea) y lo emite al frontend.
 fn emit_progress(
     app_handle: &tauri::AppHandle,
     target: &str,
@@ -62,8 +56,6 @@ fn emit_progress(
     let _ = app_handle.emit("update-progress", payload);
 }
 
-/// Emite el mismo error para "cli" y "compiler" a la vez: ambos vienen
-/// del mismo binario, así que un fallo instalándolo/ejecutándolo afecta a los dos.
 fn emit_error_both(app_handle: &tauri::AppHandle, message: String) {
     emit_progress(app_handle, "cli", "error", None, None, None, None, Some(message.clone()));
     emit_progress(app_handle, "compiler", "error", None, None, None, None, Some(message));

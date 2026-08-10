@@ -85,12 +85,6 @@ pub fn run() {
                 warn!("No se pudo encontrar la ventana principal 'main'");
             }
 
-            let ide_check_handle = app.handle().clone();
-            tauri::async_runtime::spawn(async move {
-                info!("Comprobando actualización del IDE al iniciar");
-                commands::updater::run_ide_update(ide_check_handle).await;
-            });
-
             spawn_discord_rpc(setup_client.clone());
 
             info!("Configurando entorno de comandos");
