@@ -37,6 +37,24 @@ pub fn bin_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     Some(dir)
 }
 
+/// Ruta donde el IDE instala (y por tanto sabe encontrar) el binario de `chord`.
+pub fn chord_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    let dir = bin_dir(app_handle)?;
+    let filename = if cfg!(windows) { "chord.exe" } else { "chord" };
+    Some(dir.join(filename))
+}
+
+/// Comando para invocar `chord` sin depender del PATH del proceso: usa la
+/// ruta donde el propio IDE lo instala si existe ahí, y solo cae al nombre
+/// pelado (resuelto por el PATH del sistema) si no la encuentra — por si el
+/// usuario tiene una instalación manual propia.
+pub fn resolve_chord_command(app_handle: &tauri::AppHandle) -> Command {
+    match chord_binary_path(app_handle).filter(|p| p.exists()) {
+        Some(path) => silent_command(path),
+        None => silent_command("chord"),
+    }
+}
+
 pub fn get_target_triple() -> &'static str {
     if cfg!(target_os = "windows") {
         "x86_64-pc-windows-msvc"

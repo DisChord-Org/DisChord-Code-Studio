@@ -28,18 +28,12 @@ struct CliProgressLine {
     message: Option<String>,
 }
 
-fn cli_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    let bin_dir = platform::bin_dir(app_handle)?;
-    let tool_filename = if cfg!(windows) { "chord.exe" } else { "chord" };
-    Some(bin_dir.join(tool_filename))
-}
-
 pub fn is_cli_installed(app_handle: &tauri::AppHandle) -> bool {
-    cli_binary_path(app_handle).map(|p| p.exists()).unwrap_or(false)
+    platform::chord_binary_path(app_handle).map(|p| p.exists()).unwrap_or(false)
 }
 
 fn install_cli_binary(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
-    let dest_path = cli_binary_path(app_handle)
+    let dest_path = platform::chord_binary_path(app_handle)
         .ok_or_else(|| "No se pudo determinar la ruta de instalación de la CLI".to_string())?;
 
     let bin_dir = dest_path.parent()
@@ -91,7 +85,8 @@ pub fn run_initial_cli_install(app_handle: tauri::AppHandle) {
 }
 
 pub fn run_cli_compiler_update(app_handle: tauri::AppHandle) {
-    run_cli_compiler_update_inner(app_handle, None, false);
+    let known_binary = platform::chord_binary_path(&app_handle).filter(|p| p.exists());
+    run_cli_compiler_update_inner(app_handle, known_binary, false);
 }
 
 fn run_cli_compiler_update_inner(

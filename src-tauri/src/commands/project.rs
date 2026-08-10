@@ -6,7 +6,7 @@ use serde::Serialize;
 use log::{info, error, warn, debug};
 
 use crate::paths::{workflows_root, project_path};
-use crate::platform::silent_command;
+use crate::platform::resolve_chord_command;
 use crate::log_err::LogErr;
 
 #[derive(Serialize)]
@@ -91,7 +91,7 @@ pub fn get_projects(app_handle: tauri::AppHandle) -> Vec<ProjectInfo> {
 pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
     info!("Solicitud de creación de proyecto: {}", name);
 
-    if let Err(e) = silent_command("chord").arg("-v").output() {
+    if let Err(e) = resolve_chord_command(&app_handle).arg("-v").output() {
         error!("El comando 'chord' falló o no está en el PATH: {}", e);
         return Err("El motor 'chord' no está listo. Revisa la configuración.".into());
     }
@@ -104,7 +104,7 @@ pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<
     }
 
     info!("Ejecutando 'chord init' para el proyecto: {}", name);
-    let init_status = silent_command("chord")
+    let init_status = resolve_chord_command(&app_handle)
         .arg("init")
         .arg(&path)
         .status();

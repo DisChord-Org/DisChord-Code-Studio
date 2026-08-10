@@ -9,7 +9,7 @@ use log::{info, error, warn};
 
 use crate::ChildProcessState;
 use crate::paths::project_path;
-use crate::platform::silent_command;
+use crate::platform::{silent_command, resolve_chord_command};
 use crate::log_err::LogErr;
 
 #[tauri::command]
@@ -27,7 +27,7 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
 
     info!("Iniciando ejecución del proyecto: {}", project_name);
 
-    let mut command = silent_command("chord");
+    let mut command = resolve_chord_command(&app_handle);
     command.current_dir(&project_dir);
     command.env("NODE_OPTIONS", "--experimental-default-type=module");
 
