@@ -107,7 +107,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
             data-tauri-drag-region
             className="h-10 bg-[#12151c] shadow-[0_1px_3px_0_rgba(0,0,0,0.35)] flex items-center justify-between shrink-0 select-none relative z-20"
         >
-            <div className="flex items-center gap-1 flex-1">
+            <div data-tauri-drag-region className="flex items-center gap-1 flex-1">
                 <span className="text-[#5865F2] font-black text-xl px-2">D</span>
                 <div className="flex items-center" ref={menuBarRef}>
                     <FileMenu
@@ -148,7 +148,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
                 />
             </div>
 
-            <div className="flex items-center justify-end flex-1 h-full">
+            <div data-tauri-drag-region className="flex items-center justify-end flex-1 h-full">
                 <BackButton onClick={onBack} className="mr-4" />
 
                 <WindowControls showMaximize className="ml-2" />

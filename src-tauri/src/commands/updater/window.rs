@@ -29,6 +29,7 @@ pub fn open_update_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
         .inner_size(800.0, 720.0)
         .min_inner_size(800.0, 720.0)
         .resizable(true)
+        .maximizable(false)
         .decorations(false)
         .transparent(true)
         .center()

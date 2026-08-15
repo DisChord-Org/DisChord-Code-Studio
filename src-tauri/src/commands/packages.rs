@@ -165,6 +165,25 @@ pub fn list_project_libraries(app_handle: tauri::AppHandle, project_name: String
     Ok(libraries)
 }
 
+fn ensure_lib_gitignored(project_dir: &std::path::Path) {
+    let gitignore_path = project_dir.join(".gitignore");
+    let Ok(existing) = fs::read_to_string(&gitignore_path) else { return };
+
+    if existing.lines().any(|line| line.trim() == "lib") {
+        return;
+    }
+
+    let mut updated = existing;
+    if !updated.is_empty() && !updated.ends_with('\n') {
+        updated.push('\n');
+    }
+    updated.push_str("lib\n");
+
+    if let Err(e) = fs::write(&gitignore_path, updated) {
+        warn!("No se pudo añadir 'lib' a {:?}: {}", gitignore_path, e);
+    }
+}
+
 fn run_pkg_op(app_handle: &tauri::AppHandle, args: &[&str], cwd: Option<&std::path::Path>, context: &str) -> Result<PkgOpOutcome, String> {
     let mut command = resolve_chord_command(app_handle);
     configure_pkg_command(app_handle, &mut command);
@@ -204,7 +223,13 @@ pub fn pkg_uninstall(app_handle: tauri::AppHandle, name: String, version: String
 pub fn pkg_use(app_handle: tauri::AppHandle, project_name: String, name: String, version: String) -> Result<PkgOpOutcome, String> {
     let version = normalize_version(&version);
     let project_dir = project_path(&app_handle, &project_name);
-    run_pkg_op(&app_handle, &["use", &name, &version], Some(&project_dir), "No se pudo ejecutar 'chord pkg use'")
+    let outcome = run_pkg_op(&app_handle, &["use", &name, &version], Some(&project_dir), "No se pudo ejecutar 'chord pkg use'")?;
+
+    if outcome.success {
+        ensure_lib_gitignored(&project_dir);
+    }
+
+    Ok(outcome)
 }
 
 #[tauri::command]

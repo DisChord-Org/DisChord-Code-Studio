@@ -1,5 +1,10 @@
 @import "tailwindcss";
 
+html[data-platform="macos"] #root {
+    border-radius: 10px;
+    overflow: hidden;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
 }

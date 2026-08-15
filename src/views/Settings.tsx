@@ -27,7 +27,7 @@ function Settings({ onBack }: SettingsProps) {
 
     return (
         <div data-tauri-drag-region className="h-screen bg-[#0B0E14] flex flex-col text-white overflow-hidden select-none">
-            <div className="h-10 bg-[#12151c] shadow-[0_1px_3px_0_rgba(0,0,0,0.35)] flex items-center justify-between shrink-0 relative z-20">
+            <div data-tauri-drag-region className="h-10 bg-[#12151c] shadow-[0_1px_3px_0_rgba(0,0,0,0.35)] flex items-center justify-between shrink-0 relative z-20">
                 <BackButton onClick={onBack} className="ml-4" />
 
                 <WindowControls className="ml-2" />

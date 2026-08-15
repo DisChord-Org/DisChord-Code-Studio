@@ -162,6 +162,17 @@ pub fn is_pnpm_installed(app_handle: &tauri::AppHandle) -> bool {
     }
 }
 
+#[tauri::command]
+pub fn get_platform() -> &'static str {
+    if cfg!(target_os = "macos") {
+        "macos"
+    } else if cfg!(target_os = "windows") {
+        "windows"
+    } else {
+        "linux"
+    }
+}
+
 pub fn node_platform_id() -> &'static str {
     if cfg!(target_os = "windows") {
         if cfg!(target_arch = "aarch64") { "win-arm64" } else { "win-x64" }
