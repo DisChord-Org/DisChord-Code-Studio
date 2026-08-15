@@ -259,8 +259,16 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
         );
     };
 
-    const handleBack = () => {
+    const handleBack = async () => {
         if (!confirmLeaveProject()) return;
+
+        if (isRunning) {
+            try {
+                await invoke("stop_chord_project");
+                setIsRunning(false);
+            } catch (e) { console.error(e); }
+        }
+
         onBack();
     };
 
