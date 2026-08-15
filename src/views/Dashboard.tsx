@@ -153,7 +153,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
             </div>
             
             <div className="absolute bottom-0 left-0 flex items-center z-50">
-                <Tooltip label="Configuración" placement="top">
+                <Tooltip label="Configuración" placement="top" align="start">
                     <button
                         onClick={onOpenSettings}
                         className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
@@ -162,7 +162,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                     </button>
                 </Tooltip>
 
-                <Tooltip label={updating ? "Abriendo actualizador..." : "Actualizar"} placement="top">
+                <Tooltip label={updating ? "Abriendo actualizador..." : "Actualizar"} placement="top" align="start">
                     <button
                         onClick={handleUpdate}
                         disabled={loading || updating}

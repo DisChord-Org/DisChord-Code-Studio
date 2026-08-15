@@ -45,12 +45,14 @@ const RingGauge = ({
     tooltip,
     size = 44,
     showNumber = true,
+    tooltipAlign = "center",
 }: {
     label: string;
     percent: number;
     tooltip: string;
     size?: number;
     showNumber?: boolean;
+    tooltipAlign?: "center" | "start" | "end";
 }) => {
     const stroke = Math.max(size * 0.08, 2);
     const radius = (size - stroke) / 2;
@@ -61,7 +63,7 @@ const RingGauge = ({
     const fontSize = Math.max(size * 0.24, 6);
 
     return (
-        <Tooltip label={tooltip} placement="top" className="flex-col items-center">
+        <Tooltip label={tooltip} placement="top" align={tooltipAlign} className="flex-col items-center">
             <div className="relative" style={{ width: size, height: size }}>
                 <svg width={size} height={size} className="-rotate-90">
                     <circle
@@ -125,6 +127,7 @@ export const SystemMonitorRings = ({ size = 44, showNumbers = true }: { size?: n
                 tooltip={`Consumo de RAM: ${ramGb(stats.ram_used_mb)} GB / ${ramGb(stats.ram_total_mb)} GB (${stats.ram_percent.toFixed(1)}%)`}
                 size={size}
                 showNumber={showNumbers}
+                tooltipAlign="end"
             />
         </div>
     );

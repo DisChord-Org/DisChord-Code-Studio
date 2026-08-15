@@ -42,7 +42,7 @@ export const WindowControls = ({
                 </Tooltip>
             )}
 
-            <Tooltip label={closeTitle ?? "Cerrar"} placement="bottom">
+            <Tooltip label={closeTitle ?? "Cerrar"} placement="bottom" align="end">
                 <button
                     onClick={handleClose}
                     disabled={closeDisabled}
