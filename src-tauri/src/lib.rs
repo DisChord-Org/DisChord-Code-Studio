@@ -43,12 +43,17 @@ fn bootstrap_cli_and_updates(app_handle: tauri::AppHandle) {
     if commands::updater::is_cli_installed(&app_handle) {
         info!("CLI encontrada, comprobando actualizaciones al iniciar");
 
-        let ide_handle = app_handle.clone();
+        // La autoactualización del IDE se ejecuta primero y se espera a que
+        // termine antes de tocar la CLI/compilador. Cuando hay una versión
+        // nueva, el instalador del IDE puede matar este proceso a mitad de
+        // camino para reemplazar el ejecutable; si la descarga de la CLI
+        // estuviera corriendo en paralelo en ese momento, quedaba interrumpida
+        // y el binario truncado en disco (de ahí el "%1 no es una aplicación
+        // Win32 válida" al intentar usar 'chord' después).
         tauri::async_runtime::spawn(async move {
-            commands::updater::run_ide_update(ide_handle).await;
+            commands::updater::run_ide_update(app_handle.clone()).await;
+            commands::updater::run_cli_compiler_update(app_handle);
         });
-
-        commands::updater::run_cli_compiler_update(app_handle);
     } else {
         warn!("No se encontró la CLI de DisChord. Instalándola y abriendo la ventana de actualización.");
         commands::updater::run_initial_cli_install(app_handle);

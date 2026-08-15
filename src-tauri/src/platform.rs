@@ -73,6 +73,35 @@ pub fn resolve_chord_command(app_handle: &tauri::AppHandle) -> Command {
     }
 }
 
+pub fn compiler_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    let dir = bin_dir(app_handle)?;
+    let filename = if cfg!(windows) { "dischord-compiler.exe" } else { "dischord-compiler" };
+    Some(dir.join(filename))
+}
+
+pub fn looks_like_valid_binary(path: &Path) -> bool {
+    let Ok(metadata) = fs::metadata(path) else { return false };
+    if metadata.len() < 1024 {
+        return false;
+    }
+
+    #[cfg(target_os = "windows")]
+    {
+        use std::io::Read;
+        let Ok(mut file) = fs::File::open(path) else { return false };
+        let mut header = [0u8; 2];
+        if file.read_exact(&mut header).is_err() {
+            return false;
+        }
+        return &header == b"MZ";
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        true
+    }
+}
+
 pub fn node_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     Some(bin_dir(app_handle)?.join("node"))
 }
@@ -127,7 +156,7 @@ pub fn pnpm_command(app_handle: &tauri::AppHandle) -> Option<Command> {
     Some(cmd)
 }
 
-fn command_works(mut cmd: Command, label: &str) -> bool {
+pub fn command_works(mut cmd: Command, label: &str) -> bool {
     use std::process::Stdio;
     match cmd.arg("--version").stdout(Stdio::piped()).stderr(Stdio::piped()).output() {
         Ok(output) if output.status.success() => true,
@@ -225,17 +254,26 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
         return Err(err_msg.into());
     }
 
-    let mut file = fs::File::create(dest)?;
-    response.copy_to(&mut file)?;
+    let tmp_dest = dest.with_extension("download");
+    let mut file = fs::File::create(&tmp_dest)?;
+    let copy_result = response.copy_to(&mut file);
+    drop(file);
+
+    if let Err(e) = copy_result {
+        let _ = fs::remove_file(&tmp_dest);
+        return Err(e.into());
+    }
 
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
-        let mut perms = fs::metadata(dest)?.permissions();
+        let mut perms = fs::metadata(&tmp_dest)?.permissions();
         perms.set_mode(0o755);
-        fs::set_permissions(dest, perms)?;
-        debug!("Permisos 755 aplicados a {:?}", dest);
+        fs::set_permissions(&tmp_dest, perms)?;
+        debug!("Permisos 755 aplicados a {:?}", tmp_dest);
     }
+
+    fs::rename(&tmp_dest, dest)?;
 
     info!("Herramienta {} descargada correctamente en {:?}", name, dest);
     Ok(())

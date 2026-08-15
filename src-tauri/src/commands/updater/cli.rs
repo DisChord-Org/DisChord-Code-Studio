@@ -29,7 +29,21 @@ struct CliProgressLine {
 }
 
 pub fn is_cli_installed(app_handle: &tauri::AppHandle) -> bool {
-    platform::chord_binary_path(app_handle).map(|p| p.exists()).unwrap_or(false)
+    match platform::chord_binary_path(app_handle) {
+        Some(path) if path.exists() => platform::command_works(platform::silent_command(&path), "chord"),
+        _ => false,
+    }
+}
+
+fn repair_corrupted_compiler(app_handle: &tauri::AppHandle) {
+    let Some(path) = platform::compiler_binary_path(app_handle) else { return };
+
+    if path.exists() && !platform::looks_like_valid_binary(&path) {
+        warn!("Compilador corrupto detectado, borrándolo para forzar su reinstalación: {:?}", path);
+        if let Err(e) = fs::remove_file(&path) {
+            error!("No se pudo borrar el compilador corrupto: {}", e);
+        }
+    }
 }
 
 fn install_cli_binary(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
@@ -69,12 +83,10 @@ pub fn run_initial_cli_install(app_handle: tauri::AppHandle) {
         match install_cli_binary(&app_handle) {
             Ok(installed_path) => {
                 info!("CLI instalada correctamente en el primer arranque");
-                run_cli_compiler_update_inner(app_handle.clone(), Some(installed_path), true);
 
-                let ide_handle = app_handle.clone();
-                tauri::async_runtime::spawn(async move {
-                    run_ide_update(ide_handle).await;
-                });
+                tauri::async_runtime::block_on(run_ide_update(app_handle.clone()));
+
+                run_cli_compiler_update_inner(app_handle, Some(installed_path), true);
             },
             Err(e) => {
                 error!("No se pudo instalar la CLI en el primer arranque: {}", e);
@@ -94,6 +106,8 @@ fn run_cli_compiler_update_inner(
     binary_override: Option<PathBuf>,
     already_retried: bool,
 ) {
+    repair_corrupted_compiler(&app_handle);
+
     super::emit_progress(&app_handle, "cli", "checking", None, None, None, None, None);
     super::emit_progress(&app_handle, "compiler", "checking", None, None, None, None, None);
 
@@ -155,8 +169,8 @@ fn run_cli_compiler_update_inner(
                     }
                 }
             },
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound && !already_retried => {
-                warn!("'{}' no se encontró al intentar actualizar. Instalando la CLI ahora.", binary.to_string_lossy());
+            Err(e) if !already_retried => {
+                warn!("'{}' no se pudo ejecutar al intentar actualizar ({}). Reinstalando la CLI ahora.", binary.to_string_lossy(), e);
                 super::emit_progress(&app_handle, "cli", "installing", None, None, None, None,
                     Some("La CLI no estaba instalada. Instalándola ahora...".into()));
 
