@@ -9,8 +9,76 @@ use log::{info, error, warn};
 
 use crate::ChildProcessState;
 use crate::paths::project_path;
-use crate::platform::{silent_command, resolve_chord_command, node_dir, strip_npm_env, bin_dir};
+use crate::platform::{silent_command, resolve_chord_command, node_dir, strip_npm_env, bin_dir, pnpm_command};
 use crate::log_err::LogErr;
+
+fn build_path_env(app_handle: &tauri::AppHandle) -> Option<std::ffi::OsString> {
+    let mut path_entries = Vec::new();
+    if let Some(dir) = node_dir(app_handle) {
+        path_entries.push(dir);
+    }
+    if let Some(system_path) = std::env::var_os("PATH") {
+        path_entries.extend(std::env::split_paths(&system_path));
+    }
+    std::env::join_paths(path_entries).ok()
+}
+
+// Los proyectos se clonan/comparten sin `node_modules` (p. ej. vía git), así que
+// si faltan las dependencias hay que instalarlas antes de `chord run`, o el
+// bundle fallará con ERR_MODULE_NOT_FOUND en la máquina que no las tiene.
+fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Path) -> Result<(), String> {
+    if project_dir.join("node_modules").exists() || !project_dir.join("package.json").exists() {
+        return Ok(());
+    }
+
+    let mut command = pnpm_command(app_handle)
+        .ok_or("No se encontró pnpm para instalar las dependencias del proyecto")?;
+    command.current_dir(project_dir);
+    if let Some(path) = build_path_env(app_handle) {
+        command.env("PATH", path);
+    }
+    command.arg("install")
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped());
+
+    let _ = app_handle.emit("terminal-data", "\x1b[1;33m[*] Instalando dependencias del proyecto (pnpm install)...\x1b[0m\r\n");
+
+    let mut child = command.spawn().map_err(|e| format!("No se pudo ejecutar 'pnpm install': {}", e))?;
+
+    let stdout = child.stdout.take().expect("Fallo al capturar stdout de pnpm install");
+    let stderr = child.stderr.take().expect("Fallo al capturar stderr de pnpm install");
+
+    let handle_out = app_handle.clone();
+    let stdout_thread = thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = handle_out.emit("terminal-data", format!("{}\r\n", l));
+            }
+        }
+    });
+
+    let handle_err = app_handle.clone();
+    let stderr_thread = thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = handle_err.emit("terminal-data", format!("\x1b[31m{}\r\n\x1b[0m", l));
+            }
+        }
+    });
+
+    let _ = stdout_thread.join();
+    let _ = stderr_thread.join();
+
+    let status = child.wait().map_err(|e| format!("Fallo esperando a 'pnpm install': {}", e))?;
+    if !status.success() {
+        return Err("Fallo al instalar las dependencias del proyecto ('pnpm install')".into());
+    }
+
+    let _ = app_handle.emit("terminal-data", "\x1b[1;32m[*] Dependencias instaladas correctamente.\x1b[0m\r\n");
+    Ok(())
+}
 
 #[tauri::command]
 pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>, project_name: String) -> Result<(), String> {
@@ -27,20 +95,16 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
 
     info!("Iniciando ejecución del proyecto: {}", project_name);
 
+    ensure_dependencies_installed(&app_handle, &project_dir)
+        .log_err("No se pudieron instalar las dependencias del proyecto")?;
+
     let mut command = resolve_chord_command(&app_handle);
     command.current_dir(&project_dir);
     command.env("NODE_OPTIONS", "--experimental-default-type=module");
     strip_npm_env(&mut command);
 
-    let mut path_entries = Vec::new();
-    if let Some(dir) = node_dir(&app_handle) {
-        path_entries.push(dir);
-    }
-    if let Some(system_path) = std::env::var_os("PATH") {
-        path_entries.extend(std::env::split_paths(&system_path));
-    }
-    if let Ok(joined) = std::env::join_paths(path_entries) {
-        command.env("PATH", joined);
+    if let Some(path) = build_path_env(&app_handle) {
+        command.env("PATH", path);
     }
 
     command.arg("run")
