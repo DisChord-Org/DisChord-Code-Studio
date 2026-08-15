@@ -4,6 +4,8 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { Modal } from "../../../../components/ui/Modal";
 import { ContextMenu } from "../../../../components/ui/ContextMenu";
+import { Label } from "../../../../components/ui/Typography";
+import { Tooltip } from "../../../../components/ui/Tooltip";
 import { FileItem } from "./FileItem";
 
 interface SidebarProps {
@@ -58,8 +60,8 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
 
     return (
         <aside className="w-60 bg-[#12151c] shadow-[1px_0_3px_0_rgba(0,0,0,0.35)] flex flex-col shrink-0 select-none relative z-10">
-            <div className="px-3 pt-3 pb-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-500">
-                Explorador
+            <div className="px-3 pt-3 pb-1.5">
+                <Label>Explorador</Label>
             </div>
 
             <div className="group px-2 py-1 flex items-center justify-between gap-2">
@@ -67,27 +69,30 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
                     {projectName}
                 </span>
                 <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                    <button
-                        onClick={() => openModal('file', '')}
-                        className="text-gray-500 hover:text-[#5865F2] p-0.5 rounded transition-colors"
-                        title="Nuevo archivo"
-                    >
-                        <i className="bi bi-file-earmark-plus text-[13px]"></i>
-                    </button>
-                    <button
-                        onClick={() => openModal('folder', '')}
-                        className="text-gray-500 hover:text-[#5865F2] p-0.5 rounded transition-colors"
-                        title="Nueva carpeta"
-                    >
-                        <i className="bi bi-folder-plus text-[13px]"></i>
-                    </button>
-                    <button
-                        onClick={onRefresh}
-                        className="text-gray-500 hover:text-[#5865F2] p-0.5 rounded transition-colors"
-                        title="Actualizar"
-                    >
-                        <i className="bi bi-arrow-clockwise text-[13px]"></i>
-                    </button>
+                    <Tooltip label="Nuevo archivo">
+                        <button
+                            onClick={() => openModal('file', '')}
+                            className="text-gray-500 hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                        >
+                            <i className="bi bi-file-earmark-plus text-[13px]"></i>
+                        </button>
+                    </Tooltip>
+                    <Tooltip label="Nueva carpeta">
+                        <button
+                            onClick={() => openModal('folder', '')}
+                            className="text-gray-500 hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                        >
+                            <i className="bi bi-folder-plus text-[13px]"></i>
+                        </button>
+                    </Tooltip>
+                    <Tooltip label="Actualizar">
+                        <button
+                            onClick={onRefresh}
+                            className="text-gray-500 hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                        >
+                            <i className="bi bi-arrow-clockwise text-[13px]"></i>
+                        </button>
+                    </Tooltip>
                 </div>
             </div>
 

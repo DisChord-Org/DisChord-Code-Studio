@@ -6,6 +6,7 @@ import { Button } from "../components/ui/Button";
 import { Card } from "../features/dashboard/ProjectCard";
 import { Title, Label } from "../components/ui/Typography";
 import { Modal } from "../components/ui/Modal";
+import { Tooltip } from "../components/ui/Tooltip";
 import { WindowControls } from "../components/ui/WindowControls";
 import { formatRelativeTime } from "../utils/Time";
 import { SystemMonitorRings } from "../features/system-monitor/SystemMonitorRings";
@@ -100,7 +101,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
 
             <div className="max-w-2xl">
                 <div className="flex justify-between items-end mb-4">
-                    <Label>Tus Workflows</Label>
+                    <Label className="mb-2">Tus Workflows</Label>
 
                     <div className="flex items-center gap-2">
                         <ViewModeToggle
@@ -152,22 +153,16 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
             </div>
             
             <div className="absolute bottom-0 left-0 flex items-center z-50">
-                <div className="group relative">
-                    <div className="absolute bottom-full left-2 mb-1 bg-[#1e1f22] text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/5 whitespace-nowrap shadow-xl">
-                        Configuración
-                    </div>
+                <Tooltip label="Configuración" placement="top">
                     <button
                         onClick={onOpenSettings}
                         className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 hover:text-white transition-colors"
                     >
                         <i className="bi bi-gear text-lg"></i>
                     </button>
-                </div>
+                </Tooltip>
 
-                <div className="group relative">
-                    <div className="absolute bottom-full left-2 mb-1 bg-[#1e1f22] text-white text-[10px] px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none border border-white/5 whitespace-nowrap shadow-xl">
-                        {updating ? "Abriendo actualizador..." : "Actualizar"}
-                    </div>
+                <Tooltip label={updating ? "Abriendo actualizador..." : "Actualizar"} placement="top">
                     <button
                         onClick={handleUpdate}
                         disabled={loading || updating}
@@ -180,7 +175,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                     >
                         <i className={`bi bi-arrow-clockwise text-lg ${(loading || updating) ? 'animate-spin' : ''}`}></i>
                     </button>
-                </div>
+                </Tooltip>
             </div>
 
             <div className="absolute bottom-4 right-6 flex flex-col items-center gap-2 select-none">

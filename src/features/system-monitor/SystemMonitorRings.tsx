@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { Tooltip } from "../../components/ui/Tooltip";
 import type { SystemStats } from "./types";
 
 const POLL_INTERVAL = 1500;
@@ -51,7 +52,6 @@ const RingGauge = ({
     size?: number;
     showNumber?: boolean;
 }) => {
-    const [hovered, setHovered] = useState(false);
     const stroke = Math.max(size * 0.08, 2);
     const radius = (size - stroke) / 2;
     const circumference = 2 * Math.PI * radius;
@@ -61,11 +61,7 @@ const RingGauge = ({
     const fontSize = Math.max(size * 0.24, 6);
 
     return (
-        <div
-            className="relative flex flex-col items-center"
-            onMouseEnter={() => setHovered(true)}
-            onMouseLeave={() => setHovered(false)}
-        >
+        <Tooltip label={tooltip} placement="top" className="flex-col items-center">
             <div className="relative" style={{ width: size, height: size }}>
                 <svg width={size} height={size} className="-rotate-90">
                     <circle
@@ -103,13 +99,7 @@ const RingGauge = ({
                     {label}
                 </span>
             )}
-
-            {hovered && (
-                <div className="absolute bottom-full mb-2 right-0 bg-[#1e1f22] text-white text-[10px] px-2.5 py-1.5 rounded whitespace-nowrap border border-white/5 shadow-xl z-50 pointer-events-none">
-                    {tooltip}
-                </div>
-            )}
-        </div>
+        </Tooltip>
     );
 };
 

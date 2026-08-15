@@ -1,5 +1,6 @@
 import { useState } from "react";
 import type { FileNode } from "../../types";
+import { Tooltip } from "../../../../components/ui/Tooltip";
 
 const getFileIcon = (name: string): { icon: string; color: string } => {
     const ext = name.toLowerCase().split('.').pop() ?? '';
@@ -76,20 +77,22 @@ export const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextM
 
                 {node.is_dir && (
                     <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onCreateRequest('file', node.relative_path); }}
-                            className="hover:text-[#5865F2] p-0.5 rounded transition-colors"
-                            title="Nuevo archivo"
-                        >
-                            <i className="bi bi-file-earmark-plus text-[11px]"></i>
-                        </button>
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onCreateRequest('folder', node.relative_path); }}
-                            className="hover:text-[#5865F2] p-0.5 rounded transition-colors"
-                            title="Nueva carpeta"
-                        >
-                            <i className="bi bi-folder-plus text-[11px]"></i>
-                        </button>
+                        <Tooltip label="Nuevo archivo">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onCreateRequest('file', node.relative_path); }}
+                                className="hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                            >
+                                <i className="bi bi-file-earmark-plus text-[11px]"></i>
+                            </button>
+                        </Tooltip>
+                        <Tooltip label="Nueva carpeta">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onCreateRequest('folder', node.relative_path); }}
+                                className="hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                            >
+                                <i className="bi bi-folder-plus text-[11px]"></i>
+                            </button>
+                        </Tooltip>
                     </div>
                 )}
             </div>

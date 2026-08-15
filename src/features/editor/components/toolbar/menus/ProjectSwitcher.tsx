@@ -1,5 +1,6 @@
 import { MenuOption } from "./MenuOption";
 import { formatRelativeTime } from "../../../../../utils/Time";
+import { Label } from "../../../../../components/ui/Typography";
 import type { ProjectSummary } from "../../../../../types";
 
 interface ProjectSwitcherProps {
@@ -37,8 +38,8 @@ export const ProjectSwitcher = ({
 
         {isOpen && (
             <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-64 bg-[#1e1f22] border border-[#2b2d31] rounded-lg shadow-2xl py-1 z-[200] animate-in fade-in zoom-in-95 duration-100">
-                <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-gray-600">
-                    Cambiar de proyecto
+                <div className="px-3 py-1.5">
+                    <Label>Cambiar de proyecto</Label>
                 </div>
 
                 <div className="max-h-56 overflow-y-auto">

@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import { Tooltip } from "./Tooltip";
 
 const appWindow = getCurrentWindow();
 
@@ -21,34 +22,39 @@ export const WindowControls = ({
 
     return (
         <div className={`flex items-center h-full ${className}`}>
-            <button
-                onClick={handleMinimize}
-                className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 transition-colors"
-            >
-                <i className="bi bi-dash-lg text-lg"></i>
-            </button>
-
-            {showMaximize && (
+            <Tooltip label="Minimizar" placement="bottom">
                 <button
-                    onClick={handleToggleMaximize}
+                    onClick={handleMinimize}
                     className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 transition-colors"
                 >
-                    <i className="bi bi-square text-[10px]"></i>
+                    <i className="bi bi-dash-lg text-lg"></i>
                 </button>
+            </Tooltip>
+
+            {showMaximize && (
+                <Tooltip label="Maximizar" placement="bottom">
+                    <button
+                        onClick={handleToggleMaximize}
+                        className="w-10 h-10 flex items-center justify-center hover:bg-white/5 text-gray-400 transition-colors"
+                    >
+                        <i className="bi bi-square text-[10px]"></i>
+                    </button>
+                </Tooltip>
             )}
 
-            <button
-                onClick={handleClose}
-                disabled={closeDisabled}
-                title={closeTitle}
-                className={`w-10 h-10 flex items-center justify-center transition-colors ${
-                    closeDisabled
-                        ? "text-gray-700 cursor-not-allowed"
-                        : "hover:bg-red-500 hover:text-white text-gray-400"
-                }`}
-            >
-                <i className="bi bi-x-lg"></i>
-            </button>
+            <Tooltip label={closeTitle ?? "Cerrar"} placement="bottom">
+                <button
+                    onClick={handleClose}
+                    disabled={closeDisabled}
+                    className={`w-10 h-10 flex items-center justify-center transition-colors ${
+                        closeDisabled
+                            ? "text-gray-700 cursor-not-allowed"
+                            : "hover:bg-red-500 hover:text-white text-gray-400"
+                    }`}
+                >
+                    <i className="bi bi-x-lg"></i>
+                </button>
+            </Tooltip>
         </div>
     );
 };

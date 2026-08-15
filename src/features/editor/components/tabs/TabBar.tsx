@@ -1,4 +1,5 @@
 import type { OpenTab } from "../../types";
+import { Tooltip } from "../../../../components/ui/Tooltip";
 
 interface TabBarProps {
     tabs: OpenTab[];
@@ -28,14 +29,15 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                     >
                         <span className="truncate flex-1">{tab.name}</span>
 
-                        <button
-                            onClick={(e) => { e.stopPropagation(); onClose(tab.relative_path); }}
-                            className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-white/10 hover:text-white transition-colors"
-                            title="Cerrar (Ctrl+W)"
-                        >
-                            <span className={`w-1.5 h-1.5 bg-[#5865F2] rounded-full ${tab.isDirty ? "block group-hover:hidden" : "hidden"}`} />
-                            <i className="bi bi-x text-[13px] hidden group-hover:inline"></i>
-                        </button>
+                        <Tooltip label="Cerrar (Ctrl+W)" placement="bottom">
+                            <button
+                                onClick={(e) => { e.stopPropagation(); onClose(tab.relative_path); }}
+                                className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-white/10 hover:text-white transition-colors"
+                            >
+                                <span className={`w-1.5 h-1.5 bg-[#5865F2] rounded-full ${tab.isDirty ? "block group-hover:hidden" : "hidden"}`} />
+                                <i className="bi bi-x text-[13px] hidden group-hover:inline"></i>
+                            </button>
+                        </Tooltip>
                     </div>
                 );
             })}

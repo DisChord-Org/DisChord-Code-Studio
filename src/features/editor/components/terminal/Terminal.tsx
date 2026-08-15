@@ -3,6 +3,8 @@ import { Terminal } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit";
 import { listen } from "@tauri-apps/api/event";
 import "@xterm/xterm/css/xterm.css";
+import { Label } from "../../../../components/ui/Typography";
+import { Tooltip } from "../../../../components/ui/Tooltip";
 
 interface TerminalPanelProps {
     onClose: () => void;
@@ -58,9 +60,7 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
                         <div className="w-2 h-2 rounded-full bg-white/10" />
                         <div className="w-2 h-2 rounded-full bg-white/10" />
                     </div>
-                    <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-gray-500 select-none">
-                        Terminal
-                    </span>
+                    <Label className="select-none">Terminal</Label>
                 </div>
                 
                 <div className="flex items-center gap-4">
@@ -74,13 +74,14 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
 
                     <div className="w-[1px] h-3 bg-white/10" />
 
-                    <button 
-                        onClick={onClose}
-                        className="text-gray-500 hover:text-white transition-colors flex items-center justify-center"
-                        title="Cerrar Terminal"
-                    >
-                        <i className="bi bi-x-lg text-sm"></i>
-                    </button>
+                    <Tooltip label="Cerrar Terminal" placement="bottom">
+                        <button
+                            onClick={onClose}
+                            className="text-gray-500 hover:text-white transition-colors flex items-center justify-center"
+                        >
+                            <i className="bi bi-x-lg text-sm"></i>
+                        </button>
+                    </Tooltip>
                 </div>
             </div>
 

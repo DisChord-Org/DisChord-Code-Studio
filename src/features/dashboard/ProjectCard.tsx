@@ -1,3 +1,5 @@
+import { Tooltip } from "../../components/ui/Tooltip";
+
 interface CardProps {
     title: string;
     subtitle?: string;
@@ -17,15 +19,17 @@ export const Card = ({ title, subtitle, onClick, onDelete }: CardProps) => {
             </div>
 
             {onDelete && (
-                <button
-                    onClick={(e) => {
-                        e.stopPropagation();
-                        onDelete();
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-2 hover:bg-red-500/10 rounded text-red-400 transition-opacity"
-                >
-                ✕
-                </button>
+                <Tooltip label="Borrar proyecto" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                    <button
+                        onClick={(e) => {
+                            e.stopPropagation();
+                            onDelete();
+                        }}
+                        className="p-2 hover:bg-red-500/10 rounded text-red-400"
+                    >
+                    ✕
+                    </button>
+                </Tooltip>
             )}
         </div>
     );
