@@ -12,8 +12,31 @@ use crate::paths::project_path;
 use crate::platform::{silent_command, resolve_chord_command, strip_npm_env, bin_dir, pnpm_command, build_path_env};
 use crate::log_err::LogErr;
 
+fn declared_dependency_names(package_json_path: &Path) -> Vec<String> {
+    let Ok(text) = fs::read_to_string(package_json_path) else { return Vec::new() };
+    let Ok(json) = serde_json::from_str::<serde_json::Value>(&text) else { return Vec::new() };
+
+    let mut names = Vec::new();
+    for key in ["dependencies", "devDependencies"] {
+        if let Some(obj) = json.get(key).and_then(|v| v.as_object()) {
+            names.extend(obj.keys().cloned());
+        }
+    }
+    names
+}
+
+fn dependencies_satisfied(project_dir: &Path) -> bool {
+    let node_modules = project_dir.join("node_modules");
+    if !node_modules.exists() {
+        return false;
+    }
+
+    let names = declared_dependency_names(&project_dir.join("package.json"));
+    names.iter().all(|name| node_modules.join(name).exists())
+}
+
 fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Path) -> Result<(), String> {
-    if project_dir.join("node_modules").exists() || !project_dir.join("package.json").exists() {
+    if !project_dir.join("package.json").exists() || dependencies_satisfied(project_dir) {
         return Ok(());
     }
 
