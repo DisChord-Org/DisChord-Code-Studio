@@ -77,6 +77,17 @@ pub fn node_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     Some(bin_dir(app_handle)?.join("node"))
 }
 
+pub fn build_path_env(app_handle: &tauri::AppHandle) -> Option<std::ffi::OsString> {
+    let mut path_entries = Vec::new();
+    if let Some(dir) = node_dir(app_handle) {
+        path_entries.push(dir);
+    }
+    if let Some(system_path) = std::env::var_os("PATH") {
+        path_entries.extend(std::env::split_paths(&system_path));
+    }
+    std::env::join_paths(path_entries).ok()
+}
+
 #[cfg(target_os = "windows")]
 pub fn node_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     Some(node_dir(app_handle)?.join("node.exe"))

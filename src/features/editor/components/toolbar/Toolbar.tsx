@@ -15,12 +15,13 @@ const appWindow = getCurrentWindow();
 
 type MenuKey = "file" | "edit" | "project" | null;
 
-export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject }: {
+export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject, onOpenPackages }: {
     projectName: string,
     onBack: () => void,
     onRun: () => void,
     isRunning: boolean,
-    onSwitchProject?: (name: string) => void
+    onSwitchProject?: (name: string) => void,
+    onOpenPackages: () => void
 }) => {
     const [openMenu, setOpenMenu] = useState<MenuKey>(null);
     const menuBarRef = useRef<HTMLDivElement>(null);
@@ -96,6 +97,11 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
         setOpenMenu(null);
     };
 
+    const handleOpenPackages = () => {
+        setOpenMenu(null);
+        onOpenPackages();
+    };
+
     return (
         <header
             data-tauri-drag-region
@@ -119,6 +125,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
                         onHover={() => hoverMenu("edit")}
                         projectName={projectName}
                         onOpenHiddenFile={handleOpenHiddenFile}
+                        onOpenPackages={handleOpenPackages}
                     />
 
                     <ToolbarButton

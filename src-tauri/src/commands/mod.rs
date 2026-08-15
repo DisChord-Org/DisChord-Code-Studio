@@ -4,3 +4,4 @@ pub mod process;
 pub mod updater;
 pub mod system_stats;
 pub mod config;
+pub mod packages;

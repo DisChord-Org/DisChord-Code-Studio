@@ -9,23 +9,9 @@ use log::{info, error, warn};
 
 use crate::ChildProcessState;
 use crate::paths::project_path;
-use crate::platform::{silent_command, resolve_chord_command, node_dir, strip_npm_env, bin_dir, pnpm_command};
+use crate::platform::{silent_command, resolve_chord_command, strip_npm_env, bin_dir, pnpm_command, build_path_env};
 use crate::log_err::LogErr;
 
-fn build_path_env(app_handle: &tauri::AppHandle) -> Option<std::ffi::OsString> {
-    let mut path_entries = Vec::new();
-    if let Some(dir) = node_dir(app_handle) {
-        path_entries.push(dir);
-    }
-    if let Some(system_path) = std::env::var_os("PATH") {
-        path_entries.extend(std::env::split_paths(&system_path));
-    }
-    std::env::join_paths(path_entries).ok()
-}
-
-// Los proyectos se clonan/comparten sin `node_modules` (p. ej. vía git), así que
-// si faltan las dependencias hay que instalarlas antes de `chord run`, o el
-// bundle fallará con ERR_MODULE_NOT_FOUND en la máquina que no las tiene.
 fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Path) -> Result<(), String> {
     if project_dir.join("node_modules").exists() || !project_dir.join("package.json").exists() {
         return Ok(());

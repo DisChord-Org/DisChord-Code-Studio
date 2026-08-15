@@ -17,6 +17,7 @@ import {
     type MinimapViewport,
     type OpenTab,
 } from "../features/editor";
+import { PackageManager } from "../features/packages";
 
 const appWindow = getCurrentWindow();
 
@@ -30,6 +31,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
     const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
     const [isRunning, setIsRunning] = useState(false);
     const [showTerminal, setShowTerminal] = useState(false);
+    const [showPackages, setShowPackages] = useState(false);
     const codeCanvasRef = useRef<CodeCanvasHandle>(null);
     const [minimapViewport, setMinimapViewport] = useState<MinimapViewport | undefined>(undefined);
 
@@ -290,6 +292,13 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
                 onRun={handleToggleRun}
                 isRunning={isRunning}
                 onSwitchProject={handleSwitchProject}
+                onOpenPackages={() => setShowPackages(true)}
+            />
+
+            <PackageManager
+                isOpen={showPackages}
+                onClose={() => setShowPackages(false)}
+                projectName={projectName}
             />
 
             <div className="flex flex-1 overflow-hidden relative">

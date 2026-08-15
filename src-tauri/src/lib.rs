@@ -143,7 +143,14 @@ pub fn run() {
             commands::config::get_config,
             commands::config::save_config,
             commands::config::get_config_raw,
-            commands::config::save_config_raw
+            commands::config::save_config_raw,
+
+            commands::packages::pkg_search,
+            commands::packages::list_project_libraries,
+            commands::packages::pkg_install,
+            commands::packages::pkg_uninstall,
+            commands::packages::pkg_use,
+            commands::packages::pkg_unuse
         ])
         .run(tauri::generate_context!())
         .expect("Error fatal al ejecutar la aplicación Tauri");
