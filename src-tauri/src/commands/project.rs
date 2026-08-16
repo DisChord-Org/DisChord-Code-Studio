@@ -87,6 +87,17 @@ pub fn get_projects(app_handle: tauri::AppHandle) -> Vec<ProjectInfo> {
     projects
 }
 
+const DEFAULT_SRC_FOLDERS: [&str; 3] = ["comandos", "eventos", "componentes"];
+
+fn scaffold_project_folders(project_dir: &Path) {
+    for folder in DEFAULT_SRC_FOLDERS {
+        let dir = project_dir.join("src").join(folder);
+        if let Err(e) = fs::create_dir_all(&dir) {
+            warn!("No se pudo crear la carpeta '{}' del proyecto: {}", folder, e);
+        }
+    }
+}
+
 #[tauri::command]
 pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
     info!("Solicitud de creación de proyecto: {}", name);
@@ -112,6 +123,7 @@ pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<
     match init_status {
         Ok(s) if s.success() => {
             info!("Proyecto '{}' creado exitosamente", name);
+            scaffold_project_folders(&path);
             Ok(format!("Proyecto '{}' creado", name))
         },
         Ok(s) => {
