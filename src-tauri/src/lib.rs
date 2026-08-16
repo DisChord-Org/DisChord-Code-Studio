@@ -60,9 +60,10 @@ fn bootstrap_cli_and_updates(app_handle: tauri::AppHandle) {
     }
 }
 
-fn bootstrap_runtime(app_handle: tauri::AppHandle) {
+fn bootstrap_runtime_then_cli(app_handle: tauri::AppHandle) {
     std::thread::spawn(move || {
-        commands::updater::ensure_runtime(app_handle);
+        commands::updater::ensure_runtime(app_handle.clone());
+        bootstrap_cli_and_updates(app_handle);
     });
 }
 
@@ -110,8 +111,7 @@ pub fn run() {
                 info!("Entorno configurado correctamente");
             }
 
-            bootstrap_cli_and_updates(app.handle().clone());
-            bootstrap_runtime(app.handle().clone());
+            bootstrap_runtime_then_cli(app.handle().clone());
 
             Ok(())
         })
