@@ -96,9 +96,36 @@ pub fn looks_like_valid_binary(path: &Path) -> bool {
         return &header == b"MZ";
     }
 
-    #[cfg(not(target_os = "windows"))]
+    // Mach-O (32/64 bits, big/little endian) o binario universal ("fat").
+    #[cfg(target_os = "macos")]
     {
-        true
+        use std::io::Read;
+        const MACHO_MAGICS: [[u8; 4]; 6] = [
+            [0xFE, 0xED, 0xFA, 0xCE],
+            [0xFE, 0xED, 0xFA, 0xCF],
+            [0xCE, 0xFA, 0xED, 0xFE],
+            [0xCF, 0xFA, 0xED, 0xFE],
+            [0xCA, 0xFE, 0xBA, 0xBE],
+            [0xBE, 0xBA, 0xFE, 0xCA],
+        ];
+        let Ok(mut file) = fs::File::open(path) else { return false };
+        let mut header = [0u8; 4];
+        if file.read_exact(&mut header).is_err() {
+            return false;
+        }
+        return MACHO_MAGICS.contains(&header);
+    }
+
+    // ELF.
+    #[cfg(all(unix, not(target_os = "macos")))]
+    {
+        use std::io::Read;
+        let Ok(mut file) = fs::File::open(path) else { return false };
+        let mut header = [0u8; 4];
+        if file.read_exact(&mut header).is_err() {
+            return false;
+        }
+        return &header == b"\x7FELF";
     }
 }
 

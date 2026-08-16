@@ -5,12 +5,12 @@ mod runtime;
 
 use tauri::{Emitter, Manager};
 use serde::{Serialize, Deserialize};
+use log::error;
 
 use crate::UpdateState;
 
 pub use ide::run_ide_update;
-pub use cli::{is_cli_installed, run_initial_cli_install, run_cli_compiler_update, setup_environment};
-pub use runtime::ensure_runtime;
+pub use cli::setup_environment;
 pub use window::*;
 
 #[derive(Clone, Serialize, Deserialize)]
@@ -58,11 +58,6 @@ fn emit_progress(
     let _ = app_handle.emit("update-progress", payload);
 }
 
-fn emit_error_both(app_handle: &tauri::AppHandle, message: String) {
-    emit_progress(app_handle, "cli", "error", None, None, None, None, Some(message.clone()));
-    emit_progress(app_handle, "compiler", "error", None, None, None, None, Some(message));
-}
-
 #[tauri::command]
 pub fn get_update_state(app_handle: tauri::AppHandle) -> Vec<UpdateProgress> {
     let state = app_handle.state::<UpdateState>();
@@ -70,21 +65,40 @@ pub fn get_update_state(app_handle: tauri::AppHandle) -> Vec<UpdateProgress> {
     map.values().cloned().collect()
 }
 
+// the completly sequency,
+// never in parallel, because the binaries share the same folder (~/.dischord/bin) and running them in parallel was producing corrupted binaries when the IDE auto-update killed the process in the middle of a concurrent download.:
+//   1. Editor (autoactualización del propio IDE)
+//   2. CLI ('chord')
+//   3. Compilador
+//   4. Node.js embebido
+//   5. pnpm embebido
+pub fn run_full_update_sequence(app_handle: tauri::AppHandle) {
+    std::thread::spawn(move || {
+        if let Err(e) = window::open_update_window(&app_handle) {
+            error!("No se pudo abrir la ventana de actualización: {}", e);
+        }
+
+        // 1. Editor
+        tauri::async_runtime::block_on(run_ide_update(app_handle.clone()));
+
+        // 2. CLI
+        let cli_ready = cli::ensure_cli_updated(&app_handle);
+
+        // 3. Compilador (solo tiene sentido si la CLI quedó operativa)
+        if cli_ready {
+            cli::update_compiler(&app_handle);
+        } else {
+            emit_progress(&app_handle, "compiler", "error", None, None, None, None,
+                Some("No se pudo comprobar: la CLI no está disponible.".into()));
+        }
+
+        // 4 y 5. Node.js y pnpm (ensure_runtime ya los hace en este orden)
+        runtime::ensure_runtime(app_handle);
+    });
+}
+
 #[tauri::command]
 pub async fn start_full_update(app_handle: tauri::AppHandle) -> Result<(), String> {
-    window::open_update_window(&app_handle)?;
-
-    let ide_handle = app_handle.clone();
-    tauri::async_runtime::spawn(async move {
-        run_ide_update(ide_handle).await;
-    });
-
-    cli::run_cli_compiler_update(app_handle.clone());
-
-    let runtime_handle = app_handle.clone();
-    std::thread::spawn(move || {
-        runtime::ensure_runtime(runtime_handle);
-    });
-
+    run_full_update_sequence(app_handle);
     Ok(())
 }
