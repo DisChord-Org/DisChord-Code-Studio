@@ -49,7 +49,6 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
     useEffect(() => {
         (async () => {
             await appWindow.setResizable(true);
-            await appWindow.setMaximizable(true);
             await appWindow.maximize();
         })();
 
@@ -67,7 +66,6 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
                 await appWindow.setSize(new LogicalSize(800, 600));
                 await appWindow.center();
                 await appWindow.setResizable(false);
-                await appWindow.setMaximizable(false);
             })();
         };
     }, [projectName]);
