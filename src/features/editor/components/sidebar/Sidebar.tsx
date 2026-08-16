@@ -96,7 +96,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
                 </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-2">
+            <div className="custom-scrollbar flex-1 overflow-y-auto pb-2">
                 {files.length === 0 ? (
                     <div className="text-[11px] text-gray-600 italic px-4 py-2">
                         No hay archivos todavía
@@ -115,6 +115,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
                             }}
                             selectedPath={selectedPath}
                             onSelect={setSelectedPath}
+                            defaultOpen={file.is_dir && file.name === "src"}
                         />
                     ))
                 )}

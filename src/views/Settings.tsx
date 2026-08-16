@@ -45,7 +45,7 @@ function Settings({ onBack }: SettingsProps) {
                         onEditJson={() => setEditingJson(true)}
                     />
 
-                    <main className="flex-1 overflow-y-auto p-10">
+                    <main className="custom-scrollbar flex-1 overflow-y-auto p-10">
                         <Title>{SECTION_TITLES[section]}</Title>
 
                         {section === "dashboard" ? (

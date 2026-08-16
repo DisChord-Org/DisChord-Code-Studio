@@ -56,7 +56,7 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
 
                     <div className="h-[1px] bg-[#2b2d31] my-1 mx-2" />
 
-                    <div className="max-h-56 overflow-y-auto">
+                    <div className="custom-scrollbar max-h-56 overflow-y-auto">
                         {loading ? (
                             <div className="px-3 py-2 text-[11px] text-gray-500">Cargando...</div>
                         ) : hiddenFiles.length === 0 ? (

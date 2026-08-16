@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
 
 import { Button } from "../components/ui/Button";
-import { Card } from "../features/dashboard/ProjectCard";
+import { Card, CreatingProjectCard } from "../features/dashboard/ProjectCard";
 import { Title, Label } from "../components/ui/Typography";
 import { Modal } from "../components/ui/Modal";
 import { Tooltip } from "../components/ui/Tooltip";
@@ -21,6 +21,7 @@ interface DashboardProps {
 function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
     const [loading, setLoading] = useState(true);
+    const [creatingProjectName, setCreatingProjectName] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [updating, setUpdating] = useState(false);
     const [appVersion, setAppVersion] = useState<string>("");
@@ -48,12 +49,15 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
 
     const handleCreateProject = async (name: string) => {
         if (!name) return;
-        
+
+        setCreatingProjectName(name);
         try {
             await invoke("create_new_project", { name });
             await loadProjects();
         } catch (error) {
             alert(error);
+        } finally {
+            setCreatingProjectName(null);
         }
     };
 
@@ -121,7 +125,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
 
                 {loading ? (
                     <p className="text-gray-500 animate-pulse">Buscando en Documentos...</p>
-                ) : projects.length > 0 ? (
+                ) : projects.length > 0 || creatingProjectName ? (
                     <div
                         key={config.view_mode}
                         className={`animate-in fade-in duration-300 ${
@@ -130,6 +134,12 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                                 : "grid gap-3"
                         }`}
                     >
+                        {creatingProjectName && (
+                            <div className="animate-in fade-in zoom-in-95 duration-300">
+                                <CreatingProjectCard name={creatingProjectName} />
+                            </div>
+                        )}
+
                         {projects.map((project, i) => (
                             <div
                                 key={project.name}

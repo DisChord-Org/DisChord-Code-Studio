@@ -311,7 +311,7 @@ function Update() {
                 </div>
             </div>
 
-            <div className="flex flex-col gap-3 max-w-xl mx-auto w-full overflow-y-auto">
+            <div className="custom-scrollbar flex flex-col gap-3 max-w-xl mx-auto w-full overflow-y-auto">
                 {TARGET_ORDER.map((key, i) => (
                     <div
                         key={key}

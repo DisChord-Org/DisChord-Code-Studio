@@ -28,10 +28,11 @@ interface FileItemProps {
     onContextMenu: (e: React.MouseEvent, path: string) => void;
     selectedPath: string | null;
     onSelect: (path: string) => void;
+    defaultOpen?: boolean;
 }
 
-export const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextMenu, selectedPath, onSelect }: FileItemProps) => {
-    const [isOpen, setIsOpen] = useState(false);
+export const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextMenu, selectedPath, onSelect, defaultOpen = false }: FileItemProps) => {
+    const [isOpen, setIsOpen] = useState(defaultOpen);
     const isChordFile = !node.is_dir && node.name.toLowerCase().endsWith('.chord');
     const isSelected = selectedPath === node.relative_path;
 

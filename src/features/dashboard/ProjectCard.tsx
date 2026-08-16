@@ -34,3 +34,18 @@ export const Card = ({ title, subtitle, onClick, onDelete }: CardProps) => {
         </div>
     );
 };
+
+export const CreatingProjectCard = ({ name }: { name: string }) => (
+    <div className="relative overflow-hidden flex items-center gap-3 p-4 bg-[#111214] border border-[#5865F2]/30 rounded-lg">
+        <div className="card-shimmer" />
+
+        <div className="w-8 h-8 rounded-md bg-[#5865F2]/10 flex items-center justify-center shrink-0">
+            <i className="bi bi-arrow-repeat text-[#5865F2] text-sm animate-spin"></i>
+        </div>
+
+        <div className="min-w-0">
+            <h3 className="text-sm font-semibold text-gray-200 truncate">{name}</h3>
+            <p className="text-xs text-[#5865F2]/80 mt-1">Creando proyecto...</p>
+        </div>
+    </div>
+);

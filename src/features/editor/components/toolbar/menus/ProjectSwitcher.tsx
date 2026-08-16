@@ -42,7 +42,7 @@ export const ProjectSwitcher = ({
                     <Label>Cambiar de proyecto</Label>
                 </div>
 
-                <div className="max-h-56 overflow-y-auto">
+                <div className="custom-scrollbar max-h-56 overflow-y-auto">
                     {loading ? (
                         <div className="px-3 py-2 text-[12px] text-gray-500">Cargando...</div>
                     ) : projects.length === 0 ? (
