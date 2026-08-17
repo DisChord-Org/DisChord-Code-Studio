@@ -3,7 +3,7 @@ use std::io::Cursor;
 use std::path::Path;
 
 use serde::Deserialize;
-use log::{info, warn};
+use log::{info, warn, error};
 
 use crate::platform;
 
@@ -125,10 +125,19 @@ fn install_pnpm(app_handle: &tauri::AppHandle) -> Result<(), String> {
     }
     let install_dir = platform::node_dir(app_handle).ok_or("No se pudo determinar la carpeta de Node.js")?;
 
-    for stale in ["pnpm", "pnpm.cmd", "pnpm.ps1", "pnpx", "pnpx.cmd", "pnpx.ps1"] {
-        let p = install_dir.join(stale);
-        if p.exists() {
-            let _ = fs::remove_file(&p);
+    let stale_candidates = [
+        install_dir.join("pnpm"),
+        install_dir.join("pnpm.cmd"),
+        install_dir.join("pnpm.ps1"),
+        install_dir.join("pnpx"),
+        install_dir.join("pnpx.cmd"),
+        install_dir.join("pnpx.ps1"),
+        install_dir.join("bin").join("pnpm"),
+        install_dir.join("bin").join("pnpx"),
+    ];
+    for stale in stale_candidates {
+        if fs::symlink_metadata(&stale).is_ok() {
+            let _ = fs::remove_file(&stale);
         }
     }
 
@@ -140,11 +149,17 @@ fn install_pnpm(app_handle: &tauri::AppHandle) -> Result<(), String> {
         .arg("--prefix")
         .arg(&install_dir);
     platform::strip_npm_env(&mut cmd);
+    cmd.stdout(std::process::Stdio::piped());
+    cmd.stderr(std::process::Stdio::piped());
 
-    let status = cmd.status().map_err(|e| e.to_string())?;
+    let output = cmd.output().map_err(|e| e.to_string())?;
 
-    if !status.success() {
-        return Err("'npm install -g pnpm' falló".into());
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        let stdout = String::from_utf8_lossy(&output.stdout);
+        let detail = if !stderr.trim().is_empty() { stderr.trim() } else { stdout.trim() };
+        error!("'npm install -g pnpm' falló: {}", detail);
+        return Err(format!("'npm install -g pnpm' falló: {}", detail));
     }
 
     Ok(())

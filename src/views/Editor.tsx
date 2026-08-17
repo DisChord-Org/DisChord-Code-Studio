@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
-import { listen } from "@tauri-apps/api/event";
+import { emit, listen } from "@tauri-apps/api/event";
 
 import {
     Toolbar,
@@ -247,6 +247,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
             } catch (e) {
                 setIsRunning(false);
                 console.error("Error al ejecutar:", e);
+                emit("terminal-data", `\x1b[1;31m[!] No se pudo ejecutar: ${e}\x1b[0m\r\n`);
             }
         }, 300);
     };
