@@ -407,13 +407,5 @@ pub fn register_bin_dir_in_path(bin_dir: &Path) -> Result<(), Box<dyn std::error
         info!("PATH actualizado en {:?}", profile);
     }
 
-    let mut path_entries = vec![bin_dir.to_path_buf()];
-    if let Some(system_path) = std::env::var_os("PATH") {
-        path_entries.extend(std::env::split_paths(&system_path));
-    }
-    if let Ok(joined) = std::env::join_paths(path_entries) {
-        std::env::set_var("PATH", joined);
-    }
-
     Ok(())
 }

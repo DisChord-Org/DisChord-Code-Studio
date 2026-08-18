@@ -149,6 +149,10 @@ fn install_pnpm(app_handle: &tauri::AppHandle) -> Result<(), String> {
         .arg("--prefix")
         .arg(&install_dir);
     platform::strip_npm_env(&mut cmd);
+
+    if let Some(path) = platform::build_path_env(app_handle) {
+        cmd.env("PATH", path);
+    }
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
 

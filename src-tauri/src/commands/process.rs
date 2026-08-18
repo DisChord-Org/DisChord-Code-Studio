@@ -35,11 +35,7 @@ fn dependencies_satisfied(project_dir: &Path) -> bool {
     names.iter().all(|name| node_modules.join(name).exists())
 }
 
-fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Path) -> Result<(), String> {
-    if !project_dir.join("package.json").exists() || dependencies_satisfied(project_dir) {
-        return Ok(());
-    }
-
+fn run_pnpm_install_once(app_handle: &tauri::AppHandle, project_dir: &Path) -> Result<(), String> {
     let mut command = pnpm_command(app_handle)
         .ok_or("No se encontró pnpm para instalar las dependencias del proyecto")?;
     command.current_dir(project_dir);
@@ -49,8 +45,6 @@ fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Pa
     command.arg("install")
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
-
-    let _ = app_handle.emit("terminal-data", "\x1b[1;33m[*] Instalando dependencias del proyecto (pnpm install)...\x1b[0m\r\n");
 
     let mut child = command.spawn().map_err(|e| format!("No se pudo ejecutar 'pnpm install': {}", e))?;
 
@@ -85,8 +79,40 @@ fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Pa
         return Err("Fallo al instalar las dependencias del proyecto ('pnpm install')".into());
     }
 
-    let _ = app_handle.emit("terminal-data", "\x1b[1;32m[*] Dependencias instaladas correctamente.\x1b[0m\r\n");
     Ok(())
+}
+
+const PNPM_INSTALL_ATTEMPTS: u32 = 3;
+
+fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Path) -> Result<(), String> {
+    if !project_dir.join("package.json").exists() || dependencies_satisfied(project_dir) {
+        return Ok(());
+    }
+
+    let _ = app_handle.emit("terminal-data", "\x1b[1;33m[*] Instalando dependencias del proyecto (pnpm install)...\x1b[0m\r\n");
+
+    let mut last_err = String::new();
+    for attempt in 1..=PNPM_INSTALL_ATTEMPTS {
+        match run_pnpm_install_once(app_handle, project_dir) {
+            Ok(()) => {
+                let _ = app_handle.emit("terminal-data", "\x1b[1;32m[*] Dependencias instaladas correctamente.\x1b[0m\r\n");
+                return Ok(());
+            }
+            Err(e) => {
+                last_err = e;
+                if attempt < PNPM_INSTALL_ATTEMPTS {
+                    warn!("'pnpm install' falló (intento {}/{}): {}", attempt, PNPM_INSTALL_ATTEMPTS, last_err);
+                    let _ = app_handle.emit("terminal-data", format!(
+                        "\x1b[33m[*] 'pnpm install' falló, reintentando ({}/{})...\x1b[0m\r\n",
+                        attempt, PNPM_INSTALL_ATTEMPTS
+                    ));
+                    thread::sleep(std::time::Duration::from_secs(2));
+                }
+            }
+        }
+    }
+
+    Err(last_err)
 }
 
 #[tauri::command]
