@@ -133,9 +133,18 @@ pub fn node_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     Some(bin_dir(app_handle)?.join("node"))
 }
 
+#[cfg(target_os = "windows")]
+fn node_exec_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    node_dir(app_handle)
+}
+#[cfg(not(target_os = "windows"))]
+fn node_exec_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    Some(node_dir(app_handle)?.join("bin"))
+}
+
 pub fn build_path_env(app_handle: &tauri::AppHandle) -> Option<std::ffi::OsString> {
     let mut path_entries = Vec::new();
-    if let Some(dir) = node_dir(app_handle) {
+    if let Some(dir) = node_exec_dir(app_handle) {
         path_entries.push(dir);
     }
     if let Some(system_path) = std::env::var_os("PATH") {
@@ -364,6 +373,47 @@ pub fn register_bin_dir_in_path(bin_dir: &Path) -> Result<(), Box<dyn std::error
 }
 
 #[cfg(not(target_os = "windows"))]
-pub fn register_bin_dir_in_path(_bin_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+pub fn register_bin_dir_in_path(bin_dir: &Path) -> Result<(), Box<dyn std::error::Error>> {
+    let Some(home) = std::env::var_os("HOME").map(PathBuf::from) else {
+        return Ok(());
+    };
+
+    const MARKER: &str = "# Añadido por DisChord Code Studio";
+    let bin_dir_str = bin_dir.to_string_lossy();
+    let export_block = format!("\n{}\nexport PATH=\"{}:$PATH\"\n", MARKER, bin_dir_str);
+
+    let shell = std::env::var("SHELL").unwrap_or_default();
+    let profiles: Vec<PathBuf> = if shell.contains("zsh") {
+        vec![home.join(".zshrc"), home.join(".zprofile")]
+    } else if shell.contains("bash") {
+        vec![home.join(".bash_profile"), home.join(".bashrc")]
+    } else {
+        vec![home.join(".profile")]
+    };
+
+    for profile in profiles {
+        let existing = fs::read_to_string(&profile).unwrap_or_default();
+        if existing.contains(MARKER) {
+            continue;
+        }
+
+        let mut contents = existing;
+        if !contents.is_empty() && !contents.ends_with('\n') {
+            contents.push('\n');
+        }
+        contents.push_str(&export_block);
+
+        fs::write(&profile, contents)?;
+        info!("PATH actualizado en {:?}", profile);
+    }
+
+    let mut path_entries = vec![bin_dir.to_path_buf()];
+    if let Some(system_path) = std::env::var_os("PATH") {
+        path_entries.extend(std::env::split_paths(&system_path));
+    }
+    if let Ok(joined) = std::env::join_paths(path_entries) {
+        std::env::set_var("PATH", joined);
+    }
+
     Ok(())
 }
