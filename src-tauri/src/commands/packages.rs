@@ -1,33 +1,89 @@
+use std::collections::HashMap;
 use std::fs;
-use std::process::Command;
+use std::io::{BufRead, BufReader};
+use std::path::Path;
+use std::process::Stdio;
 
 use log::{error, info, warn};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
+use tauri::Emitter;
 
 use crate::log_err::LogErr;
 use crate::paths::project_path;
 use crate::platform::{build_path_env, resolve_chord_command, strip_npm_env};
 
+#[derive(Deserialize)]
+struct RawVersionInfo {
+    #[serde(rename = "isAudited")]
+    is_audited: bool,
+    #[serde(rename = "downloadUrl")]
+    download_url: String,
+    #[serde(rename = "createdAt")]
+    created_at: i64,
+}
+
+#[derive(Deserialize)]
+struct RawPackageEntry {
+    name: String,
+    description: String,
+    #[serde(rename = "trustLevel")]
+    trust_level: i32,
+    repository: String,
+    version: String,
+    #[serde(rename = "isAudited")]
+    is_audited: bool,
+    versions: HashMap<String, RawVersionInfo>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct PackageVersion {
+    pub tag: String,
+    pub is_audited: bool,
+    pub download_url: String,
+    pub created_at: i64,
+}
+
 #[derive(Serialize, Clone)]
 pub struct PackageEntry {
     pub name: String,
-    pub latest_version: String,
     pub description: String,
-    pub repo: Option<String>,
-    pub tags: Vec<String>,
-    pub versions: Vec<String>,
+    pub trust_level: i32,
+    pub repository: String,
+    pub latest_version: String,
+    pub is_audited: bool,
+    pub versions: Vec<PackageVersion>,
+}
+
+impl From<RawPackageEntry> for PackageEntry {
+    fn from(raw: RawPackageEntry) -> Self {
+        let mut versions: Vec<PackageVersion> = raw
+            .versions
+            .into_iter()
+            .map(|(tag, info)| PackageVersion {
+                tag,
+                is_audited: info.is_audited,
+                download_url: info.download_url,
+                created_at: info.created_at,
+            })
+            .collect();
+        versions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+
+        PackageEntry {
+            name: raw.name,
+            description: raw.description,
+            trust_level: raw.trust_level,
+            repository: raw.repository,
+            latest_version: raw.version,
+            is_audited: raw.is_audited,
+            versions,
+        }
+    }
 }
 
 #[derive(Serialize, Clone)]
 pub struct ProjectLibrary {
     pub name: String,
     pub version: String,
-}
-
-#[derive(Serialize)]
-pub struct PkgOpOutcome {
-    pub success: bool,
-    pub output: String,
 }
 
 fn normalize_version(version: &str) -> String {
@@ -39,77 +95,18 @@ fn normalize_version(version: &str) -> String {
     }
 }
 
-fn configure_pkg_command(app_handle: &tauri::AppHandle, command: &mut Command) {
+fn configure_pkg_command(app_handle: &tauri::AppHandle, command: &mut std::process::Command) {
     strip_npm_env(command);
     if let Some(path) = build_path_env(app_handle) {
         command.env("PATH", path);
     }
 }
 
-fn parse_search_output(stdout: &str) -> Vec<PackageEntry> {
-    let lines: Vec<&str> = stdout.lines().collect();
-    let mut entries = Vec::new();
-    let mut i = 0;
-
-    while i < lines.len() {
-        let header = lines[i].trim();
-
-        let Some(rest) = header.strip_prefix("+ ") else {
-            i += 1;
-            continue;
-        };
-
-        let Some((name_and_version, description)) = rest.split_once(" - ") else {
-            i += 1;
-            continue;
-        };
-
-        let (name, latest_version) = match name_and_version.split_once(" (v") {
-            Some((n, v)) => (n.trim().to_string(), format!("v{}", v.trim_end_matches(')').trim())),
-            None => (name_and_version.trim().to_string(), String::new()),
-        };
-
-        let mut repo = None;
-        let mut tags = Vec::new();
-        let mut versions = Vec::new();
-
-        i += 1;
-        while i < lines.len() {
-            let line = lines[i].trim();
-
-            if line.is_empty() || line.starts_with("+ ") {
-                break;
-            }
-
-            if let Some(value) = line.strip_prefix("- ") {
-                if value.eq_ignore_ascii_case("versiones:") {
-                    i += 1;
-                    if i < lines.len() {
-                        versions = lines[i].split_whitespace().map(str::to_string).collect();
-                    }
-                    i += 1;
-                    break;
-                } else if repo.is_none() && value.contains('/') {
-                    repo = Some(value.to_string());
-                } else {
-                    tags.push(value.to_string());
-                }
-            }
-
-            i += 1;
-        }
-
-        entries.push(PackageEntry { name, latest_version, description: description.trim().to_string(), repo, tags, versions });
-    }
-
-    entries
-}
-
 #[tauri::command]
 pub fn pkg_search(app_handle: tauri::AppHandle, query: Option<String>, installed_only: bool) -> Result<Vec<PackageEntry>, String> {
     let mut command = resolve_chord_command(&app_handle);
     configure_pkg_command(&app_handle, &mut command);
-    command.arg("pkg").arg("search");
+    command.arg("pkg").arg("search").arg("--json");
 
     if installed_only {
         command.arg("-i");
@@ -121,10 +118,6 @@ pub fn pkg_search(app_handle: tauri::AppHandle, query: Option<String>, installed
     let output = command.output().log_err("No se pudo ejecutar 'chord pkg search'")?;
     let stdout = String::from_utf8_lossy(&output.stdout);
 
-    if stdout.trim().starts_with("- Sin resultados") {
-        return Ok(vec![]);
-    }
-
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let message = if stderr.trim().is_empty() { stdout.trim() } else { stderr.trim() };
@@ -132,7 +125,15 @@ pub fn pkg_search(app_handle: tauri::AppHandle, query: Option<String>, installed
         return Err(message.to_string());
     }
 
-    Ok(parse_search_output(&stdout))
+    let trimmed = stdout.trim();
+    if trimmed.is_empty() {
+        return Ok(vec![]);
+    }
+
+    let raw: Vec<RawPackageEntry> = serde_json::from_str(trimmed)
+        .map_err(|e| format!("No se pudo interpretar la respuesta de 'chord pkg search': {}", e))?;
+
+    Ok(raw.into_iter().map(PackageEntry::from).collect())
 }
 
 #[tauri::command]
@@ -165,7 +166,7 @@ pub fn list_project_libraries(app_handle: tauri::AppHandle, project_name: String
     Ok(libraries)
 }
 
-fn ensure_lib_gitignored(project_dir: &std::path::Path) {
+fn ensure_lib_gitignored(project_dir: &Path) {
     let gitignore_path = project_dir.join(".gitignore");
     let Ok(existing) = fs::read_to_string(&gitignore_path) else { return };
 
@@ -184,46 +185,156 @@ fn ensure_lib_gitignored(project_dir: &std::path::Path) {
     }
 }
 
-fn run_pkg_op(app_handle: &tauri::AppHandle, args: &[&str], cwd: Option<&std::path::Path>, context: &str) -> Result<PkgOpOutcome, String> {
+#[derive(Deserialize)]
+struct PkgLine {
+    package: String,
+    #[serde(default)]
+    version: Option<String>,
+    phase: String,
+    #[serde(default)]
+    percent: Option<f64>,
+    #[serde(default)]
+    current_bytes: Option<u64>,
+    #[serde(default)]
+    total_bytes: Option<u64>,
+    #[serde(default)]
+    message: Option<String>,
+    #[serde(default)]
+    path: Option<String>,
+}
+
+#[derive(Serialize, Clone)]
+struct PkgProgressPayload {
+    op: String,
+    package: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    version: Option<String>,
+    phase: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    percent: Option<f64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    current_bytes: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    total_bytes: Option<u64>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    message: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    path: Option<String>,
+}
+
+#[derive(Serialize, Clone)]
+pub struct PkgResult {
+    pub package: String,
+    pub version: Option<String>,
+    pub phase: String,
+    pub message: Option<String>,
+}
+
+#[derive(Serialize)]
+pub struct PkgOpOutcome {
+    pub success: bool,
+    pub output: String,
+    pub results: Vec<PkgResult>,
+}
+
+fn run_pkg_json_op(
+    app_handle: &tauri::AppHandle,
+    op: &str,
+    args: &[&str],
+    cwd: Option<&Path>,
+    success_phases: &[&str],
+    context: &str,
+) -> Result<PkgOpOutcome, String> {
     let mut command = resolve_chord_command(app_handle);
     configure_pkg_command(app_handle, &mut command);
-    command.arg("pkg").args(args);
+    command.arg("pkg").args(args).arg("--json");
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
 
     if let Some(cwd) = cwd {
         command.current_dir(cwd);
     }
 
-    let output = command.output().log_err(context)?;
-    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
-    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
-    let combined = [stdout, stderr].into_iter().filter(|s| !s.is_empty()).collect::<Vec<_>>().join("\n");
+    let mut child = command.spawn().log_err(context)?;
+    let stdout = child.stdout.take().expect("Fallo al capturar stdout de chord pkg");
+    let reader = BufReader::new(stdout);
 
-    if output.status.success() {
-        info!("{}: éxito ({})", context, args.join(" "));
-    } else {
-        warn!("{}: falló ({}) -> {}", context, args.join(" "), combined);
+    let mut results: Vec<PkgResult> = Vec::new();
+
+    for line in reader.lines() {
+        let Ok(line) = line else { continue };
+        let trimmed = line.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+
+        let Ok(evt) = serde_json::from_str::<PkgLine>(trimmed) else {
+            warn!("{}: línea NDJSON no reconocida: {}", context, trimmed);
+            continue;
+        };
+
+        let _ = app_handle.emit(
+            "pkg-progress",
+            PkgProgressPayload {
+                op: op.to_string(),
+                package: evt.package.clone(),
+                version: evt.version.clone(),
+                phase: evt.phase.clone(),
+                percent: evt.percent,
+                current_bytes: evt.current_bytes,
+                total_bytes: evt.total_bytes,
+                message: evt.message.clone(),
+                path: evt.path.clone(),
+            },
+        );
+
+        match results.iter_mut().find(|r| r.package == evt.package) {
+            Some(existing) => {
+                existing.phase = evt.phase;
+                existing.version = evt.version.or(existing.version.take());
+                existing.message = evt.message.or(existing.message.take());
+            }
+            None => results.push(PkgResult { package: evt.package, version: evt.version, phase: evt.phase, message: evt.message }),
+        }
     }
 
-    Ok(PkgOpOutcome { success: output.status.success(), output: combined })
+    let exit_ok = matches!(child.wait(), Ok(status) if status.success());
+    let success = exit_ok && results.iter().all(|r| success_phases.contains(&r.phase.as_str()));
+    let output = results
+        .iter()
+        .map(|r| match &r.message {
+            Some(msg) => format!("{}: {}", r.package, msg),
+            None => format!("{}: {}", r.package, r.phase),
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    if success {
+        info!("{}: éxito ({})", context, args.join(" "));
+    } else {
+        warn!("{}: falló ({}) -> {}", context, args.join(" "), output);
+    }
+
+    Ok(PkgOpOutcome { success, output, results })
 }
 
 #[tauri::command]
 pub fn pkg_install(app_handle: tauri::AppHandle, name: String, version: String) -> Result<PkgOpOutcome, String> {
     let target = format!("{}@{}", name, normalize_version(&version));
-    run_pkg_op(&app_handle, &["install", &target], None, "No se pudo ejecutar 'chord pkg install'")
+    run_pkg_json_op(&app_handle, "install", &["install", &target], None, &["done", "already_installed"], "No se pudo ejecutar 'chord pkg install'")
 }
 
 #[tauri::command]
 pub fn pkg_uninstall(app_handle: tauri::AppHandle, name: String, version: String) -> Result<PkgOpOutcome, String> {
     let version = normalize_version(&version);
-    run_pkg_op(&app_handle, &["uninstall", &name, &version], None, "No se pudo ejecutar 'chord pkg uninstall'")
+    run_pkg_json_op(&app_handle, "uninstall", &["uninstall", &name, &version], None, &["uninstalled"], "No se pudo ejecutar 'chord pkg uninstall'")
 }
 
 #[tauri::command]
 pub fn pkg_use(app_handle: tauri::AppHandle, project_name: String, name: String, version: String) -> Result<PkgOpOutcome, String> {
     let version = normalize_version(&version);
     let project_dir = project_path(&app_handle, &project_name);
-    let outcome = run_pkg_op(&app_handle, &["use", &name, &version], Some(&project_dir), "No se pudo ejecutar 'chord pkg use'")?;
+    let outcome = run_pkg_json_op(&app_handle, "use", &["use", &name, &version], Some(&project_dir), &["linked"], "No se pudo ejecutar 'chord pkg use'")?;
 
     if outcome.success {
         ensure_lib_gitignored(&project_dir);
@@ -235,5 +346,17 @@ pub fn pkg_use(app_handle: tauri::AppHandle, project_name: String, name: String,
 #[tauri::command]
 pub fn pkg_unuse(app_handle: tauri::AppHandle, project_name: String, name: String) -> Result<PkgOpOutcome, String> {
     let project_dir = project_path(&app_handle, &project_name);
-    run_pkg_op(&app_handle, &["unuse", &name], Some(&project_dir), "No se pudo ejecutar 'chord pkg unuse'")
+    run_pkg_json_op(&app_handle, "unuse", &["unuse", &name], Some(&project_dir), &["unlinked"], "No se pudo ejecutar 'chord pkg unuse'")
+}
+
+#[tauri::command]
+pub fn pkg_sync(app_handle: tauri::AppHandle, project_name: String) -> Result<PkgOpOutcome, String> {
+    let project_dir = project_path(&app_handle, &project_name);
+    let outcome = run_pkg_json_op(&app_handle, "sync", &["sync"], Some(&project_dir), &["synced"], "No se pudo ejecutar 'chord pkg sync'")?;
+
+    if outcome.success {
+        ensure_lib_gitignored(&project_dir);
+    }
+
+    Ok(outcome)
 }
