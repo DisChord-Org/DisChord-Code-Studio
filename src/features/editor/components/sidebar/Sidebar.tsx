@@ -59,7 +59,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
     };
 
     return (
-        <aside className="w-60 bg-[#12151c] shadow-[1px_0_3px_0_rgba(0,0,0,0.35)] flex flex-col shrink-0 select-none relative z-10">
+        <aside className="w-60 bg-panel-alt shadow-[1px_0_3px_0_rgba(0,0,0,0.35)] flex flex-col shrink-0 select-none relative z-10">
             <div className="px-3 pt-3 pb-1.5">
                 <Label>Explorador</Label>
             </div>
@@ -72,7 +72,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
                     <Tooltip label="Nuevo archivo">
                         <button
                             onClick={() => openModal('file', '')}
-                            className="text-gray-500 hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                            className="text-gray-500 hover:text-accent p-0.5 rounded transition-colors"
                         >
                             <i className="bi bi-file-earmark-plus text-[13px]"></i>
                         </button>
@@ -80,7 +80,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
                     <Tooltip label="Nueva carpeta">
                         <button
                             onClick={() => openModal('folder', '')}
-                            className="text-gray-500 hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                            className="text-gray-500 hover:text-accent p-0.5 rounded transition-colors"
                         >
                             <i className="bi bi-folder-plus text-[13px]"></i>
                         </button>
@@ -88,7 +88,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
                     <Tooltip label="Actualizar">
                         <button
                             onClick={onRefresh}
-                            className="text-gray-500 hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                            className="text-gray-500 hover:text-accent p-0.5 rounded transition-colors"
                         >
                             <i className="bi bi-arrow-clockwise text-[13px]"></i>
                         </button>

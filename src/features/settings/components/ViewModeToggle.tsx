@@ -12,7 +12,7 @@ export const ViewModeToggle = ({ value, onChange }: ViewModeToggleProps) => (
                 onClick={() => onChange("list")}
                 className={`flex items-center justify-center w-5 h-5 rounded transition-all duration-200 ${
                     value === "list"
-                        ? "bg-[#5865F2] text-white shadow-sm"
+                        ? "bg-accent text-white shadow-sm"
                         : "text-gray-600 hover:text-gray-300"
                 }`}
             >
@@ -24,7 +24,7 @@ export const ViewModeToggle = ({ value, onChange }: ViewModeToggleProps) => (
                 onClick={() => onChange("grid")}
                 className={`flex items-center justify-center w-5 h-5 rounded transition-all duration-200 ${
                     value === "grid"
-                        ? "bg-[#5865F2] text-white shadow-sm"
+                        ? "bg-accent text-white shadow-sm"
                         : "text-gray-600 hover:text-gray-300"
                 }`}
             >

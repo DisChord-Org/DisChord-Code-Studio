@@ -18,12 +18,12 @@ pub enum ViewMode {
 #[derive(Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum LogRotation {
-    /// Un fichero nuevo cada día.
+    /// A new file every day.
     #[default]
     Daily,
-    /// Un fichero nuevo en cada arranque del IDE.
+    /// A new file every time the IDE starts.
     Session,
-    /// Un fichero nuevo cada hora.
+    /// A new file every hour.
     Hourly,
 }
 

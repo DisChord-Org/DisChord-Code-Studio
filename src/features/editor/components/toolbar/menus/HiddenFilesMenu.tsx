@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { FileItem } from "../../sidebar/FileItem";
 import type { FileNode } from "../../../types";
 
-const GITIGNORE_NODE: FileNode = {
+const gitignoreNode: FileNode = {
     name: ".gitignore",
     is_dir: false,
     relative_path: ".gitignore",
@@ -35,7 +35,7 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
         <div className="relative" onMouseEnter={onHover}>
             <button
                 onClick={onToggle}
-                className="w-full px-3 py-1.5 text-[11px] flex items-center justify-between gap-3 text-gray-300 hover:bg-[#5865F2] hover:text-white transition-colors"
+                className="w-full px-3 py-1.5 text-[11px] flex items-center justify-between gap-3 text-gray-300 hover:bg-accent hover:text-white transition-colors"
             >
                 <span className="flex items-center gap-3">
                     <i className="bi bi-eye-slash text-sm"></i>
@@ -45,16 +45,16 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
             </button>
 
             {isOpen && (
-                <div className="absolute top-0 left-full ml-1 w-56 bg-[#1e1f22] border border-[#2b2d31] rounded-lg shadow-2xl py-1 z-[210] animate-in fade-in zoom-in-95 duration-100">
+                <div className="absolute top-0 left-full ml-1 w-56 bg-border border border-menu-border rounded-lg shadow-2xl py-1 z-[210] animate-in fade-in zoom-in-95 duration-100">
                     <button
-                        onClick={() => onFileOpen(GITIGNORE_NODE)}
-                        className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 text-[#5865F2] font-semibold hover:bg-[#5865F2] hover:text-white transition-colors"
+                        onClick={() => onFileOpen(gitignoreNode)}
+                        className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 text-accent font-semibold hover:bg-accent hover:text-white transition-colors"
                     >
                         <i className="bi bi-eye-slash text-sm"></i>
                         .gitignore
                     </button>
 
-                    <div className="h-[1px] bg-[#2b2d31] my-1 mx-2" />
+                    <div className="h-[1px] bg-menu-border my-1 mx-2" />
 
                     <div className="custom-scrollbar max-h-56 overflow-y-auto">
                         {loading ? (

@@ -6,6 +6,7 @@ use serde::Deserialize;
 use log::{info, warn, error};
 
 use crate::platform;
+use crate::log_err::LogErr;
 
 const NODE_MAJOR: u32 = 22;
 
@@ -17,9 +18,9 @@ struct NodeRelease {
 
 fn latest_lts_version() -> Result<String, String> {
     let releases: Vec<NodeRelease> = reqwest::blocking::get("https://nodejs.org/dist/index.json")
-        .map_err(|e| e.to_string())?
+        .log_err("No se pudo consultar la lista de versiones de Node.js")?
         .json()
-        .map_err(|e| e.to_string())?;
+        .log_err("No se pudo interpretar la lista de versiones de Node.js")?;
 
     let prefix = format!("v{}.", NODE_MAJOR);
     releases.into_iter()
@@ -30,23 +31,23 @@ fn latest_lts_version() -> Result<String, String> {
 
 #[cfg(target_os = "windows")]
 fn extract_archive(bytes: &[u8], root_entry: &str, dest: &Path) -> Result<(), String> {
-    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).map_err(|e| e.to_string())?;
+    let mut archive = zip::ZipArchive::new(Cursor::new(bytes)).log_err("No se pudo abrir el archivo zip de Node.js")?;
     let prefix = format!("{}/", root_entry);
 
     for i in 0..archive.len() {
-        let mut file = archive.by_index(i).map_err(|e| e.to_string())?;
+        let mut file = archive.by_index(i).log_err("No se pudo leer una entrada del zip de Node.js")?;
         let name = file.name().strip_prefix(&prefix).unwrap_or(file.name());
         if name.is_empty() { continue; }
 
         let out_path = dest.join(name);
         if file.is_dir() {
-            fs::create_dir_all(&out_path).map_err(|e| e.to_string())?;
+            fs::create_dir_all(&out_path).log_err("No se pudo crear una carpeta al extraer Node.js")?;
         } else {
             if let Some(parent) = out_path.parent() {
-                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                fs::create_dir_all(parent).log_err("No se pudo crear una carpeta al extraer Node.js")?;
             }
-            let mut out_file = fs::File::create(&out_path).map_err(|e| e.to_string())?;
-            std::io::copy(&mut file, &mut out_file).map_err(|e| e.to_string())?;
+            let mut out_file = fs::File::create(&out_path).log_err("No se pudo crear un fichero al extraer Node.js")?;
+            std::io::copy(&mut file, &mut out_file).log_err("No se pudo escribir un fichero al extraer Node.js")?;
         }
     }
 
@@ -60,20 +61,20 @@ fn extract_archive(bytes: &[u8], root_entry: &str, dest: &Path) -> Result<(), St
     let tar = GzDecoder::new(Cursor::new(bytes));
     let mut archive = tar::Archive::new(tar);
 
-    for entry in archive.entries().map_err(|e| e.to_string())? {
-        let mut entry = entry.map_err(|e| e.to_string())?;
-        let path = entry.path().map_err(|e| e.to_string())?.into_owned();
+    for entry in archive.entries().log_err("No se pudo leer el archivo tar.gz de Node.js")? {
+        let mut entry = entry.log_err("No se pudo leer una entrada del tar.gz de Node.js")?;
+        let path = entry.path().log_err("No se pudo leer la ruta de una entrada del tar.gz de Node.js")?.into_owned();
         let relative = path.strip_prefix(root_entry).unwrap_or(&path);
         if relative.as_os_str().is_empty() { continue; }
 
         let out_path = dest.join(relative);
         if entry.header().entry_type().is_dir() {
-            fs::create_dir_all(&out_path).map_err(|e| e.to_string())?;
+            fs::create_dir_all(&out_path).log_err("No se pudo crear una carpeta al extraer Node.js")?;
         } else {
             if let Some(parent) = out_path.parent() {
-                fs::create_dir_all(parent).map_err(|e| e.to_string())?;
+                fs::create_dir_all(parent).log_err("No se pudo crear una carpeta al extraer Node.js")?;
             }
-            entry.unpack(&out_path).map_err(|e| e.to_string())?;
+            entry.unpack(&out_path).log_err("No se pudo extraer un fichero de Node.js")?;
         }
     }
 
@@ -92,14 +93,14 @@ fn install_node(app_handle: &tauri::AppHandle) -> Result<(), String> {
     info!("Descargando Node.js {} desde {}", version, url);
 
     let bytes = reqwest::blocking::get(&url)
-        .map_err(|e| e.to_string())?
+        .log_err("No se pudo descargar Node.js")?
         .bytes()
-        .map_err(|e| e.to_string())?;
+        .log_err("No se pudo leer la descarga de Node.js")?;
 
     if dir.exists() {
-        fs::remove_dir_all(&dir).map_err(|e| e.to_string())?;
+        fs::remove_dir_all(&dir).log_err("No se pudo borrar la instalación anterior de Node.js")?;
     }
-    fs::create_dir_all(&dir).map_err(|e| e.to_string())?;
+    fs::create_dir_all(&dir).log_err("No se pudo crear la carpeta de Node.js")?;
 
     extract_archive(&bytes, &archive_name, &dir)?;
 
@@ -156,7 +157,7 @@ fn install_pnpm(app_handle: &tauri::AppHandle) -> Result<(), String> {
     cmd.stdout(std::process::Stdio::piped());
     cmd.stderr(std::process::Stdio::piped());
 
-    let output = cmd.output().map_err(|e| e.to_string())?;
+    let output = cmd.output().log_err("No se pudo ejecutar 'npm install -g pnpm'")?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);

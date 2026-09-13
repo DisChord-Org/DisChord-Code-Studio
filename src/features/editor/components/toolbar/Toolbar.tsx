@@ -8,7 +8,7 @@ import { EditMenu } from "./menus/EditMenu";
 import { ProjectSwitcher } from "./menus/ProjectSwitcher";
 import { WindowControls } from "../../../../components/ui/WindowControls";
 import { BackButton } from "../../../../components/ui/BackButton";
-import type { ProjectSummary } from "../../../../types";
+import type { ProjectSummary } from "../../../dashboard";
 import type { FileNode } from "../../types";
 
 const appWindow = getCurrentWindow();
@@ -105,10 +105,10 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
     return (
         <header
             data-tauri-drag-region
-            className="h-10 bg-[#12151c] shadow-[0_1px_3px_0_rgba(0,0,0,0.35)] flex items-center justify-between shrink-0 select-none relative z-20"
+            className="h-10 bg-panel-alt shadow-[0_1px_3px_0_rgba(0,0,0,0.35)] flex items-center justify-between shrink-0 select-none relative z-20"
         >
             <div data-tauri-drag-region className="flex items-center gap-1 flex-1">
-                <span className="text-[#5865F2] font-black text-xl px-2">D</span>
+                <span className="text-accent font-black text-xl px-2">D</span>
                 <div className="flex items-center" ref={menuBarRef}>
                     <FileMenu
                         isOpen={openMenu === "file"}

@@ -51,13 +51,7 @@ pub fn strip_npm_env(cmd: &mut Command) {
 
 pub fn bin_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     let home = app_handle.path().home_dir().ok()?;
-
-    #[cfg(target_os = "windows")]
-    let dir = home.join(".dischord").join("bin");
-    #[cfg(not(target_os = "windows"))]
-    let dir = home.join(".local").join("bin");
-
-    Some(dir)
+    Some(if cfg!(windows) { home.join(".dischord").join("bin") } else { home.join(".local").join("bin") })
 }
 
 pub fn chord_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
@@ -96,7 +90,7 @@ pub fn looks_like_valid_binary(path: &Path) -> bool {
         return &header == b"MZ";
     }
 
-    // Mach-O (32/64 bits, big/little endian) o binario universal ("fat").
+    // Mach-O (32/64 bit, big/little endian) or a universal ("fat") binary.
     #[cfg(target_os = "macos")]
     {
         use std::io::Read;
@@ -133,13 +127,9 @@ pub fn node_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     Some(bin_dir(app_handle)?.join("node"))
 }
 
-#[cfg(target_os = "windows")]
 fn node_exec_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    node_dir(app_handle)
-}
-#[cfg(not(target_os = "windows"))]
-fn node_exec_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    Some(node_dir(app_handle)?.join("bin"))
+    let dir = node_dir(app_handle)?;
+    Some(if cfg!(windows) { dir } else { dir.join("bin") })
 }
 
 pub fn build_path_env(app_handle: &tauri::AppHandle) -> Option<std::ffi::OsString> {
@@ -153,31 +143,20 @@ pub fn build_path_env(app_handle: &tauri::AppHandle) -> Option<std::ffi::OsStrin
     std::env::join_paths(path_entries).ok()
 }
 
-#[cfg(target_os = "windows")]
 pub fn node_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    Some(node_dir(app_handle)?.join("node.exe"))
-}
-#[cfg(not(target_os = "windows"))]
-pub fn node_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    Some(node_dir(app_handle)?.join("bin").join("node"))
+    let dir = node_dir(app_handle)?;
+    Some(if cfg!(windows) { dir.join("node.exe") } else { dir.join("bin").join("node") })
 }
 
-#[cfg(target_os = "windows")]
 pub fn npm_shim_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    Some(node_dir(app_handle)?.join("npm.cmd"))
-}
-#[cfg(not(target_os = "windows"))]
-pub fn npm_shim_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    Some(node_dir(app_handle)?.join("bin").join("npm"))
+    let dir = node_dir(app_handle)?;
+    Some(if cfg!(windows) { dir.join("npm.cmd") } else { dir.join("bin").join("npm") })
 }
 
-#[cfg(target_os = "windows")]
 fn pnpm_cjs_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    Some(node_dir(app_handle)?.join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"))
-}
-#[cfg(not(target_os = "windows"))]
-fn pnpm_cjs_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    Some(node_dir(app_handle)?.join("lib").join("node_modules").join("pnpm").join("bin").join("pnpm.cjs"))
+    let dir = node_dir(app_handle)?;
+    let node_modules = if cfg!(windows) { dir.join("node_modules") } else { dir.join("lib").join("node_modules") };
+    Some(node_modules.join("pnpm").join("bin").join("pnpm.cjs"))
 }
 
 pub fn pnpm_command(app_handle: &tauri::AppHandle) -> Option<Command> {

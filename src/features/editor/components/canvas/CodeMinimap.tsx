@@ -1,32 +1,32 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
 import { useConfig, buildFontFamilyCss } from "../../../settings";
-import { CHORD_THEME } from "../../../../languages/chord-theme";
+import { chordTheme } from "../../../../languages/chord-theme";
 import {
-    CHORD_KEYWORDS,
-    CHORD_CONTROL_FLOW,
-    CHORD_BUILTINS,
-    CHORD_ATOMS,
+    chordKeywords,
+    chordControlFlow,
+    chordBuiltins,
+    chordAtoms,
 } from "../../../../languages/chord-language";
 import type { MinimapViewport } from "../../types";
 
-const GENERIC_KEYWORDS = [
+const genericKeywords = [
     "export", "import", "from", "const", "let", "var", "if", "else", "return",
     "class", "function", "interface", "type", "new", "this", "extends",
     "implements", "async", "await", "try", "catch", "finally", "switch",
     "case", "break", "continue", "for", "while", "do", "default", "public",
     "private", "protected", "static", "readonly", "as", "in", "of", "void",
 ];
-const GENERIC_LITERALS = ["true", "false", "null", "undefined"];
+const genericLiterals = ["true", "false", "null", "undefined"];
 
-const KEYWORDS = new Set(
-    [...GENERIC_KEYWORDS, ...CHORD_KEYWORDS, ...CHORD_CONTROL_FLOW].map((w) => w.toLowerCase())
+const keywordSet = new Set(
+    [...genericKeywords, ...chordKeywords, ...chordControlFlow].map((w) => w.toLowerCase())
 );
-const LITERALS = new Set(
-    [...GENERIC_LITERALS, ...CHORD_ATOMS].map((w) => w.toLowerCase())
+const literalSet = new Set(
+    [...genericLiterals, ...chordAtoms].map((w) => w.toLowerCase())
 );
-const BUILTINS = new Set(CHORD_BUILTINS.map((w) => w.toLowerCase()));
+const builtinSet = new Set(chordBuiltins.map((w) => w.toLowerCase()));
 
-const TOKEN_RE = /(\/\/.*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b\d+(?:\.\d+)?\b)|([\p{L}_$][\p{L}\p{N}_$]*)|([{}[\]().,;:=+\-*/%<>!&|^~?])|(\s+)/gu;
+const tokenRe = /(\/\/.*)|("(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|`(?:[^`\\]|\\.)*`)|(\b\d+(?:\.\d+)?\b)|([\p{L}_$][\p{L}\p{N}_$]*)|([{}[\]().,;:=+\-*/%<>!&|^~?])|(\s+)/gu;
 
 interface Token {
     start: number;
@@ -37,25 +37,25 @@ interface Token {
 
 const tokenizeLine = (line: string): Token[] => {
     const tokens: Token[] = [];
-    TOKEN_RE.lastIndex = 0;
+    tokenRe.lastIndex = 0;
     let match: RegExpExecArray | null;
 
-    while ((match = TOKEN_RE.exec(line)) !== null) {
+    while ((match = tokenRe.exec(line)) !== null) {
         const [, comment, string, number, identifier, punct, space] = match;
         const start = match.index;
 
         if (space) continue;
-        if (comment) { tokens.push({ start, text: comment, color: CHORD_THEME.comment }); continue; }
-        if (string) { tokens.push({ start, text: string, color: CHORD_THEME.string }); continue; }
-        if (number) { tokens.push({ start, text: number, color: CHORD_THEME.number }); continue; }
-        if (punct) { tokens.push({ start, text: punct, color: CHORD_THEME.punctuation }); continue; }
+        if (comment) { tokens.push({ start, text: comment, color: chordTheme.comment }); continue; }
+        if (string) { tokens.push({ start, text: string, color: chordTheme.string }); continue; }
+        if (number) { tokens.push({ start, text: number, color: chordTheme.number }); continue; }
+        if (punct) { tokens.push({ start, text: punct, color: chordTheme.punctuation }); continue; }
         if (identifier) {
             const lower = identifier.toLowerCase();
-            let color: string = CHORD_THEME.default;
+            let color: string = chordTheme.default;
             let isIdentifier = true;
-            if (KEYWORDS.has(lower)) { color = CHORD_THEME.keyword; isIdentifier = false; }
-            else if (LITERALS.has(lower)) { color = CHORD_THEME.number; isIdentifier = false; }
-            else if (BUILTINS.has(lower)) { color = CHORD_THEME.function; isIdentifier = false; }
+            if (keywordSet.has(lower)) { color = chordTheme.keyword; isIdentifier = false; }
+            else if (literalSet.has(lower)) { color = chordTheme.number; isIdentifier = false; }
+            else if (builtinSet.has(lower)) { color = chordTheme.function; isIdentifier = false; }
             tokens.push({ start, text: identifier, color, isIdentifier });
         }
     }
@@ -64,19 +64,19 @@ const tokenizeLine = (line: string): Token[] => {
         const token = tokens[i];
         if (!token.isIdentifier) continue;
         const next = tokens[i + 1];
-        if (next?.text === "(") token.color = CHORD_THEME.function;
-        else if (next?.text === ":") token.color = CHORD_THEME.property;
+        if (next?.text === "(") token.color = chordTheme.function;
+        else if (next?.text === ":") token.color = chordTheme.property;
     }
 
     return tokens;
 };
 
-const FONT_SIZE = 4;
-const CHAR_WIDTH = 2;
-const LINE_HEIGHT = 4;
-const MINIMAP_WIDTH = 80;
-const MAX_LINES = 5000;
-const MIN_RECT_HEIGHT = 18;
+const fontSize = 4;
+const charWidth = 2;
+const lineHeight = 4;
+const minimapWidth = 80;
+const maxLines = 5000;
+const minRectHeight = 18;
 
 interface CodeMinimapProps {
     text: string;
@@ -91,13 +91,13 @@ export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) =>
     const [containerHeight, setContainerHeight] = useState(0);
     const draggingRef = useRef<{ grabOffset: number } | null>(null);
 
-    const lines = useMemo(() => text.split('\n').slice(0, MAX_LINES), [text]);
+    const lines = useMemo(() => text.split('\n').slice(0, maxLines), [text]);
     const linesTokens = useMemo(
         () => lines.map((line) => tokenizeLine(line.replace(/\t/g, "    "))),
         [lines]
     );
 
-    const canvasHeight = Math.max(lines.length * LINE_HEIGHT, 1);
+    const canvasHeight = Math.max(lines.length * lineHeight, 1);
 
     useEffect(() => {
         const el = containerRef.current;
@@ -116,21 +116,21 @@ export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) =>
         if (!ctx) return;
 
         const dpr = window.devicePixelRatio || 1;
-        canvas.width = MINIMAP_WIDTH * dpr;
+        canvas.width = minimapWidth * dpr;
         canvas.height = canvasHeight * dpr;
-        canvas.style.width = `${MINIMAP_WIDTH}px`;
+        canvas.style.width = `${minimapWidth}px`;
         canvas.style.height = `${canvasHeight}px`;
 
         ctx.scale(dpr, dpr);
-        ctx.clearRect(0, 0, MINIMAP_WIDTH, canvasHeight);
+        ctx.clearRect(0, 0, minimapWidth, canvasHeight);
         ctx.textBaseline = "top";
-        ctx.font = `${FONT_SIZE}px ${buildFontFamilyCss(config.editor_font_family)}`;
+        ctx.font = `${fontSize}px ${buildFontFamilyCss(config.editor_font_family)}`;
 
         linesTokens.forEach((tokens, i) => {
-            const y = i * LINE_HEIGHT;
+            const y = i * lineHeight;
             for (const t of tokens) {
-                const x = t.start * CHAR_WIDTH;
-                if (x > MINIMAP_WIDTH) break;
+                const x = t.start * charWidth;
+                if (x > minimapWidth) break;
                 ctx.fillStyle = t.color;
                 ctx.fillText(t.text, x, y);
             }
@@ -143,7 +143,7 @@ export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) =>
     const offsetY = -scrollRatio * scrollableMinimap;
 
     const rectHeight = viewport && viewport.scrollHeight > 0
-        ? Math.max((viewport.clientHeight / viewport.scrollHeight) * canvasHeight, MIN_RECT_HEIGHT)
+        ? Math.max((viewport.clientHeight / viewport.scrollHeight) * canvasHeight, minRectHeight)
         : canvasHeight;
 
     const maxRectTop = Math.max(canvasHeight - rectHeight, 0);
@@ -196,8 +196,8 @@ export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) =>
     return (
         <div
             ref={containerRef}
-            className={`shadow-[-1px_0_3px_0_rgba(0,0,0,0.25)] bg-[#0B0E14] select-none overflow-hidden opacity-60 hover:opacity-100 transition-opacity duration-300 h-full shrink-0 relative ${viewport && onScrollTo ? "cursor-ns-resize" : ""}`}
-            style={{ width: MINIMAP_WIDTH }}
+            className={`shadow-[-1px_0_3px_0_rgba(0,0,0,0.25)] bg-app-bg select-none overflow-hidden opacity-60 hover:opacity-100 transition-opacity duration-300 h-full shrink-0 relative ${viewport && onScrollTo ? "cursor-ns-resize" : ""}`}
+            style={{ width: minimapWidth }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={handlePointerUp}

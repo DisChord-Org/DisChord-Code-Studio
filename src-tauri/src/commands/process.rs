@@ -1,16 +1,43 @@
 use std::fs;
 use std::path::Path;
-use std::process::{Command, Stdio};
+use std::process::{ChildStderr, ChildStdout, Command, Stdio};
 use std::io::{BufRead, BufReader};
-use std::thread;
+use std::thread::{self, JoinHandle};
 
-use tauri::{Emitter, Manager, State};
+use tauri::{AppHandle, Emitter, Manager, State};
 use log::{info, error, warn};
 
 use crate::ChildProcessState;
 use crate::paths::project_path;
 use crate::platform::{silent_command, resolve_chord_command, strip_npm_env, bin_dir, pnpm_command, build_path_env};
 use crate::log_err::LogErr;
+
+/// Streams a child process' stdout/stderr into the "terminal-data" event, line by line
+/// (stderr lines are wrapped in red ANSI codes). Returns the two reader threads so the
+/// caller can `.join()` them before deciding what to do once the process is done.
+fn stream_to_terminal(app_handle: &AppHandle, stdout: ChildStdout, stderr: ChildStderr) -> (JoinHandle<()>, JoinHandle<()>) {
+    let handle_out = app_handle.clone();
+    let stdout_thread = thread::spawn(move || {
+        let reader = BufReader::new(stdout);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = handle_out.emit("terminal-data", format!("{}\r\n", l));
+            }
+        }
+    });
+
+    let handle_err = app_handle.clone();
+    let stderr_thread = thread::spawn(move || {
+        let reader = BufReader::new(stderr);
+        for line in reader.lines() {
+            if let Ok(l) = line {
+                let _ = handle_err.emit("terminal-data", format!("\x1b[31m{}\r\n\x1b[0m", l));
+            }
+        }
+    });
+
+    (stdout_thread, stderr_thread)
+}
 
 fn declared_dependency_names(package_json_path: &Path) -> Vec<String> {
     let Ok(text) = fs::read_to_string(package_json_path) else { return Vec::new() };
@@ -46,35 +73,16 @@ fn run_pnpm_install_once(app_handle: &tauri::AppHandle, project_dir: &Path) -> R
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    let mut child = command.spawn().map_err(|e| format!("No se pudo ejecutar 'pnpm install': {}", e))?;
+    let mut child = command.spawn().log_err("No se pudo ejecutar 'pnpm install'")?;
 
     let stdout = child.stdout.take().expect("Fallo al capturar stdout de pnpm install");
     let stderr = child.stderr.take().expect("Fallo al capturar stderr de pnpm install");
 
-    let handle_out = app_handle.clone();
-    let stdout_thread = thread::spawn(move || {
-        let reader = BufReader::new(stdout);
-        for line in reader.lines() {
-            if let Ok(l) = line {
-                let _ = handle_out.emit("terminal-data", format!("{}\r\n", l));
-            }
-        }
-    });
-
-    let handle_err = app_handle.clone();
-    let stderr_thread = thread::spawn(move || {
-        let reader = BufReader::new(stderr);
-        for line in reader.lines() {
-            if let Ok(l) = line {
-                let _ = handle_err.emit("terminal-data", format!("\x1b[31m{}\r\n\x1b[0m", l));
-            }
-        }
-    });
-
+    let (stdout_thread, stderr_thread) = stream_to_terminal(app_handle, stdout, stderr);
     let _ = stdout_thread.join();
     let _ = stderr_thread.join();
 
-    let status = child.wait().map_err(|e| format!("Fallo esperando a 'pnpm install': {}", e))?;
+    let status = child.wait().log_err("Fallo esperando a 'pnpm install'")?;
     if !status.success() {
         return Err("Fallo al instalar las dependencias del proyecto ('pnpm install')".into());
     }
@@ -164,26 +172,7 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
     let handle_clone = app_handle.clone();
 
     thread::spawn(move || {
-        let handle_out = handle_clone.clone();
-        let stdout_thread = thread::spawn(move || {
-            let reader = BufReader::new(stdout);
-            for line in reader.lines() {
-                if let Ok(l) = line {
-                    let _ = handle_out.emit("terminal-data", format!("{}\r\n", l));
-                }
-            }
-        });
-
-        let handle_err = app_handle.clone();
-        let stderr_thread = thread::spawn(move || {
-            let reader = BufReader::new(stderr);
-            for line in reader.lines() {
-                if let Ok(l) = line {
-                    let _ = handle_err.emit("terminal-data", format!("\x1b[31m{}\r\n\x1b[0m", l));
-                }
-            }
-        });
-
+        let (stdout_thread, stderr_thread) = stream_to_terminal(&handle_clone, stdout, stderr);
         let _ = stdout_thread.join();
         let _ = stderr_thread.join();
 

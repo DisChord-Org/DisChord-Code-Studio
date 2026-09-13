@@ -6,9 +6,11 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Button } from "../components/ui/Button";
 import { Title } from "../components/ui/Typography";
 import { WindowControls } from "../components/ui/WindowControls";
-import { SystemMonitorRings } from "../features/system-monitor/SystemMonitorRings";
+import { SystemMonitorRings } from "../features/system-monitor";
+import { targetMeta, statusText } from "./Update.constants";
+import { formatBytes } from "../utils/Bytes";
 
-type Phase =
+export type Phase =
     | "idle"
     | "checking"
     | "downloading"
@@ -17,7 +19,7 @@ type Phase =
     | "done"
     | "error";
 
-type TargetKey = "ide" | "cli" | "compiler" | "node" | "pnpm";
+export type TargetKey = "ide" | "cli" | "compiler" | "node" | "pnpm";
 
 interface UpdateProgressPayload {
     target: TargetKey;
@@ -38,27 +40,9 @@ interface TargetState {
     message?: string;
 }
 
-const TARGET_ORDER: TargetKey[] = ["ide", "cli", "compiler", "node", "pnpm"];
-const SETTLED_PHASES: Phase[] = ["up_to_date", "done", "error"];
-const ACTIVE_PHASES: Phase[] = ["checking", "downloading", "installing"];
-
-const TARGET_META: Record<TargetKey, { label: string; icon: string; desc: string }> = {
-    ide: { label: "DisChord Code Studio", icon: "bi-window-stack", desc: "El propio editor de código" },
-    cli: { label: "DisChord CLI", icon: "bi-terminal-fill", desc: "Herramienta de línea de comandos" },
-    compiler: { label: "Compilador", icon: "bi-cpu-fill", desc: "DisChord en su nivel más bajo" },
-    node: { label: "Node.js", icon: "bi-hexagon-fill", desc: "Entorno de ejecución (embebido)" },
-    pnpm: { label: "pnpm", icon: "bi-box-seam-fill", desc: "Gestor de paquetes de tus proyectos (embebido)" },
-};
-
-const STATUS_TEXT: Record<Phase, string> = {
-    idle: "En espera",
-    checking: "Comprobando…",
-    downloading: "Descargando…",
-    installing: "Instalando…",
-    up_to_date: "Al día",
-    done: "Actualizado",
-    error: "Error",
-};
+const targetOrder: TargetKey[] = ["ide", "cli", "compiler", "node", "pnpm"];
+const settledPhases: Phase[] = ["up_to_date", "done", "error"];
+const activePhases: Phase[] = ["checking", "downloading", "installing"];
 
 const initialState = (): Record<TargetKey, TargetState> => ({
     ide: { phase: "idle" },
@@ -67,14 +51,6 @@ const initialState = (): Record<TargetKey, TargetState> => ({
     node: { phase: "idle" },
     pnpm: { phase: "idle" },
 });
-
-function formatBytes(bytes: number): string {
-    if (!bytes || bytes <= 0) return "0 B";
-    const units = ["B", "KB", "MB", "GB"];
-    const i = Math.min(units.length - 1, Math.floor(Math.log(bytes) / Math.log(1024)));
-    const value = bytes / Math.pow(1024, i);
-    return `${value.toFixed(i === 0 ? 0 : 1)} ${units[i]}`;
-}
 
 function toTargetState(p: UpdateProgressPayload): TargetState {
     return {
@@ -88,8 +64,8 @@ function toTargetState(p: UpdateProgressPayload): TargetState {
 }
 
 const UpdateRow = ({ target, state }: { target: TargetKey; state: TargetState }) => {
-    const meta = TARGET_META[target];
-    const isActive = ACTIVE_PHASES.includes(state.phase);
+    const meta = targetMeta[target];
+    const isActive = activePhases.includes(state.phase);
     const isDone = state.phase === "done" || state.phase === "up_to_date";
     const isError = state.phase === "error";
 
@@ -98,7 +74,7 @@ const UpdateRow = ({ target, state }: { target: TargetKey; state: TargetState })
         : isDone
         ? "bg-emerald-500"
         : isActive
-        ? "bg-[#5865F2]"
+        ? "bg-accent"
         : "bg-gray-700";
 
     const barWidth = state.phase === "checking"
@@ -142,11 +118,11 @@ const UpdateRow = ({ target, state }: { target: TargetKey; state: TargetState })
                                 : isDone
                                 ? "text-emerald-400"
                                 : isActive
-                                ? "text-[#8992f5]"
+                                ? "text-accent-light"
                                 : "text-gray-500"
                         }`}
                     >
-                        {STATUS_TEXT[state.phase]}
+                        {statusText[state.phase]}
                     </span>
                 </div>
             </div>
@@ -155,7 +131,7 @@ const UpdateRow = ({ target, state }: { target: TargetKey; state: TargetState })
                 <div className="mt-3 animate-in fade-in duration-300">
                     <div className="h-1 bg-white/5 rounded-full overflow-hidden">
                         <div
-                            className={`relative h-full rounded-full bg-[#5865F2] overflow-hidden transition-all duration-500 ease-out ${
+                            className={`relative h-full rounded-full bg-accent overflow-hidden transition-all duration-500 ease-out ${
                                 state.phase === "checking" || state.phase === "installing" ? "animate-pulse" : ""
                             }`}
                             style={{ width: `${barWidth}%` }}
@@ -227,12 +203,12 @@ function Update() {
         };
     }, []);
 
-    const allSettled = TARGET_ORDER.every((k) => SETTLED_PHASES.includes(states[k].phase));
-    const hasError = TARGET_ORDER.some((k) => states[k].phase === "error");
+    const allSettled = targetOrder.every((k) => settledPhases.includes(states[k].phase));
+    const hasError = targetOrder.some((k) => states[k].phase === "error");
     const ideInstalling = states.ide.phase === "installing";
     const ideNeedsRestart = states.ide.phase === "done";
     const nothingChanged =
-        allSettled && !hasError && TARGET_ORDER.every((k) => states[k].phase !== "done");
+        allSettled && !hasError && targetOrder.every((k) => states[k].phase !== "done");
 
     useEffect(() => {
         if (!nothingChanged) return;
@@ -289,7 +265,7 @@ function Update() {
     return (
         <div
             data-tauri-drag-region
-            className="relative min-h-screen bg-[#0B0E14] p-10 overflow-hidden select-none flex flex-col"
+            className="relative min-h-screen bg-app-bg p-10 overflow-hidden select-none flex flex-col"
         >
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
                 <WindowControls
@@ -312,7 +288,7 @@ function Update() {
             </div>
 
             <div className="custom-scrollbar flex flex-col gap-3 max-w-xl mx-auto w-full overflow-y-auto">
-                {TARGET_ORDER.map((key, i) => (
+                {targetOrder.map((key, i) => (
                     <div
                         key={key}
                         className="animate-in fade-in slide-in-from-bottom-1 duration-300"

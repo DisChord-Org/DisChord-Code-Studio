@@ -1,9 +1,9 @@
 import { useRef, useState, useEffect } from "react";
 import type { MinimapViewport } from "../../types";
 
-const TRACK_WIDTH = 14;
-const THUMB_WIDTH = 10;
-const MIN_THUMB_HEIGHT = 20;
+const trackWidth = 14;
+const thumbWidth = 10;
+const minThumbHeight = 20;
 
 interface EditorScrollbarProps {
     viewport?: MinimapViewport;
@@ -24,11 +24,11 @@ export const EditorScrollbar = ({ viewport, onScrollTo }: EditorScrollbarProps) 
     }, []);
 
     if (!viewport || viewport.scrollHeight <= viewport.clientHeight) {
-        return <div ref={trackRef} style={{ width: TRACK_WIDTH }} className="h-full shrink-0 bg-[#0B0E14]" />;
+        return <div ref={trackRef} style={{ width: trackWidth }} className="h-full shrink-0 bg-app-bg" />;
     }
 
     const scrollableEditor = viewport.scrollHeight - viewport.clientHeight;
-    const thumbHeight = Math.max((viewport.clientHeight / viewport.scrollHeight) * trackHeight, MIN_THUMB_HEIGHT);
+    const thumbHeight = Math.max((viewport.clientHeight / viewport.scrollHeight) * trackHeight, minThumbHeight);
     const maxThumbTop = Math.max(trackHeight - thumbHeight, 0);
     const thumbTop = scrollableEditor > 0 ? (viewport.scrollTop / scrollableEditor) * maxThumbTop : 0;
 
@@ -66,8 +66,8 @@ export const EditorScrollbar = ({ viewport, onScrollTo }: EditorScrollbarProps) 
     return (
         <div
             ref={trackRef}
-            className="h-full shrink-0 bg-[#0B0E14] relative"
-            style={{ width: TRACK_WIDTH }}
+            className="h-full shrink-0 bg-app-bg relative"
+            style={{ width: trackWidth }}
             onPointerDown={(e) => beginDrag(e, false)}
             onPointerMove={handleMove}
             onPointerUp={endDrag}
@@ -78,8 +78,8 @@ export const EditorScrollbar = ({ viewport, onScrollTo }: EditorScrollbarProps) 
                 style={{
                     top: thumbTop,
                     height: thumbHeight,
-                    width: THUMB_WIDTH,
-                    left: (TRACK_WIDTH - THUMB_WIDTH) / 2,
+                    width: thumbWidth,
+                    left: (trackWidth - thumbWidth) / 2,
                 }}
                 onPointerDown={(e) => { e.stopPropagation(); beginDrag(e, true); }}
                 onPointerMove={handleMove}

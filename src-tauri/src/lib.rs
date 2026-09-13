@@ -53,11 +53,11 @@ pub fn run() {
         .manage(UpdateState(Arc::new(Mutex::new(HashMap::new()))))
         .manage(Mutex::new(System::new_all()))
         .setup(move |app| {
-            // app_log_dir() resuelve automáticamente:
+            // app_log_dir() automatically resolves to:
             // macOS: ~/Library/Logs/<identifier>/
             // Linux: ~/.local/share/<identifier>/logs/
-            // Windows: %LOCALAPPDATA%\<identifier>\logs\ (nota: distinto de
-            // app_config_dir(), que en Windows vive en %APPDATA% - Roaming)
+            // Windows: %LOCALAPPDATA%\<identifier>\logs\ (note: different from
+            // app_config_dir(), which on Windows lives under %APPDATA% - Roaming)
             if let Ok(log_dir) = app.path().app_log_dir() {
                 let rotation = commands::config::load_config(app.handle()).log_rotation;
                 if let Err(e) = logger::setup_logger(log_dir, rotation) {

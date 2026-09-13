@@ -16,7 +16,7 @@ export const ContextMenu = ({ x, y, items, onClose }: ContextMenuProps) => (
     <>
         <div className="fixed inset-0 z-40" onClick={onClose} />
         <div
-            className="fixed z-50 bg-[#111214] border border-[#1e1f22] py-1 rounded shadow-xl min-w-[130px] animate-in fade-in zoom-in duration-75"
+            className="fixed z-50 bg-panel border border-border py-1 rounded shadow-xl min-w-[130px] animate-in fade-in zoom-in duration-75"
             style={{ top: y, left: x }}
         >
             {items.map((item) => (

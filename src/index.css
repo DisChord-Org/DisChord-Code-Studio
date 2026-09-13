@@ -1,5 +1,21 @@
 @import "tailwindcss";
 
+/*
+ * Design tokens for the app's UI chrome (not the CodeMirror syntax-highlighting palette,
+ * which lives on its own in src/languages/chord-theme.ts and editor-theme.ts).
+ */
+@theme {
+    --color-accent: #5865F2;
+    --color-accent-hover: #4752C4;
+    --color-accent-light: #8992f5;
+    --color-app-bg: #0B0E14;
+    --color-panel: #111214;
+    --color-panel-alt: #12151c;
+    --color-border: #1e1f22;
+    --color-border-strong: #30363d;
+    --color-menu-border: #2b2d31;
+}
+
 @font-face {
     font-family: "Monocraft";
     src: url("/fonts/monocraft/Monocraft.ttf") format("truetype");

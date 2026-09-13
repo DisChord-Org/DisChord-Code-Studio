@@ -2,18 +2,11 @@ import { useEffect, useState } from "react";
 import type { CSSProperties } from "react";
 import type { AppConfig } from "../types";
 import { buildFontFamilyCss, isFontAvailable } from "../font";
+import { fontOptions } from "./EditorSettings.constants";
 
-const FONT_OPTIONS: { value: string; label: string; description: string }[] = [
-    { value: "Monocraft", label: "Monocraft", description: "Tipografía pixelada inspirada en Minecraft (por defecto). Va incluida en la app." },
-    { value: "JetBrains Mono", label: "JetBrains Mono", description: "Requiere tenerla instalada en el sistema." },
-    { value: "Fira Code", label: "Fira Code", description: "Requiere tenerla instalada en el sistema." },
-    { value: "Cascadia Code", label: "Cascadia Code", description: "Requiere tenerla instalada en el sistema." },
-    { value: "ui-monospace", label: "Monoespaciada del sistema", description: "Usa la fuente monoespaciada por defecto de tu sistema operativo." },
-];
-
-const PREVIEW_TEXT = "var chord tipo texto es \"DisChord\"";
-const MIN_FONT_SIZE = 8;
-const MAX_FONT_SIZE = 32;
+const previewText = "var chord tipo texto es \"DisChord\"";
+const minFontSize = 8;
+const maxFontSize = 32;
 
 interface EditorSettingsProps {
     config: AppConfig;
@@ -24,8 +17,8 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
     const [customFont, setCustomFont] = useState(config.editor_font_family);
     const [checking, setChecking] = useState(false);
     const [fontError, setFontError] = useState<string | null>(null);
-    const isPreset = FONT_OPTIONS.some((option) => option.value === config.editor_font_family);
-    const fontSizeFillPercent = ((config.editor_font_size - MIN_FONT_SIZE) / (MAX_FONT_SIZE - MIN_FONT_SIZE)) * 100;
+    const isPreset = fontOptions.some((option) => option.value === config.editor_font_family);
+    const fontSizeFillPercent = ((config.editor_font_size - minFontSize) / (maxFontSize - minFontSize)) * 100;
 
     useEffect(() => {
         setCustomFont(config.editor_font_family);
@@ -60,13 +53,13 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
                 </p>
 
                 <div className="flex flex-col gap-1.5">
-                    {FONT_OPTIONS.map((option) => (
+                    {fontOptions.map((option) => (
                         <button
                             key={option.value}
                             onClick={() => applyFont(option.value)}
                             className={`flex items-center justify-between text-left px-3 py-2 rounded-md border transition-colors
                                 ${config.editor_font_family === option.value
-                                    ? "bg-[#5865F2]/10 border-[#5865F2]/40"
+                                    ? "bg-accent/10 border-accent/40"
                                     : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]"
                                 }`}
                         >
@@ -74,17 +67,17 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
                                 <p className="text-[12px] text-gray-200">{option.label}</p>
                                 <p className="text-[10px] text-gray-500">{option.description}</p>
                                 <p className="text-[12px] text-gray-400 mt-1.5 truncate" style={{ fontFamily: buildFontFamilyCss(option.value) }}>
-                                    {PREVIEW_TEXT}
+                                    {previewText}
                                 </p>
                             </div>
                             {config.editor_font_family === option.value && (
-                                <i className="bi bi-check2 text-[#5865F2] text-[13px] shrink-0 ml-2"></i>
+                                <i className="bi bi-check2 text-accent text-[13px] shrink-0 ml-2"></i>
                             )}
                         </button>
                     ))}
                 </div>
 
-                <div className={`mt-1.5 px-3 py-2 rounded-md border transition-colors ${!isPreset ? "bg-[#5865F2]/10 border-[#5865F2]/40" : "bg-white/[0.02] border-white/[0.06]"}`}>
+                <div className={`mt-1.5 px-3 py-2 rounded-md border transition-colors ${!isPreset ? "bg-accent/10 border-accent/40" : "bg-white/[0.02] border-white/[0.06]"}`}>
                     <p className="text-[12px] text-gray-200 mb-0.5">Personalizada</p>
                     <p className="text-[10px] text-gray-500 mb-2">
                         Escribe el nombre exacto de cualquier fuente instalada en tu sistema.
@@ -95,13 +88,13 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
                         onBlur={() => applyFont(customFont)}
                         onKeyDown={(e) => e.key === "Enter" && (e.currentTarget as HTMLInputElement).blur()}
                         placeholder="p. ej. Comic Mono"
-                        className={`w-full bg-[#1e1f22] border rounded px-2 py-1.5 text-[12px] text-white outline-none
-                            ${fontError ? "border-red-500/50 focus:border-red-500" : "border-[#30363d] focus:border-[#5865F2]"}`}
+                        className={`w-full bg-border border rounded px-2 py-1.5 text-[12px] text-white outline-none
+                            ${fontError ? "border-red-500/50 focus:border-red-500" : "border-border-strong focus:border-accent"}`}
                     />
                     {checking && <p className="text-[10px] text-gray-500 mt-1.5">Comprobando...</p>}
                     {fontError && <p className="text-[10px] text-red-400 mt-1.5">{fontError}</p>}
                     <p className="text-[12px] text-gray-400 mt-2 truncate" style={{ fontFamily: buildFontFamilyCss(config.editor_font_family) }}>
-                        {PREVIEW_TEXT}
+                        {previewText}
                     </p>
                 </div>
             </div>
@@ -109,14 +102,14 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
             <div className="py-3 border-b border-white/5">
                 <p className="text-sm text-gray-200 font-medium mb-0.5">Tamaño de fuente</p>
                 <p className="text-xs text-gray-500 mb-3">
-                    Tamaño del texto en el CodeView y la numeración de líneas ({MIN_FONT_SIZE}–{MAX_FONT_SIZE}px).
+                    Tamaño del texto en el CodeView y la numeración de líneas ({minFontSize}–{maxFontSize}px).
                 </p>
 
                 <div className="flex items-center gap-3">
                     <input
                         type="range"
-                        min={MIN_FONT_SIZE}
-                        max={MAX_FONT_SIZE}
+                        min={minFontSize}
+                        max={maxFontSize}
                         step={1}
                         value={config.editor_font_size}
                         onChange={(e) => updateConfig({ editor_font_size: Number(e.target.value) })}

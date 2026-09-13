@@ -1,4 +1,4 @@
-export const CHORD_THEME = {
+export const chordTheme = {
     keyword: "#c678dd",
     controlKeyword: "#c678dd",
     string: "#98c379",

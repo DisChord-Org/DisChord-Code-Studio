@@ -1,23 +1,23 @@
 import { StreamLanguage, LanguageSupport, HighlightStyle, syntaxHighlighting } from "@codemirror/language";
 import { tags } from "@lezer/highlight";
-import { CHORD_THEME } from "./chord-theme";
+import { chordTheme } from "./chord-theme";
 
-export const CHORD_KEYWORDS = [
+export const chordKeywords = [
     "clase", "extiende", "prop", "fijar", "esta", "super", "nuevo", "devolver",
     "var", "es", "funcion", "importar", "exportar", "desde", "js", "tipo",
     "encender", "bot", "evento", "crear", "comando", "recolector"
 ];
-export const CHORD_CONTROL_FLOW = ["si", "sino", "ademas", "para", "en", "pasar", "salir"];
-export const CHORD_BUILTINS = [
+export const chordControlFlow = ["si", "sino", "ademas", "para", "en", "pasar", "salir"];
+export const chordBuiltins = [
     "mas", "menos", "por", "entre", "resto", "exp", "intro", "espacio", "mayor",
     "menor", "mayor_igual", "menor_igual", "no", "igual_tipado", "igual", "y", "o",
     "token", "prefijo", "intenciones", "descripcion", "embed", "boton",
     "etiqueta", "emoji", "estilo", "id", "alPulsarId", "imprimir", "mensaje",
     "usuario", "nombre"
 ];
-export const CHORD_ATOMS = ["verdadero", "falso", "indefinido"];
+export const chordAtoms = ["verdadero", "falso", "indefinido"];
 
-export const chordLanguage = StreamLanguage.define({
+const chordLanguage = StreamLanguage.define({
     name: "chord",
     startState: () => ({ inBlockComment: false }),
     token(stream, state) {
@@ -53,10 +53,10 @@ export const chordLanguage = StreamLanguage.define({
 
         if (stream.match(/^[\w@_]+/)) {
             const word = stream.current();
-            if (CHORD_KEYWORDS.includes(word)) return "keyword";
-            if (CHORD_CONTROL_FLOW.includes(word)) return "controlKeyword";
-            if (CHORD_BUILTINS.includes(word)) return "builtin";
-            if (CHORD_ATOMS.includes(word)) return "atom";
+            if (chordKeywords.includes(word)) return "keyword";
+            if (chordControlFlow.includes(word)) return "controlKeyword";
+            if (chordBuiltins.includes(word)) return "builtin";
+            if (chordAtoms.includes(word)) return "atom";
 
             return "variableName";
         }
@@ -72,18 +72,18 @@ export const chordLanguage = StreamLanguage.define({
 });
 
 const chordHighlightStyle = HighlightStyle.define([
-    { tag: tags.keyword, color: CHORD_THEME.keyword },
-    { tag: tags.controlKeyword, color: CHORD_THEME.controlKeyword, fontWeight: "600" },
-    { tag: tags.comment, color: CHORD_THEME.comment, fontStyle: "italic" },
-    { tag: tags.string, color: CHORD_THEME.string },
-    { tag: tags.number, color: CHORD_THEME.number },
-    { tag: tags.atom, color: CHORD_THEME.number },
-    { tag: tags.standard(tags.variableName), color: CHORD_THEME.function }, // builtins
-    { tag: tags.variableName, color: CHORD_THEME.default },
-    { tag: tags.punctuation, color: CHORD_THEME.punctuation },
-    { tag: tags.bracket, color: CHORD_THEME.punctuation },
-    { tag: tags.meta, color: CHORD_THEME.meta, fontStyle: "italic" },
-    { tag: tags.invalid, color: CHORD_THEME.invalid },
+    { tag: tags.keyword, color: chordTheme.keyword },
+    { tag: tags.controlKeyword, color: chordTheme.controlKeyword, fontWeight: "600" },
+    { tag: tags.comment, color: chordTheme.comment, fontStyle: "italic" },
+    { tag: tags.string, color: chordTheme.string },
+    { tag: tags.number, color: chordTheme.number },
+    { tag: tags.atom, color: chordTheme.number },
+    { tag: tags.standard(tags.variableName), color: chordTheme.function }, // builtins
+    { tag: tags.variableName, color: chordTheme.default },
+    { tag: tags.punctuation, color: chordTheme.punctuation },
+    { tag: tags.bracket, color: chordTheme.punctuation },
+    { tag: tags.meta, color: chordTheme.meta, fontStyle: "italic" },
+    { tag: tags.invalid, color: chordTheme.invalid },
 ]);
 
 export function chord() {

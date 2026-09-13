@@ -48,14 +48,14 @@ export const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextM
         <div>
             <div
                 className={`group relative pr-2 py-0.5 text-[12px] cursor-pointer flex items-center justify-between gap-2 truncate transition-colors
-                    ${isSelected ? "bg-[#5865F2]/10 text-white" : "text-gray-400 hover:bg-white/5 hover:text-gray-200"}
+                    ${isSelected ? "bg-accent/10 text-white" : "text-gray-400 hover:bg-white/5 hover:text-gray-200"}
                 `}
                 style={{ paddingLeft: `${level * 10 + 8}px` }}
                 onClick={handleClick}
                 onContextMenu={(e) => onContextMenu(e, node.relative_path)}
             >
                 {isSelected && (
-                    <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-[#5865F2]" />
+                    <span className="absolute left-0 top-0 bottom-0 w-[2px] bg-accent" />
                 )}
 
                 <div className="flex items-center gap-1.5 truncate flex-1">
@@ -70,7 +70,7 @@ export const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextM
                             ? <i className="bi bi-folder2-open text-[#e8a87c] text-[12px]" />
                             : <i className="bi bi-folder-fill text-[#8f8f8f] text-[12px]" />)
                         : (isChordFile
-                            ? <span className="text-[#5865F2] font-black text-[12px] w-[13px] text-center leading-none">D</span>
+                            ? <span className="text-accent font-black text-[12px] w-[13px] text-center leading-none">D</span>
                             : <i className={`bi ${fileIcon!.icon} text-[12px]`} style={{ color: fileIcon!.color }} />)
                     }
                     <span className="truncate ml-1">{node.name}</span>
@@ -81,7 +81,7 @@ export const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextM
                         <Tooltip label="Nuevo archivo">
                             <button
                                 onClick={(e) => { e.stopPropagation(); onCreateRequest('file', node.relative_path); }}
-                                className="hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                                className="hover:text-accent p-0.5 rounded transition-colors"
                             >
                                 <i className="bi bi-file-earmark-plus text-[11px]"></i>
                             </button>
@@ -89,7 +89,7 @@ export const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextM
                         <Tooltip label="Nueva carpeta">
                             <button
                                 onClick={(e) => { e.stopPropagation(); onCreateRequest('folder', node.relative_path); }}
-                                className="hover:text-[#5865F2] p-0.5 rounded transition-colors"
+                                className="hover:text-accent p-0.5 rounded transition-colors"
                             >
                                 <i className="bi bi-folder-plus text-[11px]"></i>
                             </button>

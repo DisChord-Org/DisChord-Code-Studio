@@ -149,7 +149,7 @@ pub fn ensure_cli_updated(app_handle: &tauri::AppHandle) -> bool {
     }
 }
 
-// Paso 3 de la secuencia: solo se llama si el paso 2 (CLI) terminó bien.
+// Step 3 of the sequence: only called if step 2 (CLI) finished successfully.
 pub fn update_compiler(app_handle: &tauri::AppHandle) -> bool {
     repair_corrupted_compiler(app_handle);
     run_component_update(app_handle, "compiler")

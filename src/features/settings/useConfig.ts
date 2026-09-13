@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import type { AppConfig } from "./types";
 import { buildFontFamilyCss } from "./font";
 
-const DEFAULT_CONFIG: AppConfig = {
+const defaultConfig: AppConfig = {
     view_mode: "list",
     log_rotation: "daily",
     editor_font_family: "Monocraft",
@@ -11,7 +11,7 @@ const DEFAULT_CONFIG: AppConfig = {
 };
 
 export const useConfig = () => {
-    const [config, setConfig] = useState<AppConfig>(DEFAULT_CONFIG);
+    const [config, setConfig] = useState<AppConfig>(defaultConfig);
     const [loaded, setLoaded] = useState(false);
 
     useEffect(() => {

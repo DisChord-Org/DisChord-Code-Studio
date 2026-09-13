@@ -10,7 +10,7 @@ export const MenuOption = ({ icon, label, shortcut, onClick, variant = "default"
     <button
         onClick={onClick}
         className={`w-full px-3 py-1.5 text-[11px] flex items-center gap-3 transition-colors
-            ${variant === "danger" ? "hover:bg-red-500/10 text-red-400" : "hover:bg-[#5865F2] text-gray-300 hover:text-white"}
+            ${variant === "danger" ? "hover:bg-red-500/10 text-red-400" : "hover:bg-accent text-gray-300 hover:text-white"}
         `}
     >
         <i className={`${icon} text-sm`}></i>

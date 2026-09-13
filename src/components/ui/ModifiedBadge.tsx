@@ -3,8 +3,8 @@ interface ModifiedBadgeProps {
 }
 
 export const ModifiedBadge = ({ className = "" }: ModifiedBadgeProps) => (
-    <div className={`flex items-center gap-1.5 px-1.5 py-[1px] rounded bg-[#5865F2]/10 text-[10px] text-[#8992f5] ${className}`}>
-        <span className="w-1.5 h-1.5 rounded-full bg-[#8992f5]" />
+    <div className={`flex items-center gap-1.5 px-1.5 py-[1px] rounded bg-accent/10 text-[10px] text-accent-light ${className}`}>
+        <span className="w-1.5 h-1.5 rounded-full bg-accent-light" />
         <span className="font-medium tracking-wide">Modificado</span>
     </div>
 );

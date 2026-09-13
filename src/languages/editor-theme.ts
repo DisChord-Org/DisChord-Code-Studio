@@ -3,11 +3,11 @@ import { EditorView } from "@codemirror/view";
 export const dischordEditorTheme = EditorView.theme({
     "&": {
         height: "100%",
-        backgroundColor: "#0B0E14 !important"
+        backgroundColor: "var(--color-app-bg) !important"
     },
     ".cm-scroller": {
         overflow: "auto",
-        backgroundColor: "#0B0E14",
+        backgroundColor: "var(--color-app-bg)",
         paddingTop: "10px",
         scrollbarWidth: "none",
         msOverflowStyle: "none"
@@ -19,8 +19,8 @@ export const dischordEditorTheme = EditorView.theme({
         paddingTop: "0px"
     },
     ".cm-gutters": {
-        backgroundColor: "#0B0E14 !important",
-        borderRight: "1px solid #1e1f22",
+        backgroundColor: "var(--color-app-bg) !important",
+        borderRight: "1px solid var(--color-border)",
         color: "#4b5563",
         fontFamily: "var(--editor-font-family, 'Monocraft', monospace)",
         fontSize: "var(--editor-font-size, 14px)",
@@ -29,11 +29,11 @@ export const dischordEditorTheme = EditorView.theme({
         minWidth: "40px"
     },
     ".cm-activeLine": {
-        backgroundColor: "#1e1f2233"
+        backgroundColor: "color-mix(in srgb, var(--color-border), transparent 80%)"
     },
     ".cm-activeLineGutter": {
-        backgroundColor: "#1e1f22",
-        color: "#5865f2"
+        backgroundColor: "var(--color-border)",
+        color: "var(--color-accent)"
     },
     ".cm-scroller::-webkit-scrollbar": {
         display: "none"

@@ -11,16 +11,11 @@ import {
     useConfig,
     type SettingsSection,
 } from "../features/settings";
+import { sectionTitles } from "./Settings.constants";
 
 interface SettingsProps {
     onBack: () => void;
 }
-
-const SECTION_TITLES: Record<SettingsSection, string> = {
-    dashboard: "Dashboard",
-    editor: "Editor",
-    logs: "Logs",
-};
 
 function Settings({ onBack }: SettingsProps) {
     const { config, updateConfig } = useConfig();
@@ -28,8 +23,8 @@ function Settings({ onBack }: SettingsProps) {
     const [editingJson, setEditingJson] = useState(false);
 
     return (
-        <div data-tauri-drag-region className="h-screen bg-[#0B0E14] flex flex-col text-white overflow-hidden select-none">
-            <div data-tauri-drag-region className="h-10 bg-[#12151c] shadow-[0_1px_3px_0_rgba(0,0,0,0.35)] flex items-center justify-between shrink-0 relative z-20">
+        <div data-tauri-drag-region className="h-screen bg-app-bg flex flex-col text-white overflow-hidden select-none">
+            <div data-tauri-drag-region className="h-10 bg-panel-alt shadow-[0_1px_3px_0_rgba(0,0,0,0.35)] flex items-center justify-between shrink-0 relative z-20">
                 <BackButton onClick={onBack} className="ml-4" />
 
                 <WindowControls className="ml-2" />
@@ -48,7 +43,7 @@ function Settings({ onBack }: SettingsProps) {
                     />
 
                     <main className="custom-scrollbar flex-1 overflow-y-auto p-10">
-                        <Title>{SECTION_TITLES[section]}</Title>
+                        <Title>{sectionTitles[section]}</Title>
 
                         {section === "dashboard" ? (
                             <DashboardSettings config={config} updateConfig={updateConfig} />

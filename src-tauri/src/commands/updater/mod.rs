@@ -65,13 +65,14 @@ pub fn get_update_state(app_handle: tauri::AppHandle) -> Vec<UpdateProgress> {
     map.values().cloned().collect()
 }
 
-// the completly sequency,
-// never in parallel, because the binaries share the same folder (~/.dischord/bin) and running them in parallel was producing corrupted binaries when the IDE auto-update killed the process in the middle of a concurrent download.:
-//   1. Editor (autoactualización del propio IDE)
+// Must run fully sequentially, never in parallel: the binaries share the same folder
+// (~/.dischord/bin), and running them in parallel was producing corrupted binaries when
+// the IDE auto-update killed the process in the middle of a concurrent download.
+//   1. Editor (the IDE's own auto-update)
 //   2. CLI ('chord')
-//   3. Compilador
-//   4. Node.js embebido
-//   5. pnpm embebido
+//   3. Compiler
+//   4. Embedded Node.js
+//   5. Embedded pnpm
 pub fn run_full_update_sequence(app_handle: tauri::AppHandle) {
     std::thread::spawn(move || {
         if let Err(e) = window::open_update_window(&app_handle) {
@@ -84,7 +85,7 @@ pub fn run_full_update_sequence(app_handle: tauri::AppHandle) {
         // 2. CLI
         let cli_ready = cli::ensure_cli_updated(&app_handle);
 
-        // 3. Compilador (solo tiene sentido si la CLI quedó operativa)
+        // 3. Compiler (only makes sense if the CLI ended up operational)
         if cli_ready {
             cli::update_compiler(&app_handle);
         } else {
@@ -92,7 +93,7 @@ pub fn run_full_update_sequence(app_handle: tauri::AppHandle) {
                 Some("No se pudo comprobar: la CLI no está disponible.".into()));
         }
 
-        // 4 y 5. Node.js y pnpm (ensure_runtime ya los hace en este orden)
+        // 4 and 5. Node.js and pnpm (ensure_runtime already does them in this order)
         runtime::ensure_runtime(app_handle);
     });
 }

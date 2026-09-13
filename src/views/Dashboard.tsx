@@ -1,17 +1,14 @@
-import { useEffect, useState } from "react";
-import { invoke } from "@tauri-apps/api/core";
-import { getVersion } from "@tauri-apps/api/app";
+import { useState } from "react";
 
 import { Button } from "../components/ui/Button";
-import { Card, CreatingProjectCard } from "../features/dashboard/ProjectCard";
+import { ProjectCard, CreatingProjectCard, useDashboard } from "../features/dashboard";
 import { Title, Label } from "../components/ui/Typography";
 import { Modal } from "../components/ui/Modal";
 import { Tooltip } from "../components/ui/Tooltip";
 import { WindowControls } from "../components/ui/WindowControls";
 import { formatRelativeTime } from "../utils/Time";
-import { SystemMonitorRings } from "../features/system-monitor/SystemMonitorRings";
+import { SystemMonitorRings } from "../features/system-monitor";
 import { ViewModeToggle, useConfig } from "../features/settings";
-import type { ProjectSummary } from "../types";
 
 interface DashboardProps {
     onSelectProject: (name: string) => void;
@@ -19,75 +16,21 @@ interface DashboardProps {
 }
 
 function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
-    const [projects, setProjects] = useState<ProjectSummary[]>([]);
-    const [loading, setLoading] = useState(true);
-    const [creatingProjectName, setCreatingProjectName] = useState<string | null>(null);
     const [isModalOpen, setIsModalOpen] = useState(false);
-    const [updating, setUpdating] = useState(false);
-    const [appVersion, setAppVersion] = useState<string>("");
     const { config, updateConfig } = useConfig();
-
-    useEffect(() => {
-        getVersion().then(setAppVersion);
-    }, []);
-
-    const loadProjects = async () => {
-        try {
-            await invoke("create_projects_folder");
-            const list = await invoke<ProjectSummary[]>("get_projects");
-            setProjects(list);
-        } catch (error) {
-            console.error("Fallo al cargar proyectos:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        loadProjects();
-    }, []);
-
-    const handleCreateProject = async (name: string) => {
-        if (!name) return;
-
-        setCreatingProjectName(name);
-        try {
-            await invoke("create_new_project", { name });
-            await loadProjects();
-        } catch (error) {
-            alert(error);
-        } finally {
-            setCreatingProjectName(null);
-        }
-    };
-
-    const handleDeleteProject = async (name: string) => {
-        const confirm = window.confirm(`¿Estás seguro de que quieres borrar el proyecto "${name}"? Esta acción es irreversible.`);
-
-        if (confirm) {
-            try {
-                await invoke("delete_project", { name }); 
-                await loadProjects();
-            } catch (error) {
-                alert("No se pudo borrar el proyecto: " + error);
-            }
-        }
-    };
-
-    const handleUpdate = async () => {
-        if (updating) return;
-        setUpdating(true);
-        try {
-            await invoke("start_full_update");
-        } catch (error) {
-            alert("Error: " + error);
-        } finally {
-            setUpdating(false);
-        }
-    };
+    const {
+        projects,
+        loading,
+        creatingProjectName,
+        updating,
+        appVersion,
+        handleCreateProject,
+        handleDeleteProject,
+        handleUpdate,
+    } = useDashboard();
 
     return (
-        <div data-tauri-drag-region className="relative min-h-screen bg-[#0B0E14] p-12 overflow-hidden select-none">
+        <div data-tauri-drag-region className="relative min-h-screen bg-app-bg p-12 overflow-hidden select-none">
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
                 <WindowControls className="ml-2" />
             </div>
@@ -146,7 +89,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                                 className="animate-in fade-in zoom-in-95 duration-300"
                                 style={{ animationDelay: `${i * 30}ms`, animationFillMode: "backwards" }}
                             >
-                                <Card
+                                <ProjectCard
                                     title={project.name}
                                     subtitle={`Última edición: ${formatRelativeTime(project.last_modified)}`}
                                     onDelete={() => handleDeleteProject(project.name)}
@@ -156,7 +99,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                         ))}
                     </div>
                 ) : (
-                    <div className="p-8 border-2 border-dashed border-[#1e1f22] rounded-xl text-center">
+                    <div className="p-8 border-2 border-dashed border-border rounded-xl text-center">
                         <p className="text-gray-500 text-sm">No existen proyectos.</p>
                     </div>
                 )}

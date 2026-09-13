@@ -66,7 +66,7 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
     }, [config.editor_font_family]);
 
     return (
-        <div className="h-72 flex flex-col bg-[#0B0E14] border-t border-white/5 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.5)]">
+        <div className="h-72 flex flex-col bg-app-bg border-t border-white/5 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.5)]">
             <div className="flex items-center justify-between px-4 py-2 bg-[#0E1117]/50 backdrop-blur-sm border-b border-white/[0.02]">
                 <div className="flex items-center gap-3">
                     <div className="flex gap-1.5">
@@ -79,7 +79,7 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
                 <div className="flex items-center gap-4">
                     <button 
                         onClick={() => xtermRef.current?.clear()}
-                        className="group flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-[#5865F2] transition-all"
+                        className="group flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-accent transition-all"
                     >
                         <i className="bi bi-trash3 text-xs opacity-50 group-hover:opacity-100"></i>
                         <span>LIMPIAR</span>

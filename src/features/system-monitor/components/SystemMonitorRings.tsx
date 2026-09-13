@@ -1,9 +1,9 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Tooltip } from "../../components/ui/Tooltip";
-import type { SystemStats } from "./types";
+import { Tooltip } from "../../../components/ui/Tooltip";
+import type { SystemStats } from "../types";
 
-const POLL_INTERVAL = 1500;
+const pollInterval = 1500;
 
 const useSystemStats = () => {
     const [stats, setStats] = useState<SystemStats | null>(null);
@@ -19,7 +19,7 @@ const useSystemStats = () => {
             } catch (error) {
                 console.error("No se pudieron leer las métricas del sistema:", error);
             } finally {
-                if (!cancelled) timer = setTimeout(poll, POLL_INTERVAL);
+                if (!cancelled) timer = setTimeout(poll, pollInterval);
             }
         };
 

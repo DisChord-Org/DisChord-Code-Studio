@@ -1,12 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { Button } from "../../../components/ui/Button";
-import type { AppConfig, LogRotation } from "../types";
-
-const ROTATION_OPTIONS: { value: LogRotation; label: string; description: string }[] = [
-    { value: "daily", label: "Cada día", description: "Un fichero nuevo cada día (por defecto)." },
-    { value: "session", label: "Cada inicio", description: "Un fichero nuevo cada vez que abres el IDE." },
-    { value: "hourly", label: "Cada hora", description: "Un fichero nuevo cada hora." },
-];
+import type { AppConfig } from "../types";
+import { rotationOptions } from "./LogsSettings.constants";
 
 interface LogsSettingsProps {
     config: AppConfig;
@@ -31,13 +26,13 @@ export const LogsSettings = ({ config, updateConfig }: LogsSettingsProps) => {
                 </p>
 
                 <div className="flex flex-col gap-1.5">
-                    {ROTATION_OPTIONS.map((option) => (
+                    {rotationOptions.map((option) => (
                         <button
                             key={option.value}
                             onClick={() => updateConfig({ log_rotation: option.value })}
                             className={`flex items-center justify-between text-left px-3 py-2 rounded-md border transition-colors
                                 ${config.log_rotation === option.value
-                                    ? "bg-[#5865F2]/10 border-[#5865F2]/40"
+                                    ? "bg-accent/10 border-accent/40"
                                     : "bg-white/[0.02] border-white/[0.06] hover:bg-white/[0.04]"
                                 }`}
                         >
@@ -46,7 +41,7 @@ export const LogsSettings = ({ config, updateConfig }: LogsSettingsProps) => {
                                 <p className="text-[10px] text-gray-500">{option.description}</p>
                             </div>
                             {config.log_rotation === option.value && (
-                                <i className="bi bi-check2 text-[#5865F2] text-[13px]"></i>
+                                <i className="bi bi-check2 text-accent text-[13px]"></i>
                             )}
                         </button>
                     ))}

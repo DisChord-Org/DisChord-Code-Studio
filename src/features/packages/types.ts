@@ -1,8 +1,3 @@
-export interface ProjectSummary {
-    name: string;
-    last_modified: string;
-}
-
 export interface PackageVersion {
     tag: string;
     is_audited: boolean;

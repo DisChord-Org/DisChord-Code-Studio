@@ -1,10 +1,10 @@
-const GENERIC_FAMILIES = new Set(["monospace", "sans-serif", "serif", "ui-monospace", "system-ui", "cursive", "fantasy"]);
+const genericFamilies = new Set(["monospace", "sans-serif", "serif", "ui-monospace", "system-ui", "cursive", "fantasy"]);
 
 /** Turns a font name (e.g. "Monocraft") into a valid CSS font-family value with a fallback. */
 export const buildFontFamilyCss = (name: string): string => {
     const trimmed = name.trim();
     if (!trimmed) return "monospace";
-    if (GENERIC_FAMILIES.has(trimmed.toLowerCase())) {
+    if (genericFamilies.has(trimmed.toLowerCase())) {
         return trimmed.toLowerCase() === "ui-monospace" ? "ui-monospace, monospace" : trimmed;
     }
     return `'${trimmed.replace(/'/g, "\\'")}', monospace`;
@@ -19,7 +19,7 @@ export const buildFontFamilyCss = (name: string): string => {
  */
 export const isFontAvailable = async (name: string): Promise<boolean> => {
     const trimmed = name.trim();
-    if (!trimmed || GENERIC_FAMILIES.has(trimmed.toLowerCase())) return true;
+    if (!trimmed || genericFamilies.has(trimmed.toLowerCase())) return true;
     if (typeof document === "undefined" || !("fonts" in document)) return true;
 
     try {
