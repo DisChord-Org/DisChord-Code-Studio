@@ -36,13 +36,67 @@ where
     Ok(serde_json::from_value(value).unwrap_or_default())
 }
 
-#[derive(Clone, Serialize, Deserialize, Default)]
+fn default_editor_font_family() -> String {
+    "Monocraft".to_string()
+}
+
+/// Accepts configs saved in the old format (a full CSS stack, e.g. "'Monocraft', monospace")
+/// and keeps only the bare font name.
+fn normalize_font_family<'de, D>(deserializer: D) -> Result<String, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = String::deserialize(deserializer).unwrap_or_default();
+    let bare = value
+        .split(',')
+        .next()
+        .unwrap_or("")
+        .trim()
+        .trim_matches(['\'', '"'])
+        .to_string();
+
+    if bare.is_empty() {
+        Ok(default_editor_font_family())
+    } else {
+        Ok(bare)
+    }
+}
+
+fn default_editor_font_size() -> u32 {
+    14
+}
+
+fn clamp_font_size<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    let parsed = value.as_u64().unwrap_or(default_editor_font_size() as u64);
+    Ok((parsed as u32).clamp(8, 32))
+}
+
+#[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
     #[serde(deserialize_with = "lenient")]
     pub view_mode: ViewMode,
     #[serde(deserialize_with = "lenient")]
     pub log_rotation: LogRotation,
+    #[serde(deserialize_with = "normalize_font_family")]
+    pub editor_font_family: String,
+    #[serde(deserialize_with = "clamp_font_size")]
+    pub editor_font_size: u32,
+}
+
+impl Default for AppConfig {
+    fn default() -> Self {
+        Self {
+            view_mode: ViewMode::default(),
+            log_rotation: LogRotation::default(),
+            editor_font_family: default_editor_font_family(),
+            editor_font_size: default_editor_font_size(),
+        }
+    }
 }
 
 fn config_path(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {

@@ -13,14 +13,18 @@ export const dischordEditorTheme = EditorView.theme({
         msOverflowStyle: "none"
     },
     ".cm-content": {
-        fontFamily: "'JetBrains Mono', monospace",
-        fontSize: "13px",
+        fontFamily: "var(--editor-font-family, 'Monocraft', monospace)",
+        fontSize: "var(--editor-font-size, 14px)",
+        lineHeight: "calc(var(--editor-font-size, 14px) * 1.35)",
         paddingTop: "0px"
     },
     ".cm-gutters": {
         backgroundColor: "#0B0E14 !important",
         borderRight: "1px solid #1e1f22",
         color: "#4b5563",
+        fontFamily: "var(--editor-font-family, 'Monocraft', monospace)",
+        fontSize: "var(--editor-font-size, 14px)",
+        lineHeight: "calc(var(--editor-font-size, 14px) * 1.35)",
         paddingTop: "0px",
         minWidth: "40px"
     },

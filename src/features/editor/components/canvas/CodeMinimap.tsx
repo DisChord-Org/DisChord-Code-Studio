@@ -1,4 +1,5 @@
 import { useEffect, useRef, useMemo, useState, useCallback } from "react";
+import { useConfig, buildFontFamilyCss } from "../../../settings";
 import { CHORD_THEME } from "../../../../languages/chord-theme";
 import {
     CHORD_KEYWORDS,
@@ -84,6 +85,7 @@ interface CodeMinimapProps {
 }
 
 export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) => {
+    const { config } = useConfig();
     const containerRef = useRef<HTMLDivElement>(null);
     const canvasRef = useRef<HTMLCanvasElement>(null);
     const [containerHeight, setContainerHeight] = useState(0);
@@ -122,7 +124,7 @@ export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) =>
         ctx.scale(dpr, dpr);
         ctx.clearRect(0, 0, MINIMAP_WIDTH, canvasHeight);
         ctx.textBaseline = "top";
-        ctx.font = `${FONT_SIZE}px ui-monospace, "JetBrains Mono", "Fira Code", monospace`;
+        ctx.font = `${FONT_SIZE}px ${buildFontFamilyCss(config.editor_font_family)}`;
 
         linesTokens.forEach((tokens, i) => {
             const y = i * LINE_HEIGHT;
@@ -133,7 +135,7 @@ export const CodeMinimap = ({ text, viewport, onScrollTo }: CodeMinimapProps) =>
                 ctx.fillText(t.text, x, y);
             }
         });
-    }, [linesTokens, canvasHeight]);
+    }, [linesTokens, canvasHeight, config.editor_font_family]);
 
     const scrollableMinimap = Math.max(canvasHeight - containerHeight, 0);
     const scrollableEditor = viewport ? Math.max(viewport.scrollHeight - viewport.clientHeight, 0) : 0;

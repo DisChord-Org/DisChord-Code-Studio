@@ -5,6 +5,7 @@ import { Title } from "../components/ui/Typography";
 import {
     SettingsSidebar,
     DashboardSettings,
+    EditorSettings,
     LogsSettings,
     JsonFileEditor,
     useConfig,
@@ -17,6 +18,7 @@ interface SettingsProps {
 
 const SECTION_TITLES: Record<SettingsSection, string> = {
     dashboard: "Dashboard",
+    editor: "Editor",
     logs: "Logs",
 };
 
@@ -50,6 +52,8 @@ function Settings({ onBack }: SettingsProps) {
 
                         {section === "dashboard" ? (
                             <DashboardSettings config={config} updateConfig={updateConfig} />
+                        ) : section === "editor" ? (
+                            <EditorSettings config={config} updateConfig={updateConfig} />
                         ) : (
                             <LogsSettings config={config} updateConfig={updateConfig} />
                         )}

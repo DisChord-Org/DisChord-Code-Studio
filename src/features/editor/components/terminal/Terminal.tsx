@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import "@xterm/xterm/css/xterm.css";
 import { Label } from "../../../../components/ui/Typography";
 import { Tooltip } from "../../../../components/ui/Tooltip";
+import { useConfig, buildFontFamilyCss } from "../../../settings";
 
 interface TerminalPanelProps {
     onClose: () => void;
@@ -13,6 +14,8 @@ interface TerminalPanelProps {
 export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<Terminal | null>(null);
+    const fitAddonRef = useRef<FitAddon | null>(null);
+    const { config } = useConfig();
 
     useEffect(() => {
         if (!terminalRef.current) return;
@@ -20,7 +23,7 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
         const term = new Terminal({
             cursorBlink: true,
             fontSize: 12,
-            fontFamily: "'JetBrains Mono', monospace",
+            fontFamily: buildFontFamilyCss(config.editor_font_family),
             theme: {
                 background: "#0B0E14",
                 foreground: "#abb2bf",
@@ -37,6 +40,7 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
 
         term.writeln("\x1b[1;34m[*] Terminal DisChord lista...\x1b[0m");
         xtermRef.current = term;
+        fitAddonRef.current = fitAddon;
 
         const unlisten = listen<string>("terminal-data", (event) => {
             term.write(event.payload);
@@ -49,8 +53,17 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
             window.removeEventListener("resize", handleResize);
             unlisten.then(f => f());
             term.dispose();
+            xtermRef.current = null;
+            fitAddonRef.current = null;
         };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
+
+    useEffect(() => {
+        if (!xtermRef.current) return;
+        xtermRef.current.options.fontFamily = buildFontFamilyCss(config.editor_font_family);
+        fitAddonRef.current?.fit();
+    }, [config.editor_font_family]);
 
     return (
         <div className="h-72 flex flex-col bg-[#0B0E14] border-t border-white/5 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.5)]">

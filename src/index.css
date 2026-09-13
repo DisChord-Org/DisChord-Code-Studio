@@ -1,5 +1,66 @@
 @import "tailwindcss";
 
+@font-face {
+    font-family: "Monocraft";
+    src: url("/fonts/monocraft/Monocraft.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --editor-font-family: "Monocraft", monospace;
+    --editor-font-size: 14px;
+}
+
+.font-size-slider {
+    -webkit-appearance: none;
+    appearance: none;
+    height: 4px;
+    border-radius: 999px;
+    background: linear-gradient(to right, #5865F2 var(--range-fill, 50%), #1e1f22 var(--range-fill, 50%));
+    outline: none;
+    cursor: pointer;
+}
+.font-size-slider::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #5865F2;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+.font-size-slider::-webkit-slider-thumb:hover {
+    transform: scale(1.15);
+}
+.font-size-slider::-moz-range-track {
+    height: 4px;
+    border-radius: 999px;
+    background: #1e1f22;
+}
+.font-size-slider::-moz-range-progress {
+    height: 4px;
+    border-radius: 999px;
+    background: #5865F2;
+}
+.font-size-slider::-moz-range-thumb {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+    background: #ffffff;
+    border: 2px solid #5865F2;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.4);
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+.font-size-slider::-moz-range-thumb:hover {
+    transform: scale(1.15);
+}
+
 html[data-platform="macos"] #root {
     border-radius: 10px;
     overflow: hidden;
