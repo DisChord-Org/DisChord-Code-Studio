@@ -6,4 +6,5 @@ export interface AppConfig {
     log_rotation: LogRotation;
     editor_font_family: string;
     editor_font_size: number;
+    editor_word_wrap: boolean;
 }

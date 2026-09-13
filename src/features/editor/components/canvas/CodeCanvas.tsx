@@ -16,6 +16,7 @@ import { css } from "@codemirror/lang-css";
 import { json } from "@codemirror/lang-json";
 import { chord } from "../../../../languages/chord-language";
 import { dischordEditorTheme } from "../../../../languages/editor-theme";
+import { useConfig } from "../../../settings";
 
 interface CodeCanvasProps {
     projectName: string;
@@ -28,15 +29,23 @@ interface CodeCanvasProps {
 }
 
 const languageConf = new Compartment();
+const wrapConf = new Compartment();
 
 export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange
 }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
+    const { config, updateConfig } = useConfig();
 
     const onViewportChangeRef = useRef(onViewportChange);
     onViewportChangeRef.current = onViewportChange;
+
+    const wordWrapRef = useRef(config.editor_word_wrap);
+    wordWrapRef.current = config.editor_word_wrap;
+
+    const updateConfigRef = useRef(updateConfig);
+    updateConfigRef.current = updateConfig;
 
     useImperativeHandle(ref, () => ({
         scrollTo: (scrollTop: number) => {
@@ -126,11 +135,13 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     scrollPastEnd(),
                     flashField,
                     languageConf.of(getLanguage(fileName)),
+                    wrapConf.of(wordWrapRef.current ? EditorView.lineWrapping : []),
                     getCompletionExtension(fileName),
                     keymap.of([
                         indentWithTab,
                         { key: "Ctrl-s", run: (v) => { handleSave(v.state.doc.toString()); return true; } },
-                        { key: "Ctrl-r", run: () => { window.dispatchEvent(new CustomEvent("dischord-run")); return true; } }
+                        { key: "Ctrl-r", run: () => { window.dispatchEvent(new CustomEvent("dischord-run")); return true; } },
+                        { key: "Alt-z", run: () => { updateConfigRef.current({ editor_word_wrap: !wordWrapRef.current }); return true; } }
                     ]),
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
@@ -206,6 +217,12 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         });
         setIsDirty(false);
     }, [content]);
+
+    useEffect(() => {
+        viewRef.current?.dispatch({
+            effects: wrapConf.reconfigure(config.editor_word_wrap ? EditorView.lineWrapping : [])
+        });
+    }, [config.editor_word_wrap]);
 
     useEffect(() => {
         const triggerSave = () => {

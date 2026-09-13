@@ -86,6 +86,7 @@ pub struct AppConfig {
     pub editor_font_family: String,
     #[serde(deserialize_with = "clamp_font_size")]
     pub editor_font_size: u32,
+    pub editor_word_wrap: bool,
 }
 
 impl Default for AppConfig {
@@ -95,6 +96,7 @@ impl Default for AppConfig {
             log_rotation: LogRotation::default(),
             editor_font_family: default_editor_font_family(),
             editor_font_size: default_editor_font_size(),
+            editor_word_wrap: false,
         }
     }
 }

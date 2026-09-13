@@ -10,12 +10,14 @@ import {
     useEditor,
 } from "../features/editor";
 import { PackageManager } from "../features/packages";
+import { useConfig } from "../features/settings";
 
 export const Editor = ({ projectName, onBack, onSwitchProject }: {
     projectName: string,
     onBack: () => void,
     onSwitchProject?: (name: string) => void
 }) => {
+    const { config, updateConfig } = useConfig();
     const {
         fileTree,
         openTabs,
@@ -114,6 +116,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
                         fileName={activeTab?.name}
                         isDirty={activeTab?.isDirty ?? false}
                         contentLength={activeTab?.content.length ?? 0}
+                        wordWrap={config.editor_word_wrap}
+                        onToggleWordWrap={() => updateConfig({ editor_word_wrap: !config.editor_word_wrap })}
                     />
                 </main>
             </div>

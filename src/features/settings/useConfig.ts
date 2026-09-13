@@ -8,6 +8,7 @@ const defaultConfig: AppConfig = {
     log_rotation: "daily",
     editor_font_family: "Monocraft",
     editor_font_size: 14,
+    editor_word_wrap: false,
 };
 
 export const useConfig = () => {
