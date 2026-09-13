@@ -1,4 +1,3 @@
-import { useState } from "react";
 import type { FileNode } from "../../types";
 import { Tooltip } from "../../../../components/ui/Tooltip";
 
@@ -28,17 +27,18 @@ interface FileItemProps {
     onContextMenu: (e: React.MouseEvent, path: string) => void;
     selectedPath: string | null;
     onSelect: (path: string) => void;
-    defaultOpen?: boolean;
+    expandedPaths: Set<string>;
+    onToggleExpand: (path: string) => void;
 }
 
-export const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextMenu, selectedPath, onSelect, defaultOpen = false }: FileItemProps) => {
-    const [isOpen, setIsOpen] = useState(defaultOpen);
+export const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextMenu, selectedPath, onSelect, expandedPaths, onToggleExpand }: FileItemProps) => {
+    const isOpen = expandedPaths.has(node.relative_path);
     const isChordFile = !node.is_dir && node.name.toLowerCase().endsWith('.chord');
     const isSelected = selectedPath === node.relative_path;
 
     const handleClick = () => {
         onSelect(node.relative_path);
-        if (node.is_dir) setIsOpen(!isOpen);
+        if (node.is_dir) onToggleExpand(node.relative_path);
         else onFileClick(node);
     };
 
@@ -110,6 +110,8 @@ export const FileItem = ({ node, level, onFileClick, onCreateRequest, onContextM
                             onContextMenu={onContextMenu}
                             selectedPath={selectedPath}
                             onSelect={onSelect}
+                            expandedPaths={expandedPaths}
+                            onToggleExpand={onToggleExpand}
                         />
                     ))}
                 </div>

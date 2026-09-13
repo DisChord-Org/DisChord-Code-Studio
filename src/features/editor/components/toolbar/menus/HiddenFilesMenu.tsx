@@ -3,6 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { FileItem } from "../../sidebar/FileItem";
 import type { FileNode } from "../../../types";
 
+const emptyExpandedPaths = new Set<string>();
+
 const gitignoreNode: FileNode = {
     name: ".gitignore",
     is_dir: false,
@@ -72,6 +74,8 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
                                     onContextMenu={(e) => e.preventDefault()}
                                     selectedPath={null}
                                     onSelect={() => {}}
+                                    expandedPaths={emptyExpandedPaths}
+                                    onToggleExpand={() => {}}
                                 />
                             ))
                         )}

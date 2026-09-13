@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import type { FileNode } from "../../types";
 import { invoke } from "@tauri-apps/api/core";
 
@@ -16,6 +16,18 @@ interface SidebarProps {
     onRefresh: () => void;
 }
 
+const expandedPathsStorageKey = (projectName: string) => `dischord:sidebar-expanded:${projectName}`;
+
+const loadExpandedPaths = (projectName: string): Set<string> => {
+    try {
+        const raw = localStorage.getItem(expandedPathsStorageKey(projectName));
+        if (raw) return new Set(JSON.parse(raw));
+    } catch {
+        // Ignore corrupt/inaccessible storage and fall back to the default below.
+    }
+    return new Set(["src"]);
+};
+
 export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarProps) => {
     const [modalState, setModalState] = useState<{
         isOpen: boolean,
@@ -28,7 +40,29 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
     });
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, path: string } | null>(null);
     const [selectedPath, setSelectedPath] = useState<string | null>(null);
+    const [expandedPaths, setExpandedPaths] = useState<Set<string>>(() => loadExpandedPaths(projectName));
     const { size: width, startDrag } = useResizablePanel({ initialSize: 240, min: 160, max: 480, axis: "x" });
+
+    useEffect(() => {
+        setExpandedPaths(loadExpandedPaths(projectName));
+    }, [projectName]);
+
+    useEffect(() => {
+        try {
+            localStorage.setItem(expandedPathsStorageKey(projectName), JSON.stringify(Array.from(expandedPaths)));
+        } catch {
+            // Best-effort persistence; losing the expanded state isn't worth surfacing an error for.
+        }
+    }, [expandedPaths, projectName]);
+
+    const toggleExpand = (path: string) => {
+        setExpandedPaths(prev => {
+            const next = new Set(prev);
+            if (next.has(path)) next.delete(path);
+            else next.add(path);
+            return next;
+        });
+    };
 
     const openModal = (type: 'file' | 'folder', path: string) => {
         setModalState({ isOpen: true, type, parentPath: path });
@@ -117,7 +151,8 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
                             }}
                             selectedPath={selectedPath}
                             onSelect={setSelectedPath}
-                            defaultOpen={file.is_dir && file.name === "src"}
+                            expandedPaths={expandedPaths}
+                            onToggleExpand={toggleExpand}
                         />
                     ))
                 )}
