@@ -6,6 +6,7 @@ import "@xterm/xterm/css/xterm.css";
 import { Label } from "../../../../components/ui/Typography";
 import { Tooltip } from "../../../../components/ui/Tooltip";
 import { useConfig, buildFontFamilyCss } from "../../../settings";
+import { useResizablePanel } from "../../useResizablePanel";
 
 interface TerminalPanelProps {
     onClose: () => void;
@@ -16,6 +17,7 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
     const xtermRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
     const { config } = useConfig();
+    const { size: height, startDrag } = useResizablePanel({ initialSize: 288, min: 120, max: 640, axis: "y", invert: true });
 
     useEffect(() => {
         if (!terminalRef.current) return;
@@ -65,8 +67,17 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
         fitAddonRef.current?.fit();
     }, [config.editor_font_family]);
 
+    useEffect(() => {
+        fitAddonRef.current?.fit();
+    }, [height]);
+
     return (
-        <div className="h-72 flex flex-col bg-app-bg border-t border-white/5 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.5)]">
+        <div className="flex flex-col bg-app-bg border-t border-white/5 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.5)] relative shrink-0" style={{ height }}>
+            <div
+                onMouseDown={startDrag}
+                className="absolute top-0 left-0 right-0 h-1 -translate-y-1/2 cursor-row-resize hover:bg-accent/50 active:bg-accent transition-colors z-20"
+            />
+
             <div className="flex items-center justify-between px-4 py-2 bg-[#0E1117]/50 backdrop-blur-sm border-b border-white/[0.02]">
                 <div className="flex items-center gap-3">
                     <div className="flex gap-1.5">

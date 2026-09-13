@@ -7,6 +7,7 @@ import { ContextMenu } from "../../../../components/ui/ContextMenu";
 import { Label } from "../../../../components/ui/Typography";
 import { Tooltip } from "../../../../components/ui/Tooltip";
 import { FileItem } from "./FileItem";
+import { useResizablePanel } from "../../useResizablePanel";
 
 interface SidebarProps {
     files: FileNode[];
@@ -27,6 +28,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
     });
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, path: string } | null>(null);
     const [selectedPath, setSelectedPath] = useState<string | null>(null);
+    const { size: width, startDrag } = useResizablePanel({ initialSize: 240, min: 160, max: 480, axis: "x" });
 
     const openModal = (type: 'file' | 'folder', path: string) => {
         setModalState({ isOpen: true, type, parentPath: path });
@@ -59,7 +61,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
     };
 
     return (
-        <aside className="w-60 bg-panel-alt shadow-[1px_0_3px_0_rgba(0,0,0,0.35)] flex flex-col shrink-0 select-none relative z-10">
+        <aside className="bg-panel-alt shadow-[1px_0_3px_0_rgba(0,0,0,0.35)] flex flex-col shrink-0 select-none relative z-10" style={{ width }}>
             <div className="px-3 pt-3 pb-1.5">
                 <Label>Explorador</Label>
             </div>
@@ -145,6 +147,11 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
                     ]}
                 />
             )}
+
+            <div
+                onMouseDown={startDrag}
+                className="absolute top-0 right-0 h-full w-1 cursor-col-resize hover:bg-accent/50 active:bg-accent transition-colors z-20"
+            />
         </aside>
     );
 };

@@ -108,11 +108,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: {
                         )}
                     </div>
 
-                    {showTerminal && (
-                        <div className="h-72 shrink-0 flex flex-col relative">
-                            <TerminalPanel onClose={() => setShowTerminal(false)} />
-                        </div>
-                    )}
+                    {showTerminal && <TerminalPanel onClose={() => setShowTerminal(false)} />}
 
                     <StatusBar
                         fileName={activeTab?.name}
