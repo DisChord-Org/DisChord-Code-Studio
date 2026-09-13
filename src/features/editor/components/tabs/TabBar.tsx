@@ -11,7 +11,7 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
     if (tabs.length === 0) return null;
 
     return (
-        <div className="flex items-stretch bg-panel-alt shadow-[0_1px_3px_0_rgba(0,0,0,0.3)] overflow-hidden shrink-0 select-none relative z-[5]">
+        <div className="custom-scrollbar flex items-stretch gap-1 bg-panel-alt px-2 pt-1.5 shadow-[0_1px_3px_0_rgba(0,0,0,0.3)] overflow-x-auto shrink-0 select-none relative z-[5]">
             {tabs.map((tab) => {
                 const isActive = tab.relative_path === activePath;
 
@@ -19,12 +19,22 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                     <div
                         key={tab.relative_path}
                         onClick={() => onSelect(tab.relative_path)}
-                        className={`group flex items-center gap-2 pl-3 pr-2 py-2 text-[12px] border-r border-white/[0.04] border-t-2 cursor-pointer min-w-[90px] max-w-[180px] transition-colors
+                        onMouseDown={(e) => {
+                            if (e.button === 1) {
+                                e.preventDefault();
+                                onClose(tab.relative_path);
+                            }
+                        }}
+                        className={`group relative flex items-center gap-2 pl-3 pr-2 py-2 text-[12px] rounded-t-md cursor-pointer min-w-[110px] max-w-[200px] transition-all duration-150
                             ${isActive
-                                ? "bg-app-bg text-white border-t-accent"
-                                : "text-gray-500 hover:bg-white/[0.03] hover:text-gray-300 border-t-transparent"
+                                ? "bg-app-bg text-white shadow-[0_-2px_8px_-2px_rgba(0,0,0,0.5)]"
+                                : "bg-white/[0.02] text-gray-500 hover:bg-white/[0.05] hover:text-gray-300"
                             }`}
                     >
+                        {isActive && (
+                            <span className="absolute top-1.5 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full bg-accent" />
+                        )}
+
                         <span className="truncate flex-1">{tab.name}</span>
 
                         <button
