@@ -219,7 +219,9 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     }, [relative_path, projectName]);
 
     return (
-        <div className="h-full overflow-hidden selection:bg-accent/30" ref={editorRef} />
+        <div className="h-full w-full overflow-hidden">
+            <div className="editor-zoom-wrapper selection:bg-accent/30" ref={editorRef} />
+        </div>
     );
 });
 

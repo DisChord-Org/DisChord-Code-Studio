@@ -27,6 +27,20 @@
 :root {
     --editor-font-family: "Monocraft", monospace;
     --editor-font-size: 14px;
+    --editor-zoom: 0.92;
+}
+
+/*
+ * Some rendering engines draw the same font/size noticeably larger than others (seen
+ * comparing this app's WebView against VS Code's Chromium/Electron at identical computed
+ * font-size, line-height, weight and letter-spacing). A slight zoom-out compensates for
+ * that without changing the font-size value the user actually configured.
+ */
+.editor-zoom-wrapper {
+    width: calc(100% / var(--editor-zoom));
+    height: calc(100% / var(--editor-zoom));
+    transform: scale(var(--editor-zoom));
+    transform-origin: top left;
 }
 
 .font-size-slider {
