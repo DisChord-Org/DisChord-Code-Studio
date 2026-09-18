@@ -5,3 +5,4 @@ pub mod updater;
 pub mod system_stats;
 pub mod config;
 pub mod packages;
+pub mod window_size;

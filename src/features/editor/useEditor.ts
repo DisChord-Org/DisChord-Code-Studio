@@ -50,7 +50,8 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         return () => {
             (async () => {
                 await appWindow.unmaximize();
-                await appWindow.setSize(new LogicalSize(800, 600));
+                const { width, height } = await invoke<{ width: number; height: number }>("get_home_window_size");
+                await appWindow.setSize(new LogicalSize(width, height));
                 await appWindow.center();
                 await appWindow.setResizable(false);
             })();

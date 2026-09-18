@@ -68,20 +68,12 @@ pub fn run() {
             info!("DisChord IDE iniciado");
 
             if let Some(window) = app.get_webview_window("main") {
-                // En Linux, GTK/WebKitGTK ignora el tamaño configurado en tauri.conf.json
-                // cuando la ventana ya nace con resizable:false, y usa en su lugar el
-                // tamaño "natural" del contenido (más grande que 800x600). Forzar el
-                // tamaño de nuevo tras habilitar temporalmente el resize corrige esto,
-                // igual que ya se hace en useEditor.ts al volver del editor.
-                #[cfg(target_os = "linux")]
-                {
-                    let _ = window.set_resizable(true);
-                    let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width: 800.0, height: 600.0 }));
-                    let _ = window.set_resizable(false);
-                }
-
+                let size = commands::window_size::compute_home_window_size(window.current_monitor().ok().flatten());
+                let _ = window.set_resizable(true);
+                let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width: size.width, height: size.height }));
+                let _ = window.set_resizable(false);
                 let _ = window.center();
-                info!("Ventana principal centrada.");
+                info!("Ventana principal ajustada a {}x{} y centrada.", size.width, size.height);
             } else {
                 warn!("No se pudo encontrar la ventana principal 'main'");
             }
@@ -141,6 +133,8 @@ pub fn run() {
             commands::packages::pkg_use,
             commands::packages::pkg_unuse,
             commands::packages::pkg_sync,
+
+            commands::window_size::get_home_window_size,
 
             platform::get_platform
         ])
