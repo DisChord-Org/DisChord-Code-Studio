@@ -9,7 +9,9 @@ use log::{info, error, warn};
 
 use crate::ChildProcessState;
 use crate::paths::project_path;
-use crate::platform::{silent_command, resolve_chord_command, strip_npm_env, bin_dir, pnpm_command, build_path_env};
+#[cfg(target_os = "windows")]
+use crate::platform::silent_command;
+use crate::platform::{resolve_chord_command, strip_npm_env, bin_dir, pnpm_command, build_path_env};
 use crate::log_err::LogErr;
 
 /// Streams a child process' stdout/stderr into the "terminal-data" event, line by line
