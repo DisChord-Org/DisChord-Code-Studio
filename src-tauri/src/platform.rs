@@ -18,6 +18,7 @@ use std::os::windows::process::CommandExt;
 pub const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 pub fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
+    #[cfg_attr(not(target_os = "windows"), allow(unused_mut))]
     let mut command = Command::new(program);
     #[cfg(target_os = "windows")]
     command.creation_flags(CREATE_NO_WINDOW);
