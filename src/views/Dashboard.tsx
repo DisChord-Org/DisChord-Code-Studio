@@ -29,6 +29,8 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
         handleUpdate,
     } = useDashboard();
 
+    const totalProjectCount = projects.length + (creatingProjectName ? 1 : 0);
+
     return (
         <div data-tauri-drag-region className="relative min-h-screen bg-app-bg p-12 overflow-hidden select-none">
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
@@ -73,8 +75,8 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                         key={config.view_mode}
                         className={`animate-in fade-in duration-300 ${
                             config.view_mode === "grid"
-                                ? "grid grid-cols-2 gap-3"
-                                : "grid gap-3"
+                                ? `grid grid-cols-2 gap-3 ${totalProjectCount > 4 ? "custom-scrollbar max-h-[164px] overflow-y-auto pr-1" : ""}`
+                                : `grid gap-3 ${totalProjectCount > 3 ? "custom-scrollbar max-h-[258px] overflow-y-auto pr-1" : ""}`
                         }`}
                     >
                         {creatingProjectName && (
