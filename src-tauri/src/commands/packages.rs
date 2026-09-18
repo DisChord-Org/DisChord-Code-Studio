@@ -102,10 +102,9 @@ fn configure_pkg_command(app_handle: &tauri::AppHandle, command: &mut std::proce
     }
 }
 
-#[tauri::command]
-pub fn pkg_search(app_handle: tauri::AppHandle, query: Option<String>, installed_only: bool) -> Result<Vec<PackageEntry>, String> {
-    let mut command = resolve_chord_command(&app_handle);
-    configure_pkg_command(&app_handle, &mut command);
+fn pkg_search_blocking(app_handle: &tauri::AppHandle, query: Option<String>, installed_only: bool) -> Result<Vec<PackageEntry>, String> {
+    let mut command = resolve_chord_command(app_handle);
+    configure_pkg_command(app_handle, &mut command);
     command.arg("pkg").arg("search").arg("--json");
 
     if installed_only {
@@ -134,6 +133,13 @@ pub fn pkg_search(app_handle: tauri::AppHandle, query: Option<String>, installed
         .map_err(|e| format!("No se pudo interpretar la respuesta de 'chord pkg search': {}", e))?;
 
     Ok(raw.into_iter().map(PackageEntry::from).collect())
+}
+
+#[tauri::command]
+pub async fn pkg_search(app_handle: tauri::AppHandle, query: Option<String>, installed_only: bool) -> Result<Vec<PackageEntry>, String> {
+    tauri::async_runtime::spawn_blocking(move || pkg_search_blocking(&app_handle, query, installed_only))
+        .await
+        .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
@@ -319,44 +325,64 @@ fn run_pkg_json_op(
 }
 
 #[tauri::command]
-pub fn pkg_install(app_handle: tauri::AppHandle, name: String, version: String) -> Result<PkgOpOutcome, String> {
-    let target = format!("{}@{}", name, normalize_version(&version));
-    run_pkg_json_op(&app_handle, "install", &["install", &target], None, &["done", "already_installed"], "No se pudo ejecutar 'chord pkg install'")
+pub async fn pkg_install(app_handle: tauri::AppHandle, name: String, version: String) -> Result<PkgOpOutcome, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let target = format!("{}@{}", name, normalize_version(&version));
+        run_pkg_json_op(&app_handle, "install", &["install", &target], None, &["done", "already_installed"], "No se pudo ejecutar 'chord pkg install'")
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub fn pkg_uninstall(app_handle: tauri::AppHandle, name: String, version: String) -> Result<PkgOpOutcome, String> {
-    let version = normalize_version(&version);
-    run_pkg_json_op(&app_handle, "uninstall", &["uninstall", &name, &version], None, &["uninstalled"], "No se pudo ejecutar 'chord pkg uninstall'")
+pub async fn pkg_uninstall(app_handle: tauri::AppHandle, name: String, version: String) -> Result<PkgOpOutcome, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let version = normalize_version(&version);
+        run_pkg_json_op(&app_handle, "uninstall", &["uninstall", &name, &version], None, &["uninstalled"], "No se pudo ejecutar 'chord pkg uninstall'")
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub fn pkg_use(app_handle: tauri::AppHandle, project_name: String, name: String, version: String) -> Result<PkgOpOutcome, String> {
-    let version = normalize_version(&version);
-    let project_dir = project_path(&app_handle, &project_name);
-    let outcome = run_pkg_json_op(&app_handle, "use", &["use", &name, &version], Some(&project_dir), &["linked"], "No se pudo ejecutar 'chord pkg use'")?;
+pub async fn pkg_use(app_handle: tauri::AppHandle, project_name: String, name: String, version: String) -> Result<PkgOpOutcome, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let version = normalize_version(&version);
+        let project_dir = project_path(&app_handle, &project_name);
+        let outcome = run_pkg_json_op(&app_handle, "use", &["use", &name, &version], Some(&project_dir), &["linked"], "No se pudo ejecutar 'chord pkg use'")?;
 
-    if outcome.success {
-        ensure_lib_gitignored(&project_dir);
-    }
+        if outcome.success {
+            ensure_lib_gitignored(&project_dir);
+        }
 
-    Ok(outcome)
+        Ok(outcome)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub fn pkg_unuse(app_handle: tauri::AppHandle, project_name: String, name: String) -> Result<PkgOpOutcome, String> {
-    let project_dir = project_path(&app_handle, &project_name);
-    run_pkg_json_op(&app_handle, "unuse", &["unuse", &name], Some(&project_dir), &["unlinked"], "No se pudo ejecutar 'chord pkg unuse'")
+pub async fn pkg_unuse(app_handle: tauri::AppHandle, project_name: String, name: String) -> Result<PkgOpOutcome, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let project_dir = project_path(&app_handle, &project_name);
+        run_pkg_json_op(&app_handle, "unuse", &["unuse", &name], Some(&project_dir), &["unlinked"], "No se pudo ejecutar 'chord pkg unuse'")
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 #[tauri::command]
-pub fn pkg_sync(app_handle: tauri::AppHandle, project_name: String) -> Result<PkgOpOutcome, String> {
-    let project_dir = project_path(&app_handle, &project_name);
-    let outcome = run_pkg_json_op(&app_handle, "sync", &["sync"], Some(&project_dir), &["synced"], "No se pudo ejecutar 'chord pkg sync'")?;
+pub async fn pkg_sync(app_handle: tauri::AppHandle, project_name: String) -> Result<PkgOpOutcome, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let project_dir = project_path(&app_handle, &project_name);
+        let outcome = run_pkg_json_op(&app_handle, "sync", &["sync"], Some(&project_dir), &["synced"], "No se pudo ejecutar 'chord pkg sync'")?;
 
-    if outcome.success {
-        ensure_lib_gitignored(&project_dir);
-    }
+        if outcome.success {
+            ensure_lib_gitignored(&project_dir);
+        }
 
-    Ok(outcome)
+        Ok(outcome)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
