@@ -12,11 +12,13 @@ import {
 import { PackageManager } from "../features/packages";
 import { useConfig } from "../features/settings";
 
-export const Editor = ({ projectName, onBack, onSwitchProject }: {
+interface EditorInterface {
     projectName: string,
     onBack: () => void,
     onSwitchProject?: (name: string) => void
-}) => {
+}
+
+export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface) => {
     const { config, updateConfig } = useConfig();
     const {
         fileTree,

@@ -29,10 +29,8 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
         handleUpdate,
     } = useDashboard();
 
-    const totalProjectCount = projects.length + (creatingProjectName ? 1 : 0);
-
     return (
-        <div data-tauri-drag-region className="relative min-h-screen bg-app-bg p-12 overflow-hidden select-none">
+        <div data-tauri-drag-region className="relative flex flex-col h-screen bg-app-bg overflow-hidden select-none">
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
                 <WindowControls className="ml-2" />
             </div>
@@ -46,10 +44,11 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                 onSubmit={handleCreateProject}
             />
 
+            <div className="flex flex-col flex-1 min-h-0 px-12 pt-12">
             <Title>DisChord Code Studio</Title>
 
-            <div className="max-w-2xl">
-                <div className="flex justify-between items-end mb-4">
+            <div className="flex flex-col flex-1 min-h-0 max-w-2xl w-full">
+                <div className="flex justify-between items-end mb-4 shrink-0">
                     <Label className="mb-2">Tus Workflows</Label>
 
                     <div className="flex items-center gap-2">
@@ -71,12 +70,13 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                 {loading ? (
                     <p className="text-gray-500 animate-pulse">Buscando en Documentos...</p>
                 ) : projects.length > 0 || creatingProjectName ? (
+                    <div className="custom-scrollbar flex-1 min-h-0 overflow-y-auto overflow-x-hidden pr-1">
                     <div
                         key={config.view_mode}
                         className={`animate-in fade-in duration-300 ${
                             config.view_mode === "grid"
-                                ? `grid grid-cols-2 gap-3 ${totalProjectCount > 4 ? "custom-scrollbar max-h-[164px] overflow-y-auto pr-1" : ""}`
-                                : `grid gap-3 ${totalProjectCount > 3 ? "custom-scrollbar max-h-[258px] overflow-y-auto pr-1" : ""}`
+                                ? "grid grid-cols-2 gap-3 content-start"
+                                : "grid gap-3 content-start"
                         }`}
                     >
                         {creatingProjectName && (
@@ -100,14 +100,17 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                             </div>
                         ))}
                     </div>
+                    </div>
                 ) : (
                     <div className="p-8 border-2 border-dashed border-border rounded-xl text-center">
                         <p className="text-gray-500 text-sm">No existen proyectos.</p>
                     </div>
                 )}
             </div>
-            
-            <div className="absolute bottom-0 left-0 flex items-center z-50">
+            </div>
+
+            <div className="flex items-end justify-between shrink-0 pr-6 pt-3">
+            <div className="flex items-center z-50">
                 <Tooltip label="Configuración" placement="top" align="start">
                     <button
                         onClick={onOpenSettings}
@@ -133,13 +136,13 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                 </Tooltip>
             </div>
 
-            <div className="absolute bottom-4 right-6 flex flex-col items-center gap-2 select-none">
-                <SystemMonitorRings size={40} />
+            <div className="flex items-center gap-4 pb-3">
                 <span className="text-[10px] font-mono text-gray-600 tracking-widest uppercase opacity-50 pointer-events-none">
                     v{appVersion}
                 </span>
+                <SystemMonitorRings size={40} />
             </div>
-
+            </div>
         </div>
     );
 }

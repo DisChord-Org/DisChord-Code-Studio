@@ -40,6 +40,11 @@ interface TargetState {
     message?: string;
 }
 
+interface UpdateRow {
+    target: TargetKey;
+    state: TargetState;
+};
+
 const targetOrder: TargetKey[] = ["ide", "cli", "compiler", "node", "pnpm"];
 const settledPhases: Phase[] = ["up_to_date", "done", "error"];
 const activePhases: Phase[] = ["checking", "downloading", "installing"];
@@ -63,7 +68,7 @@ function toTargetState(p: UpdateProgressPayload): TargetState {
     };
 }
 
-const UpdateRow = ({ target, state }: { target: TargetKey; state: TargetState }) => {
+const UpdateRow = ({ target, state }: UpdateRow) => {
     const meta = targetMeta[target];
     const isActive = activePhases.includes(state.phase);
     const isDone = state.phase === "done" || state.phase === "up_to_date";

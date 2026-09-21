@@ -1,6 +1,9 @@
 import type { Phase, TargetKey } from "./Update";
 
-export const targetMeta: Record<TargetKey, { label: string; icon: string; desc: string }> = {
+type TargetMeta = Record<TargetKey, { label: string; icon: string; desc: string }>;
+type StatusText = Record<Phase, string>;
+
+export const targetMeta: TargetMeta = {
     ide: { label: "DisChord Code Studio", icon: "bi-window-stack", desc: "El propio editor de código" },
     cli: { label: "DisChord CLI", icon: "bi-terminal-fill", desc: "Herramienta de línea de comandos" },
     compiler: { label: "Compilador", icon: "bi-cpu-fill", desc: "DisChord en su nivel más bajo" },
@@ -8,7 +11,7 @@ export const targetMeta: Record<TargetKey, { label: string; icon: string; desc: 
     pnpm: { label: "pnpm", icon: "bi-box-seam-fill", desc: "Gestor de paquetes de tus proyectos (embebido)" },
 };
 
-export const statusText: Record<Phase, string> = {
+export const statusText: StatusText = {
     idle: "En espera",
     checking: "Comprobando…",
     downloading: "Descargando…",
