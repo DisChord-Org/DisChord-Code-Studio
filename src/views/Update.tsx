@@ -74,95 +74,71 @@ const UpdateRow = ({ target, state }: UpdateRow) => {
     const isDone = state.phase === "done" || state.phase === "up_to_date";
     const isError = state.phase === "error";
 
-    const accent = isError
-        ? "bg-red-500"
-        : isDone
-        ? "bg-emerald-500"
-        : isActive
-        ? "bg-accent"
-        : "bg-gray-700";
-
     const barWidth = state.phase === "checking"
         ? 35
         : Math.max(state.percent ?? (state.phase === "installing" ? 100 : 4), 4);
 
-    return (
-        <div className="relative bg-white/[0.02] border border-white/[0.06] rounded-lg p-4 pl-5 overflow-hidden transition-colors duration-300 hover:border-white/[0.1]">
-            <span className={`absolute left-0 top-0 bottom-0 w-[3px] transition-colors duration-500 ${accent}`} />
+    const statusColor = isError
+        ? "text-red-400"
+        : isDone
+        ? "text-emerald-400"
+        : isActive
+        ? "text-accent-light"
+        : "text-gray-500";
 
+    const progressLabel = state.phase === "downloading" && state.totalBytes
+        ? `${formatBytes(state.currentBytes ?? 0)} / ${formatBytes(state.totalBytes)}`
+        : state.percent !== undefined
+        ? `${Math.round(state.percent)}%`
+        : "";
+
+    return (
+        <div
+            title={meta.desc}
+            className="relative bg-white/[0.02] border border-white/[0.06] rounded-lg px-3 py-2.5 overflow-hidden transition-colors duration-300 hover:border-white/[0.1]"
+        >
             <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-3 min-w-0">
-                    <div
-                        className={`w-8 h-8 rounded-md flex items-center justify-center shrink-0 transition-colors duration-300 ${
-                            isError
-                                ? "bg-red-500/10 text-red-400"
-                                : isDone
-                                ? "bg-emerald-500/10 text-emerald-400"
-                                : "bg-white/5 text-gray-400"
-                        }`}
-                    >
-                        <i className={`bi ${meta.icon} text-sm`}></i>
-                    </div>
-                    <div className="min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{meta.label}</p>
-                        <p className="text-[11px] text-gray-500 truncate">{meta.desc}</p>
-                    </div>
+                <div className="flex items-center gap-2.5 min-w-0">
+                    <i className={`bi ${meta.icon} text-sm shrink-0 transition-colors duration-300 ${statusColor}`}></i>
+                    <p className="text-sm font-medium text-white truncate">{meta.label}</p>
+                    {state.version && (
+                        <span className="text-[10px] text-gray-600 font-mono shrink-0">v{state.version}</span>
+                    )}
                 </div>
 
-                <div className="flex items-center gap-1.5 shrink-0">
+                <div className="flex items-center gap-2 shrink-0">
+                    {isActive && progressLabel && (
+                        <span className="text-[10px] text-gray-600 font-mono">{progressLabel}</span>
+                    )}
+                    <span className={`text-[11px] font-medium ${statusColor}`}>
+                        {statusText[state.phase]}
+                    </span>
                     {isDone && (
                         <i className="bi bi-check-circle-fill text-emerald-400 text-sm animate-in zoom-in duration-300"></i>
                     )}
                     {isError && (
                         <i className="bi bi-exclamation-circle-fill text-red-400 text-sm animate-in zoom-in duration-300"></i>
                     )}
-                    <span
-                        className={`text-[11px] font-medium ${
-                            isError
-                                ? "text-red-400"
-                                : isDone
-                                ? "text-emerald-400"
-                                : isActive
-                                ? "text-accent-light"
-                                : "text-gray-500"
-                        }`}
-                    >
-                        {statusText[state.phase]}
-                    </span>
                 </div>
             </div>
 
-            {isActive && (
-                <div className="mt-3 animate-in fade-in duration-300">
-                    <div className="h-1 bg-white/5 rounded-full overflow-hidden">
-                        <div
-                            className={`relative h-full rounded-full bg-accent overflow-hidden transition-all duration-500 ease-out ${
-                                state.phase === "checking" || state.phase === "installing" ? "animate-pulse" : ""
-                            }`}
-                            style={{ width: `${barWidth}%` }}
-                        >
-                            <span className="progress-shimmer" />
-                        </div>
-                    </div>
-                    <div className="flex justify-between mt-1.5">
-                        <span className="text-[10px] text-gray-600">
-                            {state.version ? `v${state.version}` : ""}
-                        </span>
-                        <span className="text-[10px] text-gray-600 font-mono">
-                            {state.phase === "downloading" && state.totalBytes
-                                ? `${formatBytes(state.currentBytes ?? 0)} / ${formatBytes(state.totalBytes)}`
-                                : state.percent !== undefined
-                                ? `${Math.round(state.percent)}%`
-                                : ""}
-                        </span>
-                    </div>
-                </div>
-            )}
-
             {isError && state.message && (
-                <p className="mt-2 text-[11px] text-red-400/80 truncate" title={state.message}>
+                <p className="mt-1.5 text-[11px] text-red-400/80 truncate" title={state.message}>
                     {state.message}
                 </p>
+            )}
+
+            {isActive && (
+                <div className="absolute left-0 right-0 bottom-0 h-[2px] bg-white/5 animate-in fade-in duration-300">
+                    <div
+                        className={`relative h-full bg-accent overflow-hidden transition-all duration-500 ease-out ${
+                            state.phase === "checking" || state.phase === "installing" ? "animate-pulse" : ""
+                        }`}
+                        style={{ width: `${barWidth}%` }}
+                    >
+                        <span className="progress-shimmer" />
+                    </div>
+                </div>
             )}
         </div>
     );
