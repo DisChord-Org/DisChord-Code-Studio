@@ -246,7 +246,7 @@ function Update() {
     return (
         <div
             data-tauri-drag-region
-            className="relative min-h-screen bg-app-bg p-10 overflow-hidden select-none flex flex-col"
+            className="relative h-screen bg-app-bg p-10 overflow-hidden select-none flex flex-col"
         >
             <div className="absolute top-0 right-0 flex items-center h-10 z-50">
                 <WindowControls

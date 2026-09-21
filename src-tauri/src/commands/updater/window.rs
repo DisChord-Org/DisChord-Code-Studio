@@ -1,6 +1,8 @@
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use log::{info, error};
 
+use crate::commands::window_size::compute_home_window_size;
+
 fn force_focus(window: &tauri::WebviewWindow) {
     let _ = window.show();
     let _ = window.unminimize();
@@ -24,10 +26,16 @@ pub fn open_update_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
 
     let app_for_event = app_handle.clone();
 
+    let monitor = app_handle
+        .get_webview_window("main")
+        .and_then(|w| w.current_monitor().ok().flatten())
+        .or_else(|| app_handle.primary_monitor().ok().flatten());
+    let size = compute_home_window_size(monitor);
+
     let window = WebviewWindowBuilder::new(app_handle, "update", WebviewUrl::App("index.html".into()))
         .title("Actualizando DisChord")
-        .inner_size(800.0, 720.0)
-        .min_inner_size(800.0, 720.0)
+        .inner_size(size.width, size.height)
+        .min_inner_size(size.width, size.height)
         .resizable(true)
         .maximizable(false)
         .decorations(false)
