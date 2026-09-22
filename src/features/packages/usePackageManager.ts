@@ -7,11 +7,10 @@ import { opKey, phaseLabel } from "./components/PackageManager.utils";
 export type Feedback = { ok: boolean; message: string };
 
 interface UsePackageManagerArgs {
-    isOpen: boolean;
     projectName: string;
 }
 
-export const usePackageManager = ({ isOpen, projectName }: UsePackageManagerArgs) => {
+export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
     const [query, setQuery] = useState("");
     const [results, setResults] = useState<PackageEntry[]>([]);
     const [installed, setInstalled] = useState<PackageEntry[]>([]);
@@ -26,7 +25,6 @@ export const usePackageManager = ({ isOpen, projectName }: UsePackageManagerArgs
     const busyRef = useRef<string | null>(null);
 
     useEffect(() => {
-        if (!isOpen) return;
         const unlisten = listen<PkgProgressEvent>("pkg-progress", (event) => {
             if (!busyRef.current) return;
             setProgress((prev) => ({ ...prev, [event.payload.package]: event.payload }));
@@ -34,7 +32,7 @@ export const usePackageManager = ({ isOpen, projectName }: UsePackageManagerArgs
         return () => {
             unlisten.then((fn) => fn());
         };
-    }, [isOpen]);
+    }, []);
 
     const loadRegistry = async (searchQuery: string) => {
         setLoading(true);
@@ -69,14 +67,9 @@ export const usePackageManager = ({ isOpen, projectName }: UsePackageManagerArgs
     };
 
     useEffect(() => {
-        if (!isOpen) return;
-        setQuery("");
-        setFeedback({});
-        setProgress({});
-        setSelectedVersion({});
         loadRegistry("");
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isOpen, projectName]);
+    }, [projectName]);
 
     const installedVersions = useMemo(() => {
         const map = new Map<string, Set<string>>();

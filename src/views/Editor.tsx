@@ -27,14 +27,13 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         activeTab,
         isRunning,
         showTerminal,
-        showPackages,
         codeCanvasRef,
         minimapViewport,
         setActiveTabPath,
         setShowTerminal,
-        setShowPackages,
         setMinimapViewport,
         handleFileSelect,
+        openPackagesTab,
         closeTab,
         updateActiveTabContent,
         setActiveTabDirty,
@@ -52,13 +51,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                 onRun={handleToggleRun}
                 isRunning={isRunning}
                 onSwitchProject={handleSwitchProject}
-                onOpenPackages={() => setShowPackages(true)}
-            />
-
-            <PackageManager
-                isOpen={showPackages}
-                onClose={() => setShowPackages(false)}
-                projectName={projectName}
+                onOpenPackages={openPackagesTab}
             />
 
             <div className="flex flex-1 overflow-hidden relative">
@@ -78,7 +71,13 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                     />
 
                     <div className="flex-1 min-h-0 relative overflow-hidden">
-                        {activeTab ? (
+                        {activeTab?.kind === "packages" ? (
+                            <PackageManager
+                                key={`${projectName}:${activeTab.relative_path}`}
+                                projectName={projectName}
+                                onClose={() => closeTab(activeTab.relative_path)}
+                            />
+                        ) : activeTab ? (
                             <div className="flex h-full">
                                 <div className="flex-1 overflow-hidden">
                                     <CodeCanvas
@@ -115,9 +114,9 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                     {showTerminal && <TerminalPanel onClose={() => setShowTerminal(false)} />}
 
                     <StatusBar
-                        fileName={activeTab?.name}
-                        isDirty={activeTab?.isDirty ?? false}
-                        contentLength={activeTab?.content.length ?? 0}
+                        fileName={activeTab?.kind === "file" ? activeTab.name : undefined}
+                        isDirty={activeTab?.kind === "file" && activeTab.isDirty}
+                        contentLength={activeTab?.kind === "file" ? activeTab.content.length : 0}
                         wordWrap={config.editor_word_wrap}
                         onToggleWordWrap={() => updateConfig({ editor_word_wrap: !config.editor_word_wrap })}
                     />

@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import { emit, listen } from "@tauri-apps/api/event";
 import type { CodeCanvasHandle, FileNode, MinimapViewport, OpenTab } from "./types";
+import { PACKAGES_TAB_ID } from "./types";
 
 const appWindow = getCurrentWindow();
 
@@ -20,7 +21,6 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
     const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
     const [isRunning, setIsRunning] = useState(false);
     const [showTerminal, setShowTerminal] = useState(false);
-    const [showPackages, setShowPackages] = useState(false);
     const codeCanvasRef = useRef<CodeCanvasHandle>(null);
     const [minimapViewport, setMinimapViewport] = useState<MinimapViewport | undefined>(undefined);
 
@@ -209,6 +209,23 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         }
     };
 
+    const openPackagesTab = () => {
+        setActiveTabPath(PACKAGES_TAB_ID);
+
+        if (openTabsRef.current.some(t => t.relative_path === PACKAGES_TAB_ID)) return;
+
+        setOpenTabs(prev => {
+            if (prev.some(t => t.relative_path === PACKAGES_TAB_ID)) return prev;
+            return [...prev, {
+                kind: "packages",
+                relative_path: PACKAGES_TAB_ID,
+                name: "Dependencias",
+                content: "",
+                isDirty: false,
+            }];
+        });
+    };
+
     const closeTab = (path: string) => {
         const tab = openTabsRef.current.find(t => t.relative_path === path);
         if (tab?.isDirty) {
@@ -315,14 +332,13 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         activeTab,
         isRunning,
         showTerminal,
-        showPackages,
         codeCanvasRef,
         minimapViewport,
         setActiveTabPath,
         setShowTerminal,
-        setShowPackages,
         setMinimapViewport,
         handleFileSelect,
+        openPackagesTab,
         closeTab,
         updateActiveTabContent,
         setActiveTabDirty,

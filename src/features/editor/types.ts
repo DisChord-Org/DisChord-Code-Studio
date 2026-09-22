@@ -15,7 +15,11 @@ export interface CodeCanvasHandle {
     scrollTo: (scrollTop: number) => void;
 }
 
+/** Sentinel id for the "Dependencias" pseudo-tab, reusing `relative_path` as the generic tab id. */
+export const PACKAGES_TAB_ID = "__packages__";
+
 export interface OpenTab {
+    kind: "file" | "packages";
     relative_path: string;
     name: string;
     content: string;

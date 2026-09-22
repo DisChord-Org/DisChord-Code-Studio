@@ -35,6 +35,7 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                             <span className="absolute top-1.5 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full bg-accent" />
                         )}
 
+                        {tab.kind === "packages" && <i className="bi bi-box-seam-fill text-[11px] shrink-0"></i>}
                         <span className="truncate flex-1">{tab.name}</span>
 
                         <button
