@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { AppConfig } from "./types";
 import { buildFontFamilyCss } from "./font";
+import { loadDownloadedFonts } from "./localFonts";
 
 const defaultConfig: AppConfig = {
     view_mode: "list",
@@ -20,6 +21,8 @@ export const useConfig = () => {
             .then(setConfig)
             .catch((error) => console.error("No se pudo cargar la configuración:", error))
             .finally(() => setLoaded(true));
+
+        loadDownloadedFonts();
     }, []);
 
     useEffect(() => {

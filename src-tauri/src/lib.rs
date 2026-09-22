@@ -136,6 +136,11 @@ pub fn run() {
 
             commands::window_size::get_home_window_size,
 
+            commands::fonts::download_font,
+            commands::fonts::get_font_bytes,
+            commands::fonts::delete_font,
+            commands::fonts::list_downloaded_fonts,
+
             platform::get_platform
         ])
         .run(tauri::generate_context!())
