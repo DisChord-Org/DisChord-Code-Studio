@@ -177,6 +177,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
         viewRef.current = view;
         setIsDirty(false);
+        view.focus();
 
         const scroller = view.scrollDOM;
         const reportViewport = () => {
