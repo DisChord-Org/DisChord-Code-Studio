@@ -152,6 +152,22 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, []);
 
+    useEffect(() => {
+        const handleSwitchTab = (e: KeyboardEvent) => {
+            if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+            if (e.key < "1" || e.key > "9") return;
+
+            const tab = openTabsRef.current[Number(e.key) - 1];
+            if (!tab) return;
+
+            e.preventDefault();
+            setActiveTabPath(tab.relative_path);
+        };
+
+        window.addEventListener("keydown", handleSwitchTab);
+        return () => window.removeEventListener("keydown", handleSwitchTab);
+    }, []);
+
     const handleFileSelect = async (node: FileNode) => {
         if (node.is_dir) return;
 
