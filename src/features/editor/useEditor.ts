@@ -6,6 +6,8 @@ import type { CodeCanvasHandle, FileNode, MinimapViewport, OpenTab } from "./typ
 
 const appWindow = getCurrentWindow();
 
+let windowOpGeneration = 0;
+
 interface UseEditorArgs {
     projectName: string;
     onBack: () => void;
@@ -34,8 +36,12 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
     }, [activeTabPath]);
 
     useEffect(() => {
+        const myGeneration = ++windowOpGeneration;
+        const isStale = () => windowOpGeneration !== myGeneration;
+
         (async () => {
             await appWindow.setResizable(true);
+            if (isStale()) return;
             await appWindow.maximize();
         })();
 
@@ -48,11 +54,18 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         setShowTerminal(false);
 
         return () => {
+            const myCleanupGeneration = ++windowOpGeneration;
+            const cleanupIsStale = () => windowOpGeneration !== myCleanupGeneration;
+
             (async () => {
                 await appWindow.unmaximize();
+                if (cleanupIsStale()) return;
                 const { width, height } = await invoke<{ width: number; height: number }>("get_home_window_size");
+                if (cleanupIsStale()) return;
                 await appWindow.setSize(new LogicalSize(width, height));
+                if (cleanupIsStale()) return;
                 await appWindow.center();
+                if (cleanupIsStale()) return;
                 await appWindow.setResizable(false);
             })();
         };
@@ -184,6 +197,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
             setOpenTabs(prev => {
                 if (prev.some(t => t.relative_path === node.relative_path)) return prev;
                 return [...prev, {
+                    kind: "file",
                     relative_path: node.relative_path,
                     name: node.name,
                     content: text,
