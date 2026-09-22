@@ -44,7 +44,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                 onSubmit={handleCreateProject}
             />
 
-            <div className="flex flex-col flex-1 min-h-0 px-12 pt-12">
+            <div data-tauri-drag-region className="flex flex-col flex-1 min-h-0 px-12 pt-12">
             <Title>DisChord Code Studio</Title>
 
             <div className="flex flex-col flex-1 min-h-0 max-w-2xl w-full">
@@ -109,7 +109,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
             </div>
             </div>
 
-            <div className="flex items-end justify-between shrink-0 pr-6 pt-3">
+            <div data-tauri-drag-region className="flex items-end justify-between shrink-0 pr-6 pt-3">
             <div className="flex items-center z-50">
                 <Tooltip label="Configuración" placement="top" align="start">
                     <button
