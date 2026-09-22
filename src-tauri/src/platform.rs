@@ -135,6 +135,9 @@ fn node_exec_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
 
 pub fn build_path_env(app_handle: &tauri::AppHandle) -> Option<std::ffi::OsString> {
     let mut path_entries = Vec::new();
+    if let Some(dir) = bin_dir(app_handle) {
+        path_entries.push(dir);
+    }
     if let Some(dir) = node_exec_dir(app_handle) {
         path_entries.push(dir);
     }
