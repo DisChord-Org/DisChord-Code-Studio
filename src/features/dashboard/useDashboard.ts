@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getVersion } from "@tauri-apps/api/app";
+import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import type { ProjectSummary } from "./types";
 
 export const useDashboard = () => {
@@ -12,6 +13,47 @@ export const useDashboard = () => {
 
     useEffect(() => {
         getVersion().then(setAppVersion);
+    }, []);
+
+    // Recompute the ideal window size on focus (not just at startup/on leaving the editor):
+    // unplugging a monitor while the Dashboard is already open never triggers those, so the
+    // window can keep a size that no longer fits the current display until the user clicks
+    // back into the app.
+    useEffect(() => {
+        const appWindow = getCurrentWindow();
+        let cancelled = false;
+
+        const resyncWindowSize = async () => {
+            try {
+                // Bail if this component already unmounted (e.g. the user opened a project
+                // mid-check) or the window is maximized (the editor does that on purpose;
+                // forcing our small target size here would immediately un-maximize it).
+                if (cancelled || (await appWindow.isMaximized())) return;
+
+                const { width, height } = await invoke<{ width: number; height: number }>("get_home_window_size");
+                const current = await appWindow.innerSize();
+                const scale = await appWindow.scaleFactor();
+                const currentLogical = current.toLogical(scale);
+
+                if (cancelled) return;
+
+                if (Math.abs(currentLogical.width - width) > 4 || Math.abs(currentLogical.height - height) > 4) {
+                    await appWindow.setSize(new LogicalSize(width, height));
+                    if (!cancelled) await appWindow.center();
+                }
+            } catch (error) {
+                console.error("No se pudo reajustar el tamaño de la ventana:", error);
+            }
+        };
+
+        const unlisten = appWindow.onFocusChanged(({ payload: focused }) => {
+            if (focused) resyncWindowSize();
+        });
+
+        return () => {
+            cancelled = true;
+            unlisten.then((fn) => fn());
+        };
     }, []);
 
     const loadProjects = async () => {
