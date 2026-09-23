@@ -69,7 +69,7 @@ export const PackageManager = ({ onClose, projectName }: PackageManagerProps) =>
                 </div>
             </div>
 
-            <div className="custom-scrollbar flex-1 overflow-y-auto px-6 pb-6">
+            <div className="custom-scrollbar flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6">
                 <div className="max-w-3xl w-full mx-auto space-y-6">
                     <InUseSection
                         projectLibs={projectLibs}

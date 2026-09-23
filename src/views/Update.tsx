@@ -93,20 +93,20 @@ const UpdateRow = ({ target, state }: UpdateRow) => {
         : "";
 
     return (
-        <div
-            title={meta.desc}
-            className="relative bg-white/[0.02] border border-white/[0.06] rounded-lg px-3 py-2.5 overflow-hidden transition-colors duration-300 hover:border-white/[0.1]"
-        >
-            <div className="flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2.5 min-w-0">
+        <div className="group relative -mx-5 px-5 py-2.5 rounded-md hover:bg-white/[0.03] transition-colors overflow-hidden">
+            <div className="flex items-center justify-between gap-4">
+                <div className="flex items-center gap-3.5 min-w-0 ml-1">
                     <i className={`bi ${meta.icon} text-sm shrink-0 transition-colors duration-300 ${statusColor}`}></i>
-                    <p className="text-sm font-medium text-white truncate">{meta.label}</p>
+                    <div className="min-w-0">
+                        <p className="text-sm font-medium text-white truncate">{meta.label}</p>
+                        <p className="text-[11px] text-gray-600 truncate">{meta.desc}</p>
+                    </div>
                     {state.version && (
                         <span className="text-[10px] text-gray-600 font-mono shrink-0">v{state.version}</span>
                     )}
                 </div>
 
-                <div className="flex items-center gap-2 shrink-0">
+                <div className="flex items-center gap-3.5 shrink-0 mr-1">
                     {isActive && progressLabel && (
                         <span className="text-[10px] text-gray-600 font-mono">{progressLabel}</span>
                     )}
@@ -268,7 +268,7 @@ function Update() {
                 </div>
             </div>
 
-            <div className="custom-scrollbar flex flex-col gap-3 max-w-xl mx-auto w-full overflow-y-auto">
+            <div className="custom-scrollbar divide-y divide-white/[0.05] max-w-xl mx-auto w-full overflow-y-auto overflow-x-hidden">
                 {targetOrder.map((key, i) => (
                     <div
                         key={key}
