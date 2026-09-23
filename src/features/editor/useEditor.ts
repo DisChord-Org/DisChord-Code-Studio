@@ -1,13 +1,33 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
+import { getCurrentWindow, LogicalSize, PhysicalPosition, PhysicalSize, currentMonitor } from "@tauri-apps/api/window";
 import { emit, listen } from "@tauri-apps/api/event";
 import type { CodeCanvasHandle, FileNode, MinimapViewport, OpenTab } from "./types";
 import { PACKAGES_TAB_ID } from "./types";
 
 const appWindow = getCurrentWindow();
 
-let windowOpGeneration = 0;
+let cachedPlatform: string | null = null;
+const getPlatform = async () => {
+    if (!cachedPlatform) cachedPlatform = await invoke<string>("get_platform");
+    return cachedPlatform;
+};
+
+let windowOpQueue: Promise<void> = Promise.resolve();
+const enqueueWindowOp = (op: () => Promise<void>) => {
+    windowOpQueue = windowOpQueue.then(op, op);
+    return windowOpQueue;
+};
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+const maximizeReliably = async () => {
+    for (let attempt = 0; attempt < 5; attempt++) {
+        await appWindow.maximize();
+        await sleep(50);
+        if (await appWindow.isMaximized()) return;
+    }
+};
 
 interface UseEditorArgs {
     projectName: string;
@@ -36,14 +56,19 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
     }, [activeTabPath]);
 
     useEffect(() => {
-        const myGeneration = ++windowOpGeneration;
-        const isStale = () => windowOpGeneration !== myGeneration;
-
-        (async () => {
+        enqueueWindowOp(async () => {
             await appWindow.setResizable(true);
-            if (isStale()) return;
-            await appWindow.maximize();
-        })();
+
+            const platform = await getPlatform();
+            if (platform === "macos") {
+                const monitor = await currentMonitor();
+                if (!monitor) return;
+                await appWindow.setPosition(new PhysicalPosition(monitor.position.x, monitor.position.y));
+                await appWindow.setSize(new PhysicalSize(monitor.size.width, monitor.size.height));
+            } else {
+                await maximizeReliably();
+            }
+        });
 
         invoke<FileNode[]>("read_project_files", { name: projectName })
             .then(setFileTree)
@@ -54,20 +79,17 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         setShowTerminal(false);
 
         return () => {
-            const myCleanupGeneration = ++windowOpGeneration;
-            const cleanupIsStale = () => windowOpGeneration !== myCleanupGeneration;
+            enqueueWindowOp(async () => {
+                const platform = await getPlatform();
+                if (platform !== "macos") {
+                    await appWindow.unmaximize();
+                }
 
-            (async () => {
-                await appWindow.unmaximize();
-                if (cleanupIsStale()) return;
                 const { width, height } = await invoke<{ width: number; height: number }>("get_home_window_size");
-                if (cleanupIsStale()) return;
                 await appWindow.setSize(new LogicalSize(width, height));
-                if (cleanupIsStale()) return;
                 await appWindow.center();
-                if (cleanupIsStale()) return;
                 await appWindow.setResizable(false);
-            })();
+            });
         };
     }, [projectName]);
 
