@@ -27,6 +27,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         activeTab,
         isRunning,
         showTerminal,
+        isMaximized,
         codeCanvasRef,
         minimapViewport,
         setActiveTabPath,
@@ -92,15 +93,19 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                                         onViewportChange={setMinimapViewport}
                                     />
                                 </div>
-                                <CodeMinimap
-                                    text={activeTab.content}
-                                    viewport={minimapViewport}
-                                    onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
-                                />
-                                <EditorScrollbar
-                                    viewport={minimapViewport}
-                                    onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
-                                />
+                                {isMaximized && (
+                                    <>
+                                        <CodeMinimap
+                                            text={activeTab.content}
+                                            viewport={minimapViewport}
+                                            onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
+                                        />
+                                        <EditorScrollbar
+                                            viewport={minimapViewport}
+                                            onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
+                                        />
+                                    </>
+                                )}
                             </div>
                         ) : (
                             <div className="h-full w-full bg-[radial-gradient(#1e1f22_1px,transparent_1px)] [background-size:20px_20px] flex flex-col items-center justify-center pointer-events-none">
@@ -113,13 +118,15 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
 
                     {showTerminal && <TerminalPanel onClose={() => setShowTerminal(false)} />}
 
-                    <StatusBar
-                        fileName={activeTab?.kind === "file" ? activeTab.name : undefined}
-                        isDirty={activeTab?.kind === "file" && activeTab.isDirty}
-                        contentLength={activeTab?.kind === "file" ? activeTab.content.length : 0}
-                        wordWrap={config.editor_word_wrap}
-                        onToggleWordWrap={() => updateConfig({ editor_word_wrap: !config.editor_word_wrap })}
-                    />
+                    {isMaximized && (
+                        <StatusBar
+                            fileName={activeTab?.kind === "file" ? activeTab.name : undefined}
+                            isDirty={activeTab?.kind === "file" && activeTab.isDirty}
+                            contentLength={activeTab?.kind === "file" ? activeTab.content.length : 0}
+                            wordWrap={config.editor_word_wrap}
+                            onToggleWordWrap={() => updateConfig({ editor_word_wrap: !config.editor_word_wrap })}
+                        />
+                    )}
                 </main>
             </div>
         </div>

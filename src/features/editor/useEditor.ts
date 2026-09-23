@@ -41,6 +41,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
     const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
     const [isRunning, setIsRunning] = useState(false);
     const [showTerminal, setShowTerminal] = useState(false);
+    const [isMaximized, setIsMaximized] = useState(true);
     const codeCanvasRef = useRef<CodeCanvasHandle>(null);
     const [minimapViewport, setMinimapViewport] = useState<MinimapViewport | undefined>(undefined);
 
@@ -92,6 +93,16 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
             });
         };
     }, [projectName]);
+
+    useEffect(() => {
+        const syncIsMaximized = () => appWindow.isMaximized().then(setIsMaximized).catch(console.error);
+        syncIsMaximized();
+
+        const unlisten = appWindow.onResized(syncIsMaximized);
+        return () => {
+            unlisten.then((cleanup) => cleanup());
+        };
+    }, []);
 
     useEffect(() => {
         if (isRunning) {
@@ -354,6 +365,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         activeTab,
         isRunning,
         showTerminal,
+        isMaximized,
         codeCanvasRef,
         minimapViewport,
         setActiveTabPath,
