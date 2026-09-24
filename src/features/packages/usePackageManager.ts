@@ -1,10 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { PackageEntry, PkgOpOutcome, PkgProgressEvent, ProjectLibrary } from "./types";
+import type { Feedback, PackageEntry, PkgOpOutcome, PkgProgressEvent, ProjectLibrary } from "./types";
 import { opKey, phaseLabel } from "./components/PackageManager.utils";
-
-export type Feedback = { ok: boolean; message: string };
 
 interface UsePackageManagerArgs {
     projectName: string;

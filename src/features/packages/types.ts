@@ -44,3 +44,8 @@ export interface PkgProgressEvent {
     message?: string;
     path?: string;
 }
+
+export interface Feedback {
+    ok: boolean;
+    message: string;
+}

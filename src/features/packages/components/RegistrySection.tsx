@@ -1,7 +1,6 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Label, Tooltip } from "../../../components/ui";
-import type { PackageEntry, PkgProgressEvent } from "../types";
-import type { Feedback } from "../usePackageManager";
+import type { Feedback, PackageEntry, PkgProgressEvent } from "../types";
 import { opKey, phaseLabel } from "./PackageManager.utils";
 import { ProgressRow } from "./ProgressRow";
 import { TrustBadge } from "./TrustBadge";

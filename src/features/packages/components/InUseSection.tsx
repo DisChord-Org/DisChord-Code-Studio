@@ -1,6 +1,5 @@
 import { Label, Tooltip } from "../../../components/ui";
-import type { PkgProgressEvent, ProjectLibrary } from "../types";
-import type { Feedback } from "../usePackageManager";
+import type { Feedback, PkgProgressEvent, ProjectLibrary } from "../types";
 import { opKey, phaseLabel } from "./PackageManager.utils";
 import { ProgressRow } from "./ProgressRow";
 import { formatBytes } from "../../../utils/Bytes";
