@@ -75,6 +75,19 @@ where
     Ok((parsed as u32).clamp(8, 32))
 }
 
+fn default_editor_tab_size() -> u32 {
+    4
+}
+
+fn clamp_tab_size<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    let parsed = value.as_u64().unwrap_or(default_editor_tab_size() as u64);
+    Ok((parsed as u32).clamp(1, 8))
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
@@ -87,6 +100,8 @@ pub struct AppConfig {
     #[serde(deserialize_with = "clamp_font_size")]
     pub editor_font_size: u32,
     pub editor_word_wrap: bool,
+    #[serde(deserialize_with = "clamp_tab_size")]
+    pub editor_tab_size: u32,
 }
 
 impl Default for AppConfig {
@@ -97,6 +112,7 @@ impl Default for AppConfig {
             editor_font_family: default_editor_font_family(),
             editor_font_size: default_editor_font_size(),
             editor_word_wrap: false,
+            editor_tab_size: default_editor_tab_size(),
         }
     }
 }

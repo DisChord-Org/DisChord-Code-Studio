@@ -10,6 +10,7 @@ const defaultConfig: AppConfig = {
     editor_font_family: "Monocraft",
     editor_font_size: 14,
     editor_word_wrap: false,
+    editor_tab_size: 4,
 };
 
 export const useConfig = () => {

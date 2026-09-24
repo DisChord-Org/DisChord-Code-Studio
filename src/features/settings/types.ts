@@ -7,4 +7,5 @@ export interface AppConfig {
     editor_font_family: string;
     editor_font_size: number;
     editor_word_wrap: boolean;
+    editor_tab_size: number;
 }

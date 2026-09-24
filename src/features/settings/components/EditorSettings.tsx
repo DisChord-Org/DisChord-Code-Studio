@@ -6,6 +6,7 @@ import { downloadFont, downloadableFonts, removeDownloadedFont } from "../localF
 import { fontOptions } from "./EditorSettings.constants";
 
 const previewText = "var chord tipo texto es \"DisChord\"";
+const tabSizeOptions = [2, 4, 8];
 const minFontSize = 8;
 const maxFontSize = 32;
 
@@ -240,6 +241,30 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
                     <span className="text-[11px] text-gray-300 font-mono bg-white/5 border border-white/10 rounded px-2 py-1 text-right shrink-0 tabular-nums">
                         {config.editor_font_size}px
                     </span>
+                </div>
+            </div>
+
+            <div className="py-3 border-b border-white/5">
+                <p className="text-sm text-gray-200 font-medium mb-0.5">Indentación</p>
+                <p className="text-xs text-gray-500 mb-3">
+                    Espacios que se insertan con la tecla Tab y que ocupa cada nivel de sangría.
+                </p>
+
+                <div className="flex items-center gap-1.5">
+                    {tabSizeOptions.map((size) => (
+                        <button
+                            key={size}
+                            onClick={() => updateConfig({ editor_tab_size: size })}
+                            className={`min-w-[56px] px-3 py-1.5 rounded-md border text-[12px] font-mono transition-colors
+                                ${config.editor_tab_size === size
+                                    ? "bg-accent/10 border-accent/40 text-white"
+                                    : "bg-white/[0.02] border-white/[0.06] text-gray-400 hover:bg-white/[0.04] hover:text-gray-200"
+                                }`}
+                        >
+                            {size}
+                        </button>
+                    ))}
+                    <span className="text-[11px] text-gray-500 ml-1">espacios</span>
                 </div>
             </div>
 

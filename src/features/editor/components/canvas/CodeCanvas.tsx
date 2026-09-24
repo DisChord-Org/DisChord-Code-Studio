@@ -7,6 +7,7 @@ import { oneDark } from "@codemirror/theme-one-dark";
 import { Decoration, keymap, scrollPastEnd } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { autocompletion } from "@codemirror/autocomplete";
+import { indentUnit } from "@codemirror/language";
 import { chordCompletionSource, chordVariableCompletionSource } from "../../../../languages/chord-completions";
 import type { MinimapViewport, CodeCanvasHandle } from "../../types";
 
@@ -30,6 +31,9 @@ interface CodeCanvasProps {
 
 const languageConf = new Compartment();
 const wrapConf = new Compartment();
+const indentConf = new Compartment();
+
+const indentExtension = (size: number) => [EditorState.tabSize.of(size), indentUnit.of(" ".repeat(size))];
 
 export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange
@@ -43,6 +47,9 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     const wordWrapRef = useRef(config.editor_word_wrap);
     wordWrapRef.current = config.editor_word_wrap;
+
+    const tabSizeRef = useRef(config.editor_tab_size);
+    tabSizeRef.current = config.editor_tab_size;
 
     const updateConfigRef = useRef(updateConfig);
     updateConfigRef.current = updateConfig;
@@ -136,6 +143,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     flashField,
                     languageConf.of(getLanguage(fileName)),
                     wrapConf.of(wordWrapRef.current ? EditorView.lineWrapping : []),
+                    indentConf.of(indentExtension(tabSizeRef.current)),
                     getCompletionExtension(fileName),
                     keymap.of([
                         indentWithTab,
@@ -224,6 +232,12 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             effects: wrapConf.reconfigure(config.editor_word_wrap ? EditorView.lineWrapping : [])
         });
     }, [config.editor_word_wrap]);
+
+    useEffect(() => {
+        viewRef.current?.dispatch({
+            effects: indentConf.reconfigure(indentExtension(config.editor_tab_size))
+        });
+    }, [config.editor_tab_size]);
 
     useEffect(() => {
         const triggerSave = () => {
