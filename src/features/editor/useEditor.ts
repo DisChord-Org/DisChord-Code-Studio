@@ -43,6 +43,8 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
     const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
     const [isRunning, setIsRunning] = useState(false);
     const [showTerminal, setShowTerminal] = useState(false);
+    const [terminalStartTab, setTerminalStartTab] = useState<"output" | "shell">("shell");
+    const [outputSignal, setOutputSignal] = useState(0);
     const [isMaximized, setIsMaximized] = useState(true);
     const codeCanvasRef = useRef<CodeCanvasHandle>(null);
     const [minimapViewport, setMinimapViewport] = useState<MinimapViewport | undefined>(undefined);
@@ -306,6 +308,11 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         }
     };
 
+    const toggleShellTerminal = () => {
+        if (!showTerminal) setTerminalStartTab("shell");
+        setShowTerminal(!showTerminal);
+    };
+
     const handleToggleRun = async () => {
         if (isRunning) {
             try {
@@ -315,6 +322,8 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
             return;
         }
 
+        setTerminalStartTab("output");
+        setOutputSignal((n) => n + 1);
         setShowTerminal(true);
         setIsRunning(true);
 
@@ -369,6 +378,9 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         activeTab,
         isRunning,
         showTerminal,
+        terminalStartTab,
+        outputSignal,
+        toggleShellTerminal,
         isMaximized,
         codeCanvasRef,
         minimapViewport,

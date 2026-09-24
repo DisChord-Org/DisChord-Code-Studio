@@ -10,17 +10,19 @@ import { InteractiveTerminal } from "./InteractiveTerminal";
 
 interface TerminalPanelProps {
     projectName: string;
+    initialTab?: TerminalTab;
+    outputSignal?: number;
     onClose: () => void;
 }
 
 type TerminalTab = "output" | "shell";
 
-export const TerminalPanel = ({ projectName, onClose }: TerminalPanelProps) => {
+export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal = 0, onClose }: TerminalPanelProps) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
     const { config } = useConfig();
-    const [tab, setTab] = useState<TerminalTab>("output");
+    const [tab, setTab] = useState<TerminalTab>(initialTab);
     const showShell = config.advanced_mode && tab === "shell";
     const { size: height, startDrag } = useResizablePanel({ initialSize: 288, min: 120, max: 640, axis: "y", invert: true });
 
@@ -76,9 +78,15 @@ export const TerminalPanel = ({ projectName, onClose }: TerminalPanelProps) => {
         fitAddonRef.current?.fit();
     }, [height, showShell]);
 
+    // "Ejecutar" should always reveal its output, even if the panel is already open on the shell tab.
+    const lastOutputSignal = useRef(outputSignal);
     useEffect(() => {
-        if (!config.advanced_mode) setTab("output");
-    }, [config.advanced_mode]);
+        if (outputSignal !== lastOutputSignal.current) {
+            lastOutputSignal.current = outputSignal;
+            setTab("output");
+        }
+    }, [outputSignal]);
+
 
     return (
         <div className="flex flex-col bg-app-bg border-t border-white/5 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.5)] relative shrink-0" style={{ height }}>

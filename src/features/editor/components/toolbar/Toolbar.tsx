@@ -2,9 +2,9 @@ import { useState, useRef, useEffect } from "react";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { invoke } from "@tauri-apps/api/core";
 
-import { ToolbarButton } from "./ToolbarButton";
 import { FileMenu } from "./menus/FileMenu";
 import { EditMenu } from "./menus/EditMenu";
+import { RunMenu } from "./menus/RunMenu";
 import { ProjectSwitcher } from "./menus/ProjectSwitcher";
 import { WindowControls, BackButton } from "../../../../components/ui";
 import type { ProjectSummary } from "../../../dashboard";
@@ -12,15 +12,16 @@ import type { FileNode } from "../../types";
 
 const appWindow = getCurrentWindow();
 
-type MenuKey = "file" | "edit" | "project" | null;
+type MenuKey = "file" | "edit" | "run" | "project" | null;
 
-export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject, onOpenPackages }: {
+export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject, onOpenPackages, onToggleTerminal }: {
     projectName: string,
     onBack: () => void,
     onRun: () => void,
     isRunning: boolean,
     onSwitchProject?: (name: string) => void,
-    onOpenPackages: () => void
+    onOpenPackages: () => void,
+    onToggleTerminal?: () => void
 }) => {
     const [openMenu, setOpenMenu] = useState<MenuKey>(null);
     const menuBarRef = useRef<HTMLDivElement>(null);
@@ -44,7 +45,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
         setOpenMenu((current) => (current === key ? null : key));
     };
 
-    const hoverMenu = (key: "file" | "edit") => {
+    const hoverMenu = (key: "file" | "edit" | "run") => {
         if (openMenu !== null && openMenu !== "project" && openMenu !== key) setOpenMenu(key);
     };
 
@@ -127,10 +128,13 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
                         onOpenPackages={handleOpenPackages}
                     />
 
-                    <ToolbarButton
-                        label={isRunning ? "Detener" : "Ejecutar"}
-                        variant={isRunning ? "stop" : "run"}
-                        onClick={onRun}
+                    <RunMenu
+                        isOpen={openMenu === "run"}
+                        onToggle={() => toggleMenu("run")}
+                        onHover={() => hoverMenu("run")}
+                        isRunning={isRunning}
+                        onRun={() => { setOpenMenu(null); onRun(); }}
+                        onToggleTerminal={onToggleTerminal && (() => { setOpenMenu(null); onToggleTerminal(); })}
                     />
                 </div>
             </div>

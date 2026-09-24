@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
     Toolbar,
     Sidebar,
@@ -27,6 +28,9 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         activeTab,
         isRunning,
         showTerminal,
+        terminalStartTab,
+        outputSignal,
+        toggleShellTerminal,
         isMaximized,
         codeCanvasRef,
         minimapViewport,
@@ -44,6 +48,20 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         handleSwitchProject,
     } = useEditor({ projectName, onBack, onSwitchProject });
 
+    useEffect(() => {
+        if (!config.advanced_mode) return;
+
+        const handleKeydown = (e: KeyboardEvent) => {
+            if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === "ñ") {
+                e.preventDefault();
+                toggleShellTerminal();
+            }
+        };
+
+        window.addEventListener("keydown", handleKeydown);
+        return () => window.removeEventListener("keydown", handleKeydown);
+    });
+
     return (
         <div className="h-screen bg-app-bg flex flex-col text-white overflow-hidden">
             <Toolbar
@@ -53,6 +71,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                 isRunning={isRunning}
                 onSwitchProject={handleSwitchProject}
                 onOpenPackages={openPackagesTab}
+                onToggleTerminal={config.advanced_mode ? toggleShellTerminal : undefined}
             />
 
             <div className="flex flex-1 overflow-hidden relative">
@@ -116,7 +135,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                         )}
                     </div>
 
-                    {showTerminal && <TerminalPanel projectName={projectName} onClose={() => setShowTerminal(false)} />}
+                    {showTerminal && <TerminalPanel projectName={projectName} initialTab={terminalStartTab} outputSignal={outputSignal} onClose={() => setShowTerminal(false)} />}
 
                     {isMaximized && (
                         <StatusBar
