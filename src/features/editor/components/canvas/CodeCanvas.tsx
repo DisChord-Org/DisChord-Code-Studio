@@ -33,7 +33,10 @@ const languageConf = new Compartment();
 const wrapConf = new Compartment();
 const indentConf = new Compartment();
 
-const indentExtension = (size: number) => [EditorState.tabSize.of(size), indentUnit.of(" ".repeat(size))];
+const indentExtension = (size: number, useTabs: boolean) => [
+    EditorState.tabSize.of(size),
+    indentUnit.of(useTabs ? "\t" : " ".repeat(size)),
+];
 
 export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange
@@ -50,6 +53,9 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     const tabSizeRef = useRef(config.editor_tab_size);
     tabSizeRef.current = config.editor_tab_size;
+
+    const useTabsRef = useRef(config.editor_use_tabs);
+    useTabsRef.current = config.editor_use_tabs;
 
     const updateConfigRef = useRef(updateConfig);
     updateConfigRef.current = updateConfig;
@@ -143,7 +149,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     flashField,
                     languageConf.of(getLanguage(fileName)),
                     wrapConf.of(wordWrapRef.current ? EditorView.lineWrapping : []),
-                    indentConf.of(indentExtension(tabSizeRef.current)),
+                    indentConf.of(indentExtension(tabSizeRef.current, useTabsRef.current)),
                     getCompletionExtension(fileName),
                     keymap.of([
                         indentWithTab,
@@ -235,9 +241,9 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     useEffect(() => {
         viewRef.current?.dispatch({
-            effects: indentConf.reconfigure(indentExtension(config.editor_tab_size))
+            effects: indentConf.reconfigure(indentExtension(config.editor_tab_size, config.editor_use_tabs))
         });
-    }, [config.editor_tab_size]);
+    }, [config.editor_tab_size, config.editor_use_tabs]);
 
     useEffect(() => {
         const triggerSave = () => {

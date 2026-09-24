@@ -247,8 +247,27 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
             <div className="py-3 border-b border-white/5">
                 <p className="text-sm text-gray-200 font-medium mb-0.5">Indentación</p>
                 <p className="text-xs text-gray-500 mb-3">
-                    Espacios que se insertan con la tecla Tab y que ocupa cada nivel de sangría.
+                    Ancho de cada nivel de sangría{config.editor_use_tabs ? " (cómo se dibuja cada tabulador)" : " (espacios que se insertan con Tab)"}.
                 </p>
+
+                <button
+                    onClick={() => updateConfig({ editor_use_tabs: !config.editor_use_tabs })}
+                    className="w-full flex items-center justify-between text-left mb-3"
+                >
+                    <div>
+                        <p className="text-[12px] text-gray-200 mb-0.5">Usar tabuladores</p>
+                        <p className="text-[10px] text-gray-500">
+                            Inserta un carácter de tabulación en vez de varios espacios al indentar.
+                        </p>
+                    </div>
+                    <span
+                        className={`shrink-0 ml-3 w-9 h-5 rounded-full p-0.5 transition-colors ${config.editor_use_tabs ? "bg-accent" : "bg-white/10"}`}
+                    >
+                        <span
+                            className={`block w-4 h-4 rounded-full bg-white transition-transform ${config.editor_use_tabs ? "translate-x-4" : "translate-x-0"}`}
+                        />
+                    </span>
+                </button>
 
                 <div className="flex items-center gap-1.5">
                     {tabSizeOptions.map((size) => (
@@ -264,7 +283,7 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
                             {size}
                         </button>
                     ))}
-                    <span className="text-[11px] text-gray-500 ml-1">espacios</span>
+                    <span className="text-[11px] text-gray-500 ml-1">{config.editor_use_tabs ? "de ancho" : "espacios"}</span>
                 </div>
             </div>
 

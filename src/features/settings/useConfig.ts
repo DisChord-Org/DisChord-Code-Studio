@@ -11,6 +11,7 @@ const defaultConfig: AppConfig = {
     editor_font_size: 14,
     editor_word_wrap: false,
     editor_tab_size: 4,
+    editor_use_tabs: true,
 };
 
 export const useConfig = () => {

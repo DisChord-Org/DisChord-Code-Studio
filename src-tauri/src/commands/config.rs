@@ -102,6 +102,7 @@ pub struct AppConfig {
     pub editor_word_wrap: bool,
     #[serde(deserialize_with = "clamp_tab_size")]
     pub editor_tab_size: u32,
+    pub editor_use_tabs: bool,
 }
 
 impl Default for AppConfig {
@@ -113,6 +114,7 @@ impl Default for AppConfig {
             editor_font_size: default_editor_font_size(),
             editor_word_wrap: false,
             editor_tab_size: default_editor_tab_size(),
+            editor_use_tabs: true,
         }
     }
 }
