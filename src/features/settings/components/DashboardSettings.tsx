@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Button } from "../../../components/ui/Button";
+import { Button } from "../../../components/ui";
 import { ViewModeToggle } from "./ViewModeToggle";
 import type { AppConfig } from "../types";
 

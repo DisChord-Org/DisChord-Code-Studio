@@ -1,11 +1,7 @@
 import { useState } from "react";
 
-import { Button } from "../components/ui/Button";
+import { Button, Title, Label, Modal, Tooltip, WindowControls } from "../components/ui";
 import { ProjectCard, CreatingProjectCard, useDashboard } from "../features/dashboard";
-import { Title, Label } from "../components/ui/Typography";
-import { Modal } from "../components/ui/Modal";
-import { Tooltip } from "../components/ui/Tooltip";
-import { WindowControls } from "../components/ui/WindowControls";
 import { formatRelativeTime } from "../utils/Time";
 import { SystemMonitorRings } from "../features/system-monitor";
 import { ViewModeToggle, useConfig } from "../features/settings";

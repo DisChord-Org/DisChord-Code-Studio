@@ -3,8 +3,7 @@ import { Terminal } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit";
 import { listen } from "@tauri-apps/api/event";
 import "@xterm/xterm/css/xterm.css";
-import { Label } from "../../../../components/ui/Typography";
-import { Tooltip } from "../../../../components/ui/Tooltip";
+import { Label, Tooltip } from "../../../../components/ui";
 import { useConfig, buildFontFamilyCss } from "../../../settings";
 import { useResizablePanel } from "../../useResizablePanel";
 

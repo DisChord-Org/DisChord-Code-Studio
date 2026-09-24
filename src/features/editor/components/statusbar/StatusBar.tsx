@@ -1,6 +1,5 @@
 import { SystemMonitorRings } from "../../../system-monitor";
-import { ModifiedBadge } from "../../../../components/ui/ModifiedBadge";
-import { Tooltip } from "../../../../components/ui/Tooltip";
+import { ModifiedBadge, Tooltip } from "../../../../components/ui";
 
 interface StatusBarProps {
     fileName?: string;

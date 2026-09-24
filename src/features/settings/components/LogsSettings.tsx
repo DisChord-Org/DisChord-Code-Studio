@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { Button } from "../../../components/ui/Button";
+import { Button } from "../../../components/ui";
 import type { AppConfig } from "../types";
 import { rotationOptions } from "./LogsSettings.constants";
 

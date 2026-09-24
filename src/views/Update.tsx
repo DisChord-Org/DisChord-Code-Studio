@@ -3,9 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import { Button } from "../components/ui/Button";
-import { Title } from "../components/ui/Typography";
-import { WindowControls } from "../components/ui/WindowControls";
+import { Button, Title, WindowControls } from "../components/ui";
 import { SystemMonitorRings } from "../features/system-monitor";
 import { targetMeta, statusText } from "./Update.constants";
 import { formatBytes } from "../utils/Bytes";

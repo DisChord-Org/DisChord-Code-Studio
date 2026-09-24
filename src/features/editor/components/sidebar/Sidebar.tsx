@@ -2,10 +2,7 @@ import { useEffect, useState } from "react";
 import type { FileNode } from "../../types";
 import { invoke } from "@tauri-apps/api/core";
 
-import { Modal } from "../../../../components/ui/Modal";
-import { ContextMenu } from "../../../../components/ui/ContextMenu";
-import { Label } from "../../../../components/ui/Typography";
-import { Tooltip } from "../../../../components/ui/Tooltip";
+import { Modal, ContextMenu, Label, Tooltip } from "../../../../components/ui";
 import { FileItem } from "./FileItem";
 import { useResizablePanel } from "../../useResizablePanel";
 

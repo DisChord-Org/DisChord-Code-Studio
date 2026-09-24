@@ -1,7 +1,5 @@
 import { useState } from "react";
-import { WindowControls } from "../components/ui/WindowControls";
-import { BackButton } from "../components/ui/BackButton";
-import { Title } from "../components/ui/Typography";
+import { WindowControls, BackButton, Title } from "../components/ui";
 import {
     SettingsSidebar,
     DashboardSettings,

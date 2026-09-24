@@ -1,4 +1,4 @@
-import { Tooltip } from "../../../components/ui/Tooltip";
+import { Tooltip } from "../../../components/ui";
 
 interface ProjectCardProps {
     title: string;

@@ -1,5 +1,4 @@
-import { Label } from "../../../components/ui/Typography";
-import { Tooltip } from "../../../components/ui/Tooltip";
+import { Label, Tooltip } from "../../../components/ui";
 import type { PkgProgressEvent, ProjectLibrary } from "../types";
 import type { Feedback } from "../usePackageManager";
 import { opKey, phaseLabel } from "./PackageManager.utils";

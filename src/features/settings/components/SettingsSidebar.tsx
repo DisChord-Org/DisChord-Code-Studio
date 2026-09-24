@@ -1,6 +1,5 @@
 import type { SettingsSection } from "../types";
-import { Label } from "../../../components/ui/Typography";
-import { Tooltip } from "../../../components/ui/Tooltip";
+import { Label, Tooltip } from "../../../components/ui";
 import { navItems } from "./SettingsSidebar.constants";
 
 interface SettingsSidebarProps {

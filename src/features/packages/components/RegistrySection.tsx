@@ -1,6 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Label } from "../../../components/ui/Typography";
-import { Tooltip } from "../../../components/ui/Tooltip";
+import { Label, Tooltip } from "../../../components/ui";
 import type { PackageEntry, PkgProgressEvent } from "../types";
 import type { Feedback } from "../usePackageManager";
 import { opKey, phaseLabel } from "./PackageManager.utils";

@@ -1,6 +1,6 @@
 import { MenuOption } from "./MenuOption";
 import { formatRelativeTime } from "../../../../../utils/Time";
-import { Label } from "../../../../../components/ui/Typography";
+import { Label } from "../../../../../components/ui";
 import type { ProjectSummary } from "../../../../dashboard";
 
 interface ProjectSwitcherProps {

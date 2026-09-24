@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { Tooltip } from "../../../components/ui/Tooltip";
+import { Tooltip } from "../../../components/ui";
 import type { SystemStats } from "../types";
 
 const pollInterval = 1500;

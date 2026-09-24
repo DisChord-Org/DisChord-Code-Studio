@@ -6,8 +6,7 @@ import { ToolbarButton } from "./ToolbarButton";
 import { FileMenu } from "./menus/FileMenu";
 import { EditMenu } from "./menus/EditMenu";
 import { ProjectSwitcher } from "./menus/ProjectSwitcher";
-import { WindowControls } from "../../../../components/ui/WindowControls";
-import { BackButton } from "../../../../components/ui/BackButton";
+import { WindowControls, BackButton } from "../../../../components/ui";
 import type { ProjectSummary } from "../../../dashboard";
 import type { FileNode } from "../../types";
 

@@ -1,5 +1,5 @@
 import type { FileNode } from "../../types";
-import { Tooltip } from "../../../../components/ui/Tooltip";
+import { Tooltip } from "../../../../components/ui";
 
 const getFileIcon = (name: string): { icon: string; color: string } => {
     const ext = name.toLowerCase().split('.').pop() ?? '';

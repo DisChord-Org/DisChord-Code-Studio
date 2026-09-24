@@ -8,7 +8,7 @@ import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
 import { dischordEditorTheme } from "../../../languages/editor-theme";
-import { ModifiedBadge } from "../../../components/ui/ModifiedBadge";
+import { ModifiedBadge } from "../../../components/ui";
 
 export const JsonFileEditor = () => {
     const editorRef = useRef<HTMLDivElement>(null);
