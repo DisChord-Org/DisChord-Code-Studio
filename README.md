@@ -59,4 +59,4 @@ Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) before
 
 ## License
 
-No license has been specified yet for this project.
+Released under the [MIT License](LICENSE).

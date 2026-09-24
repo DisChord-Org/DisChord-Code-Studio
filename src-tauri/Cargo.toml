@@ -1,8 +1,11 @@
 [package]
 name = "dischord-code-studio"
 version = "0.1.0"
-description = "A Tauri App"
-authors = ["you"]
+description = "Desktop IDE for developing, managing and deploying Discord bots and applications with DisChord"
+authors = ["Ether"]
+license = "MIT"
+repository = "https://github.com/DisChord-Org/DisChord-Code-Studio"
+readme = "../README.md"
 edition = "2021"
 
 [lints.rust]
