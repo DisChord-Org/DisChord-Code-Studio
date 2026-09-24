@@ -25,7 +25,7 @@ pub fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
     command
 }
 
-const NPM_ENV_VARS_TO_STRIP: &[&str] = &[
+pub const NPM_ENV_VARS_TO_STRIP: &[&str] = &[
     "COREPACK_ROOT",
     "COREPACK_ENABLE_STRICT",
     "COREPACK_ENABLE_AUTO_PIN",

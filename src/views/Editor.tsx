@@ -116,7 +116,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                         )}
                     </div>
 
-                    {showTerminal && <TerminalPanel onClose={() => setShowTerminal(false)} />}
+                    {showTerminal && <TerminalPanel projectName={projectName} onClose={() => setShowTerminal(false)} />}
 
                     {isMaximized && (
                         <StatusBar

@@ -52,6 +52,7 @@ pub fn run() {
         .manage(DiscordState { client: discord_state })
         .manage(UpdateState(Arc::new(Mutex::new(HashMap::new()))))
         .manage(Mutex::new(System::new_all()))
+        .manage(commands::terminal::TerminalState::default())
         .setup(move |app| {
             // app_log_dir() automatically resolves to:
             // macOS: ~/Library/Logs/<identifier>/
@@ -141,10 +142,20 @@ pub fn run() {
             commands::fonts::delete_font,
             commands::fonts::list_downloaded_fonts,
 
+            commands::terminal::terminal_open,
+            commands::terminal::terminal_write,
+            commands::terminal::terminal_resize,
+            commands::terminal::terminal_close,
+
             platform::get_platform
         ])
-        .run(tauri::generate_context!())
-        .expect("Error fatal al ejecutar la aplicación Tauri");
+        .build(tauri::generate_context!())
+        .expect("Error fatal al construir la aplicación Tauri")
+        .run(|app_handle, event| {
+            if let tauri::RunEvent::Exit = event {
+                commands::terminal::close_all(app_handle);
+            }
+        });
 }
 
 pub fn update_presence(client_arc: &Arc<Mutex<Option<DiscordIpcClient>>>, state: &str, details: &str) -> Result<(), String> {

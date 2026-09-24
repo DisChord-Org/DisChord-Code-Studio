@@ -19,6 +19,8 @@ const enqueueWindowOp = (op: () => Promise<void>) => {
     return windowOpQueue;
 };
 
+const isTerminalFocused = () => !!document.activeElement?.closest(".xterm");
+
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const maximizeReliably = async () => {
@@ -142,7 +144,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
     useEffect(() => {
         const triggerRun = (e: KeyboardEvent | CustomEvent) => {
             if (e instanceof KeyboardEvent) {
-                if (document.activeElement?.closest(".cm-editor")) return;
+                if (document.activeElement?.closest(".cm-editor") || isTerminalFocused()) return;
 
                 if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
                     e.preventDefault();
@@ -187,6 +189,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
 
     useEffect(() => {
         const handleCloseTab = (e: KeyboardEvent) => {
+            if (isTerminalFocused()) return;
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "w") {
                 e.preventDefault();
                 if (activeTabPathRef.current) closeTab(activeTabPathRef.current);
@@ -200,6 +203,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
 
     useEffect(() => {
         const handleSwitchTab = (e: KeyboardEvent) => {
+            if (isTerminalFocused()) return;
             if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
             if (e.key < "1" || e.key > "9") return;
 

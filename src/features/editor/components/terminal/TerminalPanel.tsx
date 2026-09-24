@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Terminal } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit";
 import { listen } from "@tauri-apps/api/event";
@@ -6,16 +6,22 @@ import "@xterm/xterm/css/xterm.css";
 import { Label, Tooltip } from "../../../../components/ui";
 import { useConfig, buildFontFamilyCss } from "../../../settings";
 import { useResizablePanel } from "../../useResizablePanel";
+import { InteractiveTerminal } from "./InteractiveTerminal";
 
 interface TerminalPanelProps {
+    projectName: string;
     onClose: () => void;
 }
 
-export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
+type TerminalTab = "output" | "shell";
+
+export const TerminalPanel = ({ projectName, onClose }: TerminalPanelProps) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
     const { config } = useConfig();
+    const [tab, setTab] = useState<TerminalTab>("output");
+    const showShell = config.advanced_mode && tab === "shell";
     const { size: height, startDrag } = useResizablePanel({ initialSize: 288, min: 120, max: 640, axis: "y", invert: true });
 
     useEffect(() => {
@@ -68,7 +74,11 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
 
     useEffect(() => {
         fitAddonRef.current?.fit();
-    }, [height]);
+    }, [height, showShell]);
+
+    useEffect(() => {
+        if (!config.advanced_mode) setTab("output");
+    }, [config.advanced_mode]);
 
     return (
         <div className="flex flex-col bg-app-bg border-t border-white/5 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.5)] relative shrink-0" style={{ height }}>
@@ -83,19 +93,35 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
                         <div className="w-2 h-2 rounded-full bg-white/10" />
                         <div className="w-2 h-2 rounded-full bg-white/10" />
                     </div>
-                    <Label className="select-none">Terminal</Label>
+                    {config.advanced_mode ? (
+                        <div className="flex items-center gap-1">
+                            {(["output", "shell"] as const).map((key) => (
+                                <button
+                                    key={key}
+                                    onClick={() => setTab(key)}
+                                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                                        tab === key ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
+                                    }`}
+                                >
+                                    {key === "output" ? "Salida" : "Terminal"}
+                                </button>
+                            ))}
+                        </div>
+                    ) : (
+                        <Label className="select-none">Terminal</Label>
+                    )}
                 </div>
                 
                 <div className="flex items-center gap-4">
-                    <button 
+                    {!showShell && <button 
                         onClick={() => xtermRef.current?.clear()}
                         className="group flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-accent transition-all"
                     >
                         <i className="bi bi-trash3 text-xs opacity-50 group-hover:opacity-100"></i>
                         <span>LIMPIAR</span>
-                    </button>
+                    </button>}
 
-                    <div className="w-[1px] h-3 bg-white/10" />
+                    {!showShell && <div className="w-[1px] h-3 bg-white/10" />}
 
                     <Tooltip label="Cerrar Terminal" placement="bottom">
                         <button
@@ -108,11 +134,21 @@ export const TerminalPanel = ({ onClose }: TerminalPanelProps) => {
                 </div>
             </div>
 
-            <div className="flex-1 p-3 overflow-hidden group">
-                <div 
-                    ref={terminalRef} 
-                    className="h-full w-full opacity-90 group-hover:opacity-100 transition-opacity" 
+            <div className="flex-1 p-3 overflow-hidden group relative">
+                <div
+                    ref={terminalRef}
+                    className={`h-full w-full opacity-90 group-hover:opacity-100 transition-opacity ${showShell ? "hidden" : ""}`}
                 />
+                {config.advanced_mode && (
+                    <div className={`h-full w-full ${showShell ? "" : "hidden"}`}>
+                        <InteractiveTerminal
+                            projectName={projectName}
+                            fontFamily={config.editor_font_family}
+                            active={showShell}
+                            height={height}
+                        />
+                    </div>
+                )}
             </div>
         </div>
     );
