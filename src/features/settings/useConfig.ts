@@ -12,6 +12,7 @@ const defaultConfig: AppConfig = {
     editor_word_wrap: false,
     editor_tab_size: 4,
     editor_use_tabs: true,
+    advanced_mode: false,
 };
 
 export const useConfig = () => {

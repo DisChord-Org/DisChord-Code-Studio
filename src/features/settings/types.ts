@@ -1,5 +1,5 @@
 export type LogRotation = "daily" | "session" | "hourly";
-export type SettingsSection = "dashboard" | "editor" | "logs";
+export type SettingsSection = "dashboard" | "editor" | "advanced" | "logs";
 
 export interface AppConfig {
     view_mode: "list" | "grid";
@@ -9,4 +9,5 @@ export interface AppConfig {
     editor_word_wrap: boolean;
     editor_tab_size: number;
     editor_use_tabs: boolean;
+    advanced_mode: boolean;
 }
