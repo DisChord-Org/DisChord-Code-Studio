@@ -1,6 +1,6 @@
-import type { SettingsSection } from "../features/settings";
+import type { BuiltinSettingsSection } from "../features/settings";
 
-export const sectionTitles: Record<SettingsSection, string> = {
+export const sectionTitles: Record<BuiltinSettingsSection, string> = {
     dashboard: "Dashboard",
     editor: "Editor",
     advanced: "Avanzado",

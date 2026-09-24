@@ -1,5 +1,7 @@
 export type LogRotation = "daily" | "session" | "hourly";
-export type SettingsSection = "dashboard" | "editor" | "advanced" | "logs";
+export type BuiltinSettingsSection = "dashboard" | "editor" | "advanced" | "logs";
+/** Built-in sections plus the ones declared through the config-section loader (`section:<id>`). */
+export type SettingsSection = BuiltinSettingsSection | `section:${string}`;
 
 export interface AppConfig {
     view_mode: "list" | "grid";

@@ -1,0 +1,19 @@
+{
+  "id": "terminal",
+  "title": "Terminal",
+  "icon": "bi-terminal",
+  "requires": "advanced_mode",
+  "fields": [
+    {
+      "key": "prompt",
+      "type": "select",
+      "label": "Estilo del prompt",
+      "description": "\"DisChord\" se ve igual en todos los equipos; \"Sistema\" respeta el prompt que tengas configurado en tu shell (oh-my-posh, powerlevel10k…). Se aplica a las terminales que abras a partir de ahora.",
+      "default": "dischord",
+      "options": [
+        { "value": "dischord", "label": "DisChord" },
+        { "value": "system", "label": "Sistema" }
+      ]
+    }
+  ]
+}

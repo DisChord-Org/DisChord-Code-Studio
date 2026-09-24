@@ -142,6 +142,9 @@ pub fn run() {
             commands::fonts::delete_font,
             commands::fonts::list_downloaded_fonts,
 
+            commands::config_sections::get_config_sections,
+            commands::config_sections::save_config_section,
+
             commands::terminal::terminal_open,
             commands::terminal::terminal_write,
             commands::terminal::terminal_resize,

@@ -1,21 +1,22 @@
 import type { SettingsSection } from "../types";
 import { Label, Tooltip } from "../../../components/ui";
-import { navItems } from "./SettingsSidebar.constants";
+import { navItems, type NavItem } from "./SettingsSidebar.constants";
 
 interface SettingsSidebarProps {
     activeSection: SettingsSection;
     onSelect: (section: SettingsSection) => void;
     onEditJson: () => void;
+    extraItems?: NavItem[];
 }
 
-export const SettingsSidebar = ({ activeSection, onSelect, onEditJson }: SettingsSidebarProps) => (
+export const SettingsSidebar = ({ activeSection, onSelect, onEditJson, extraItems = [] }: SettingsSidebarProps) => (
     <aside className="w-52 bg-panel-alt shadow-[1px_0_3px_0_rgba(0,0,0,0.35)] flex flex-col shrink-0 select-none relative z-10">
         <div className="px-3 pt-3 pb-1.5">
             <Label>Configuración</Label>
         </div>
 
         <nav className="flex flex-col px-2 gap-0.5">
-            {navItems.map((item) => (
+            {[...navItems, ...extraItems].map((item) => (
                 <button
                     key={item.key}
                     onClick={() => onSelect(item.key)}

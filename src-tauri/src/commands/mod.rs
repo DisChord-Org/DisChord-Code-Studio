@@ -8,3 +8,4 @@ pub mod packages;
 pub mod window_size;
 pub mod fonts;
 pub mod terminal;
+pub mod config_sections;
