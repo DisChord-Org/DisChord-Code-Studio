@@ -184,28 +184,6 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
     }, [isRunning, projectName]);
 
     useEffect(() => {
-        const maybeRefreshForGitignore = () => {
-            if (activeTabPathRef.current !== ".gitignore") return;
-            setTimeout(() => { refreshFiles(); }, 150);
-        };
-
-        const handleSaveEvent = () => maybeRefreshForGitignore();
-        const handleKeydown = (e: KeyboardEvent) => {
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "s") {
-                maybeRefreshForGitignore();
-            }
-        };
-
-        window.addEventListener("dischord-save", handleSaveEvent);
-        window.addEventListener("keydown", handleKeydown);
-        return () => {
-            window.removeEventListener("dischord-save", handleSaveEvent);
-            window.removeEventListener("keydown", handleKeydown);
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [projectName]);
-
-    useEffect(() => {
         const handleCloseTab = (e: KeyboardEvent) => {
             if (isTerminalFocused()) return;
             if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "w") {
