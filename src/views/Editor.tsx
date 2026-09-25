@@ -44,6 +44,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         setActiveTabDirty,
         refreshFiles,
         handleToggleRun,
+        handleStopRun,
+        handleRestartRun,
         handleBack,
         handleSwitchProject,
     } = useEditor({ projectName, onBack, onSwitchProject });
@@ -135,7 +137,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                         )}
                     </div>
 
-                    {showTerminal && <TerminalPanel projectName={projectName} initialTab={terminalStartTab} outputSignal={outputSignal} onClose={() => setShowTerminal(false)} />}
+                    {showTerminal && <TerminalPanel projectName={projectName} initialTab={terminalStartTab} outputSignal={outputSignal} isRunning={isRunning} onStop={handleStopRun} onRestart={handleRestartRun} onClose={() => setShowTerminal(false)} />}
 
                     {(isMaximized || config.editor_keep_statusbar) && (
                         <StatusBar

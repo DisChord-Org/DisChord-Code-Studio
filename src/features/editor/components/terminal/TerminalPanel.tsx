@@ -3,7 +3,7 @@ import { Terminal } from "@xterm/xterm"
 import { FitAddon } from "@xterm/addon-fit";
 import { listen } from "@tauri-apps/api/event";
 import "@xterm/xterm/css/xterm.css";
-import { Label, Tooltip } from "../../../../components/ui";
+import { Tooltip } from "../../../../components/ui";
 import { useConfig, buildFontFamilyCss } from "../../../settings";
 import { useResizablePanel } from "../../useResizablePanel";
 import { InteractiveTerminal } from "./InteractiveTerminal";
@@ -12,18 +12,32 @@ interface TerminalPanelProps {
     projectName: string;
     initialTab?: TerminalTab;
     outputSignal?: number;
+    isRunning: boolean;
+    onStop: () => void;
+    onRestart: () => void;
     onClose: () => void;
 }
 
 type TerminalTab = "output" | "shell";
 
-export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal = 0, onClose }: TerminalPanelProps) => {
+export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal = 0, isRunning, onStop, onRestart, onClose }: TerminalPanelProps) => {
     const terminalRef = useRef<HTMLDivElement>(null);
     const xtermRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
     const { config } = useConfig();
     const [tab, setTab] = useState<TerminalTab>(initialTab);
     const showShell = config.advanced_mode && tab === "shell";
+
+    // The two window-style dots become "stop" / "restart" once the program has been running for a moment.
+    const [controlsArmed, setControlsArmed] = useState(false);
+    useEffect(() => {
+        if (!isRunning) {
+            setControlsArmed(false);
+            return;
+        }
+        const timer = setTimeout(() => setControlsArmed(true), 1000);
+        return () => clearTimeout(timer);
+    }, [isRunning]);
     const { size: height, startDrag } = useResizablePanel({ initialSize: 288, min: 120, max: 640, axis: "y", invert: true });
 
     useEffect(() => {
@@ -98,26 +112,35 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
             <div className="flex items-center justify-between px-4 py-2 bg-[#0E1117]/50 backdrop-blur-sm border-b border-white/[0.02]">
                 <div className="flex items-center gap-3">
                     <div className="flex gap-1.5">
-                        <div className="w-2 h-2 rounded-full bg-white/10" />
-                        <div className="w-2 h-2 rounded-full bg-white/10" />
+                        {controlsArmed ? (
+                            <>
+                                <Tooltip label="Detener" placement="bottom">
+                                    <button onClick={onStop} className="w-2 h-2 rounded-full bg-red-500 hover:bg-red-400 transition-colors" />
+                                </Tooltip>
+                                <Tooltip label="Reiniciar" placement="bottom">
+                                    <button onClick={onRestart} className="w-2 h-2 rounded-full bg-amber-500 hover:bg-amber-400 transition-colors" />
+                                </Tooltip>
+                            </>
+                        ) : (
+                            <>
+                                <div className="w-2 h-2 rounded-full bg-white/10" />
+                                <div className="w-2 h-2 rounded-full bg-white/10" />
+                            </>
+                        )}
                     </div>
-                    {config.advanced_mode ? (
-                        <div className="flex items-center gap-1">
-                            {(["output", "shell"] as const).map((key) => (
-                                <button
-                                    key={key}
-                                    onClick={() => setTab(key)}
-                                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                                        tab === key ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
-                                    }`}
-                                >
-                                    {key === "output" ? "Salida" : "Terminal"}
-                                </button>
-                            ))}
-                        </div>
-                    ) : (
-                        <Label className="select-none">Terminal</Label>
-                    )}
+                    <div className="flex items-center gap-1">
+                        {(config.advanced_mode ? (["output", "shell"] as const) : (["output"] as const)).map((key) => (
+                            <button
+                                key={key}
+                                onClick={() => setTab(key)}
+                                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest transition-colors ${
+                                    (showShell ? "shell" : "output") === key ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
+                                }`}
+                            >
+                                {key === "output" ? "Salida" : "Terminal"}
+                            </button>
+                        ))}
+                    </div>
                 </div>
                 
                 <div className="flex items-center gap-4">
@@ -131,7 +154,7 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
 
                     {!showShell && <div className="w-[1px] h-3 bg-white/10" />}
 
-                    <Tooltip label="Cerrar Terminal" placement="bottom">
+                    <Tooltip label="Cerrar panel" placement="bottom">
                         <button
                             onClick={onClose}
                             className="text-gray-500 hover:text-white transition-colors flex items-center justify-center"

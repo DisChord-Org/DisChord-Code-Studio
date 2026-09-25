@@ -323,15 +323,14 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         setShowTerminal(!showTerminal);
     };
 
-    const handleToggleRun = async () => {
-        if (isRunning) {
-            try {
-                await invoke("stop_chord_project");
-                setIsRunning(false);
-            } catch (e) { console.error(e); }
-            return;
-        }
+    const stopRun = async () => {
+        try {
+            await invoke("stop_chord_project");
+            setIsRunning(false);
+        } catch (e) { console.error(e); }
+    };
 
+    const startRun = () => {
         setTerminalStartTab("output");
         setOutputSignal((n) => n + 1);
         setShowTerminal(true);
@@ -346,6 +345,24 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
                 emit("terminal-data", `\x1b[1;31m[!] No se pudo ejecutar: ${e}\x1b[0m\r\n`);
             }
         }, 300);
+    };
+
+    const handleToggleRun = async () => {
+        if (isRunning) {
+            await stopRun();
+            return;
+        }
+        startRun();
+    };
+
+    const handleStopRun = stopRun;
+
+    const handleRestartRun = async () => {
+        await stopRun();
+        // The killed process reports "Ejecución finalizada" a moment later; starting right away
+        // would let that late message flip the new run back to "not running".
+        await sleep(400);
+        startRun();
     };
 
     const confirmLeaveProject = (): boolean => {
@@ -404,6 +421,8 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         setActiveTabDirty,
         refreshFiles,
         handleToggleRun,
+        handleStopRun,
+        handleRestartRun,
         handleBack,
         handleSwitchProject,
     };
