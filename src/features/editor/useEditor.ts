@@ -235,13 +235,22 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
 
             setOpenTabs(prev => {
                 if (prev.some(t => t.relative_path === node.relative_path)) return prev;
-                return [...prev, {
+
+                const newTab: OpenTab = {
                     kind: "file",
                     relative_path: node.relative_path,
                     name: node.name,
                     content: text,
                     isDirty: false,
-                }];
+                    isPinned: false,
+                };
+
+                const previewIndex = prev.findIndex(t => t.kind === "file" && !t.isPinned);
+                if (previewIndex === -1) return [...prev, newTab];
+
+                const next = [...prev];
+                next[previewIndex] = newTab;
+                return next;
             });
         } catch (error) {
             console.error("Error al leer archivo:", error);
@@ -261,6 +270,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
                 name: "Dependencias",
                 content: "",
                 isDirty: false,
+                isPinned: true,
             }];
         });
     };
@@ -289,7 +299,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
 
     const updateActiveTabContent = (value: string) => {
         setOpenTabs(prev => prev.map(t =>
-            t.relative_path === activeTabPathRef.current ? { ...t, content: value, isDirty: true } : t
+            t.relative_path === activeTabPathRef.current ? { ...t, content: value, isDirty: true, isPinned: true } : t
         ));
     };
 

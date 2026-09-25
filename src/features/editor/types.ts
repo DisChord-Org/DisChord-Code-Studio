@@ -24,4 +24,6 @@ export interface OpenTab {
     name: string;
     content: string;
     isDirty: boolean;
+    /** False for a "preview" tab: opening another file replaces it. Becomes true once it is edited. */
+    isPinned: boolean;
 }
