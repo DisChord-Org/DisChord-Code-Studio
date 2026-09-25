@@ -288,6 +288,49 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
             </div>
 
             <div className="py-3 border-b border-white/5">
+                <p className="text-sm text-gray-200 font-medium mb-0.5">Ventana no maximizada</p>
+                <p className="text-xs text-gray-500 mb-3">
+                    Con la ventana maximizada se ven siempre. Si la reduces, por defecto se ocultan para dar más espacio al código.
+                </p>
+
+                <button
+                    onClick={() => updateConfig({ editor_keep_minimap: !config.editor_keep_minimap })}
+                    className="w-full flex items-center justify-between text-left"
+                >
+                    <div>
+                        <p className="text-[12px] text-gray-200 mb-0.5">Mantener el minimapa y la barra de desplazamiento</p>
+                        <p className="text-[10px] text-gray-500">Los muestra aunque el editor no esté maximizado.</p>
+                    </div>
+                    <span
+                        className={`shrink-0 ml-3 w-9 h-5 rounded-full p-0.5 transition-colors ${config.editor_keep_minimap ? "bg-accent" : "bg-white/10"}`}
+                    >
+                        <span
+                            className={`block w-4 h-4 rounded-full bg-white transition-transform ${config.editor_keep_minimap ? "translate-x-4" : "translate-x-0"}`}
+                        />
+                    </span>
+                </button>
+
+                <div className="h-3" />
+
+                <button
+                    onClick={() => updateConfig({ editor_keep_statusbar: !config.editor_keep_statusbar })}
+                    className="w-full flex items-center justify-between text-left"
+                >
+                    <div>
+                        <p className="text-[12px] text-gray-200 mb-0.5">Mantener la barra de estado</p>
+                        <p className="text-[10px] text-gray-500">La muestra aunque el editor no esté maximizado.</p>
+                    </div>
+                    <span
+                        className={`shrink-0 ml-3 w-9 h-5 rounded-full p-0.5 transition-colors ${config.editor_keep_statusbar ? "bg-accent" : "bg-white/10"}`}
+                    >
+                        <span
+                            className={`block w-4 h-4 rounded-full bg-white transition-transform ${config.editor_keep_statusbar ? "translate-x-4" : "translate-x-0"}`}
+                        />
+                    </span>
+                </button>
+            </div>
+
+            <div className="py-3 border-b border-white/5">
                 <button
                     onClick={() => updateConfig({ editor_word_wrap: !config.editor_word_wrap })}
                     className="w-full flex items-center justify-between text-left"

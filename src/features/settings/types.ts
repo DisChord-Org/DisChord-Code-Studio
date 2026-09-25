@@ -12,4 +12,6 @@ export interface AppConfig {
     editor_tab_size: number;
     editor_use_tabs: boolean;
     advanced_mode: boolean;
+    editor_keep_minimap: boolean;
+    editor_keep_statusbar: boolean;
 }

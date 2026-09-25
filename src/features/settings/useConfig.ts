@@ -13,6 +13,8 @@ const defaultConfig: AppConfig = {
     editor_tab_size: 4,
     editor_use_tabs: true,
     advanced_mode: false,
+    editor_keep_minimap: false,
+    editor_keep_statusbar: false,
 };
 
 export const useConfig = () => {

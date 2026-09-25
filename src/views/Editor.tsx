@@ -112,7 +112,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                                         onViewportChange={setMinimapViewport}
                                     />
                                 </div>
-                                {isMaximized && (
+                                {(isMaximized || config.editor_keep_minimap) && (
                                     <>
                                         <CodeMinimap
                                             text={activeTab.content}
@@ -137,7 +137,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
 
                     {showTerminal && <TerminalPanel projectName={projectName} initialTab={terminalStartTab} outputSignal={outputSignal} onClose={() => setShowTerminal(false)} />}
 
-                    {isMaximized && (
+                    {(isMaximized || config.editor_keep_statusbar) && (
                         <StatusBar
                             fileName={activeTab?.kind === "file" ? activeTab.name : undefined}
                             isDirty={activeTab?.kind === "file" && activeTab.isDirty}

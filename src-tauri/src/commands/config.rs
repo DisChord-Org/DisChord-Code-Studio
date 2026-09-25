@@ -104,6 +104,8 @@ pub struct AppConfig {
     pub editor_tab_size: u32,
     pub editor_use_tabs: bool,
     pub advanced_mode: bool,
+    pub editor_keep_minimap: bool,
+    pub editor_keep_statusbar: bool,
 }
 
 impl Default for AppConfig {
@@ -117,6 +119,8 @@ impl Default for AppConfig {
             editor_tab_size: default_editor_tab_size(),
             editor_use_tabs: true,
             advanced_mode: false,
+            editor_keep_minimap: false,
+            editor_keep_statusbar: false,
         }
     }
 }
