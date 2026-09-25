@@ -17,7 +17,7 @@ pub struct ProjectFile {
     children: Option<Vec<ProjectFile>>,
 }
 
-fn build_gitignore_matcher(root_path: &Path) -> Result<Gitignore, String> {
+pub(crate) fn build_gitignore_matcher(root_path: &Path) -> Result<Gitignore, String> {
     let mut builder = GitignoreBuilder::new(root_path);
 
     let gitignore_path = root_path.join(".gitignore");

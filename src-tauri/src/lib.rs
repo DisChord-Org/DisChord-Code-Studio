@@ -53,6 +53,7 @@ pub fn run() {
         .manage(UpdateState(Arc::new(Mutex::new(HashMap::new()))))
         .manage(Mutex::new(System::new_all()))
         .manage(commands::terminal::TerminalState::default())
+        .manage(commands::watcher::WatcherState::default())
         .setup(move |app| {
             // app_log_dir() automatically resolves to:
             // macOS: ~/Library/Logs/<identifier>/
@@ -144,6 +145,9 @@ pub fn run() {
 
             commands::config_sections::get_config_sections,
             commands::config_sections::save_config_section,
+
+            commands::watcher::watch_project,
+            commands::watcher::unwatch_project,
 
             commands::terminal::terminal_open,
             commands::terminal::terminal_write,

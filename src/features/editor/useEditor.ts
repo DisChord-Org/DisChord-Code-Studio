@@ -98,6 +98,22 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         };
     }, [projectName]);
 
+    // Keep the explorer in sync with the disk: the backend watches the project folder and tells
+    // us when something was created, renamed or deleted (by us or by any other program).
+    useEffect(() => {
+        invoke("watch_project", { projectName }).catch(console.error);
+
+        const unlisten = listen<string>("project-files-changed", (event) => {
+            if (event.payload === projectName) refreshFiles();
+        });
+
+        return () => {
+            unlisten.then((cleanup) => cleanup());
+            invoke("unwatch_project").catch(console.error);
+        };
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [projectName]);
+
     useEffect(() => {
         const syncIsMaximized = () => appWindow.isMaximized().then(setIsMaximized).catch(console.error);
         syncIsMaximized();
