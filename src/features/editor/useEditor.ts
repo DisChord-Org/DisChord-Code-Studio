@@ -4,6 +4,7 @@ import { getCurrentWindow, LogicalSize, PhysicalPosition, PhysicalSize, currentM
 import { listen } from "@tauri-apps/api/event";
 import type { CodeCanvasHandle, FileNode, GotoTarget, MinimapViewport, OpenTab } from "./types";
 import { PACKAGES_TAB_ID } from "./types";
+import { baseName, isSameOrInside, remapPath } from "./pathUtils";
 import { startOutputListener, beginRun, pushLine, endRun } from "./components/terminal/outputStore";
 import { confirmAction } from "../../utils/Dialogs";
 
@@ -263,6 +264,31 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         }
     };
 
+    /** An item was renamed or moved: keep its open tabs (and everything under a moved folder) pointing at it. */
+    const handlePathMoved = (from: string, to: string) => {
+        setOpenTabs(prev => prev.map(t => {
+            const path = remapPath(t.relative_path, from, to);
+            return path === t.relative_path || t.kind !== "file" ? t : { ...t, relative_path: path, name: baseName(path) };
+        }));
+        setActiveTabPath(prev => (prev ? remapPath(prev, from, to) : prev));
+    };
+
+    /** An item was deleted: close its tabs (and those of everything under a deleted folder) without asking. */
+    const handlePathDeleted = (path: string) => {
+        const tabs = openTabsRef.current;
+        const isGone = (t: OpenTab) => t.kind === "file" && isSameOrInside(t.relative_path, path);
+        if (!tabs.some(isGone)) return;
+
+        const remaining = tabs.filter(t => !isGone(t));
+        setOpenTabs(remaining);
+
+        const activeIndex = tabs.findIndex(t => t.relative_path === activeTabPathRef.current);
+        if (activeIndex !== -1 && isGone(tabs[activeIndex])) {
+            const fallback = tabs.slice(activeIndex + 1).find(t => !isGone(t)) ?? remaining[remaining.length - 1] ?? null;
+            setActiveTabPath(fallback?.relative_path ?? null);
+        }
+    };
+
     const openPackagesTab = () => {
         setActiveTabPath(PACKAGES_TAB_ID);
 
@@ -424,6 +450,8 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         setMinimapViewport,
         handleFileSelect,
         openFileAt,
+        handlePathMoved,
+        handlePathDeleted,
         gotoTarget,
         openPackagesTab,
         closeTab,

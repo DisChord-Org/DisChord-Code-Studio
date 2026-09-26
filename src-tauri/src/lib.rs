@@ -111,6 +111,8 @@ pub fn run() {
             commands::file::create_new_file,
             commands::file::create_new_folder,
             commands::file::delete_item,
+            commands::file::rename_item,
+            commands::file::move_item,
 
             commands::process::run_chord_project,
             commands::process::stop_chord_project,

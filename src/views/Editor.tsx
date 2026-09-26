@@ -39,6 +39,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         setMinimapViewport,
         handleFileSelect,
         openFileAt,
+        handlePathMoved,
+        handlePathDeleted,
         gotoTarget,
         openPackagesTab,
         closeTab,
@@ -84,6 +86,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                     onFileClick={handleFileSelect}
                     projectName={projectName}
                     onRefresh={refreshFiles}
+                    onPathMoved={handlePathMoved}
+                    onPathDeleted={handlePathDeleted}
                 />
 
                 <main className="flex-1 flex flex-col bg-app-bg overflow-hidden">

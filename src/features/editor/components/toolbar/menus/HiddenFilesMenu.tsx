@@ -1,9 +1,34 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { FileItem } from "../../sidebar/FileItem";
+import { SidebarContext, type SidebarContextValue } from "../../sidebar/SidebarContext";
 import type { FileNode } from "../../../types";
 
 const emptyExpandedPaths = new Set<string>();
+
+const noop = () => {};
+
+const readOnlyContext = (onFileClick: (node: FileNode) => void): SidebarContextValue => ({
+    selectedPath: null,
+    onSelect: noop,
+    expandedPaths: emptyExpandedPaths,
+    onToggleExpand: noop,
+    onFileClick,
+    onContextMenu: (e) => e.preventDefault(),
+    onCreateRequest: noop,
+    creating: null,
+    onCreateSubmit: async () => null,
+    onCreateCancel: noop,
+    renamingPath: null,
+    onRenameSubmit: async () => null,
+    onRenameCancel: noop,
+    dragPath: null,
+    dropTarget: null,
+    onDragStart: noop,
+    onDragEnd: noop,
+    onDragOverItem: noop,
+    onDropOnItem: noop,
+});
 
 const gitignoreNode: FileNode = {
     name: ".gitignore",
@@ -64,20 +89,11 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
                         ) : hiddenFiles.length === 0 ? (
                             <div className="px-3 py-2 text-[11px] text-gray-500 italic">No hay ficheros ocultos.</div>
                         ) : (
-                            hiddenFiles.map((file) => (
-                                <FileItem
-                                    key={file.relative_path}
-                                    node={file}
-                                    level={0}
-                                    onFileClick={onFileOpen}
-                                    onCreateRequest={() => {}}
-                                    onContextMenu={(e) => e.preventDefault()}
-                                    selectedPath={null}
-                                    onSelect={() => {}}
-                                    expandedPaths={emptyExpandedPaths}
-                                    onToggleExpand={() => {}}
-                                />
-                            ))
+                            <SidebarContext.Provider value={readOnlyContext(onFileOpen)}>
+                                {hiddenFiles.map((file) => (
+                                    <FileItem key={file.relative_path} node={file} level={0} />
+                                ))}
+                            </SidebarContext.Provider>
                         )}
                     </div>
                 </div>
