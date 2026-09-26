@@ -1,7 +1,6 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { ToolbarButton } from "../ToolbarButton";
 import { MenuOption } from "./MenuOption";
-import { useShortcutLabel } from "../../../../shortcuts";
 import { showError } from "../../../../../utils/Dialogs";
 
 const supportServerUrl = "https://discord.gg/mG5CaDvKsk";
@@ -15,8 +14,6 @@ interface HelpMenuProps {
 }
 
 export const HelpMenu = ({ isOpen, onToggle, onHover, onClose, onOpenShortcuts }: HelpMenuProps) => {
-    const shortcutsShortcut = useShortcutLabel("help.shortcuts");
-
     const openSupportServer = async () => {
         onClose();
         try {
@@ -40,8 +37,10 @@ export const HelpMenu = ({ isOpen, onToggle, onHover, onClose, onOpenShortcuts }
                     <MenuOption
                         icon="bi bi-keyboard"
                         label="Atajos de teclado"
-                        shortcut={shortcutsShortcut}
-                        onClick={() => { onClose(); onOpenShortcuts(); }}
+                        onClick={() => {
+                            onClose();
+                            onOpenShortcuts();
+                        }}
                     />
                 </div>
             )}
