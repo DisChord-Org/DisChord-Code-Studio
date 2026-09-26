@@ -20,6 +20,7 @@ const defaultConfig: AppConfig = {
     terminal_background_image: "",
     terminal_background_dim: 96,
     terminal_background_fit: "cover",
+    keybindings: {},
 };
 
 export const useConfig = () => {

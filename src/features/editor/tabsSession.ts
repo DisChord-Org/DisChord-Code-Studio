@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { baseName } from "./pathUtils";
-import { PACKAGES_TAB_ID, type OpenTab } from "./types";
+import { PACKAGES_TAB_ID, SHORTCUTS_TAB_ID, type OpenTab } from "./types";
 
 interface SavedTab {
     path: string;
@@ -43,10 +43,10 @@ const readSession = (projectName: string): SavedSession | null => {
     }
 };
 
-const packagesTab = (): OpenTab => ({
-    kind: "packages",
-    relative_path: PACKAGES_TAB_ID,
-    name: "Dependencias",
+const specialTab = (kind: "packages" | "shortcuts"): OpenTab => ({
+    kind,
+    relative_path: kind === "packages" ? PACKAGES_TAB_ID : SHORTCUTS_TAB_ID,
+    name: kind === "packages" ? "Dependencias" : "Atajos de teclado",
     content: "",
     isDirty: false,
     isPinned: true,
@@ -58,7 +58,8 @@ export const restoreTabsSession = async (projectName: string): Promise<{ tabs: O
     if (!session) return { tabs: [], active: null };
 
     const load = async (saved: SavedTab): Promise<OpenTab | null> => {
-        if (saved.path === PACKAGES_TAB_ID) return packagesTab();
+        if (saved.path === PACKAGES_TAB_ID) return specialTab("packages");
+        if (saved.path === SHORTCUTS_TAB_ID) return specialTab("shortcuts");
 
         try {
             const content = await invoke<string>("read_file_content", { projectName, filePath: saved.path });

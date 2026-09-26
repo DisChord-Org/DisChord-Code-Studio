@@ -7,6 +7,7 @@ import { FileItem, CreateRow } from "./FileItem";
 import { SidebarContext } from "./SidebarContext";
 import { useResizablePanel } from "../../useResizablePanel";
 import { canMoveInto, isSameOrInside, joinPath, parentPath, remapPath } from "../../pathUtils";
+import { matchesShortcut } from "../../../shortcuts";
 import { confirmAction } from "../../../../utils/Dialogs";
 
 interface SidebarProps {
@@ -255,7 +256,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh, onPathMove
                 <div
                     tabIndex={0}
                     onKeyDown={(e) => {
-                        if (e.key === "F2" && selectedPath && !renamingPath) {
+                        if (matchesShortcut(e.nativeEvent, "explorer.rename") && selectedPath && !renamingPath) {
                             e.preventDefault();
                             setCreating(null);
                             setRenamingPath(selectedPath);

@@ -14,6 +14,7 @@ import {
     sectionNavKey,
     type SettingsSection,
 } from "../features/settings";
+import { ShortcutSettings } from "../features/shortcuts";
 import { sectionTitles } from "./Settings.constants";
 
 const SECTION_PREFIX = "section:";
@@ -67,6 +68,8 @@ function Settings({ onBack }: SettingsProps) {
                             <EditorSettings config={config} updateConfig={updateConfig} />
                         ) : section === "terminal" ? (
                             <TerminalSettings config={config} updateConfig={updateConfig} />
+                        ) : section === "shortcuts" ? (
+                            <ShortcutSettings onSave={(keybindings) => updateConfig({ keybindings })} />
                         ) : section === "advanced" ? (
                             <AdvancedSettings config={config} updateConfig={updateConfig} />
                         ) : loadedSection ? (

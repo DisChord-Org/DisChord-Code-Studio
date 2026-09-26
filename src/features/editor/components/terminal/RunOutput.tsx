@@ -1,5 +1,6 @@
 import { memo, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { parseAnsi } from "./ansi";
+import { useShortcutLabel } from "../../../shortcuts";
 import {
     useOutputRuns,
     type LineKind,
@@ -297,6 +298,7 @@ interface RunOutputProps {
 
 export const RunOutput = ({ className = "", onOpenLocation }: RunOutputProps) => {
     const runs = useOutputRuns();
+    const runShortcut = useShortcutLabel("run.toggle");
     const scrollRef = useRef<HTMLDivElement>(null);
     const stickToBottom = useRef(true);
     // Only the latest run is open unless the user toggled one by hand.
@@ -320,8 +322,8 @@ export const RunOutput = ({ className = "", onOpenLocation }: RunOutputProps) =>
         return (
             <div className={`flex flex-col items-center justify-center gap-1 text-center ${className}`}>
                 <i className="bi bi-terminal text-lg text-gray-600" />
-                <p className="text-xs text-gray-500">Sin salida todavía.</p>
-                <p className="text-[11px] text-gray-600">Pulsa Ejecutar (Ctrl+R) para arrancar tu bot.</p>
+                <p className="text-xs text-gray-500">Aún sin salida.</p>
+                <p className="text-[11px] text-gray-600">Pulsa Ejecutar{runShortcut ? ` (${runShortcut})` : ""} para arrancar código.</p>
             </div>
         );
     }

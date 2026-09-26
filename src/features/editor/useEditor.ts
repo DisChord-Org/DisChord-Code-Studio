@@ -3,8 +3,9 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow, LogicalSize, PhysicalPosition, PhysicalSize, currentMonitor } from "@tauri-apps/api/window";
 import { listen } from "@tauri-apps/api/event";
 import type { CodeCanvasHandle, FileNode, GotoTarget, MinimapViewport, OpenTab } from "./types";
-import { PACKAGES_TAB_ID } from "./types";
+import { PACKAGES_TAB_ID, SHORTCUTS_TAB_ID } from "./types";
 import { baseName, isSameOrInside, remapPath } from "./pathUtils";
+import { gotoTabId, useShortcuts } from "../shortcuts";
 import { restoreTabsSession, saveTabsSession } from "./tabsSession";
 import { startOutputListener, beginRun, pushLine, endRun } from "./components/terminal/outputStore";
 import { confirmAction } from "../../utils/Dialogs";
@@ -22,8 +23,6 @@ const enqueueWindowOp = (op: () => Promise<void>) => {
     windowOpQueue = windowOpQueue.then(op, op);
     return windowOpQueue;
 };
-
-const isTerminalFocused = () => !!document.activeElement?.closest(".xterm");
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -179,60 +178,23 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [projectName]);
 
-    useEffect(() => {
-        const triggerRun = (e: KeyboardEvent | CustomEvent) => {
-            if (e instanceof KeyboardEvent) {
-                if (document.activeElement?.closest(".cm-editor") || isTerminalFocused()) return;
-
-                if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
-                    e.preventDefault();
-                    handleToggleRun();
-                }
-            } else {
-                handleToggleRun();
-            }
-        };
-
-        window.addEventListener("keydown", triggerRun as EventListener);
-        window.addEventListener("dischord-run", triggerRun as EventListener);
-
-        return () => {
-            window.removeEventListener("keydown", triggerRun as EventListener);
-            window.removeEventListener("dischord-run", triggerRun as EventListener);
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isRunning, projectName]);
-
-    useEffect(() => {
-        const handleCloseTab = (e: KeyboardEvent) => {
-            if (isTerminalFocused()) return;
-            if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "w") {
-                e.preventDefault();
-                if (activeTabPathRef.current) closeTab(activeTabPathRef.current);
-            }
-        };
-
-        window.addEventListener("keydown", handleCloseTab);
-        return () => window.removeEventListener("keydown", handleCloseTab);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-        const handleSwitchTab = (e: KeyboardEvent) => {
-            if (isTerminalFocused()) return;
-            if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-            if (e.key < "1" || e.key > "9") return;
-
-            const tab = openTabsRef.current[Number(e.key) - 1];
-            if (!tab) return;
-
-            e.preventDefault();
-            setActiveTabPath(tab.relative_path);
-        };
-
-        window.addEventListener("keydown", handleSwitchTab);
-        return () => window.removeEventListener("keydown", handleSwitchTab);
-    }, []);
+    useShortcuts({
+        "file.save": () => window.dispatchEvent(new CustomEvent("dischord-save")),
+        "run.toggle": () => handleToggleRun(),
+        "help.shortcuts": () => openShortcutsTab(),
+        "tab.close": () => {
+            if (activeTabPathRef.current) closeTab(activeTabPathRef.current);
+        },
+        ...Object.fromEntries(
+            Array.from({ length: 9 }, (_, i) => [
+                gotoTabId(i + 1),
+                () => {
+                    const tab = openTabsRef.current[i];
+                    if (tab) setActiveTabPath(tab.relative_path);
+                },
+            ]),
+        ),
+    });
 
     const [gotoTarget, setGotoTarget] = useState<GotoTarget | null>(null);
 
@@ -307,23 +269,30 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         }
     };
 
-    const openPackagesTab = () => {
-        setActiveTabPath(PACKAGES_TAB_ID);
+    /** Opens (or focuses) one of the tabs that are not files. */
+    const openSpecialTab = (tab: OpenTab) => {
+        setActiveTabPath(tab.relative_path);
 
-        if (openTabsRef.current.some(t => t.relative_path === PACKAGES_TAB_ID)) return;
-
-        setOpenTabs(prev => {
-            if (prev.some(t => t.relative_path === PACKAGES_TAB_ID)) return prev;
-            return [...prev, {
-                kind: "packages",
-                relative_path: PACKAGES_TAB_ID,
-                name: "Dependencias",
-                content: "",
-                isDirty: false,
-                isPinned: true,
-            }];
-        });
+        setOpenTabs(prev => (prev.some(t => t.relative_path === tab.relative_path) ? prev : [...prev, tab]));
     };
+
+    const openPackagesTab = () => openSpecialTab({
+        kind: "packages",
+        relative_path: PACKAGES_TAB_ID,
+        name: "Dependencias",
+        content: "",
+        isDirty: false,
+        isPinned: true,
+    });
+
+    const openShortcutsTab = () => openSpecialTab({
+        kind: "shortcuts",
+        relative_path: SHORTCUTS_TAB_ID,
+        name: "Atajos de teclado",
+        content: "",
+        isDirty: false,
+        isPinned: true,
+    });
 
     const closeTab = async (path: string) => {
         const tab = openTabsRef.current.find(t => t.relative_path === path);
@@ -472,6 +441,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         handlePathDeleted,
         gotoTarget,
         openPackagesTab,
+        openShortcutsTab,
         closeTab,
         updateActiveTabContent,
         setActiveTabDirty,

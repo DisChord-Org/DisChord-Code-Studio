@@ -1,0 +1,124 @@
+import type { FixedShortcut, ShortcutDefinition, ShortcutGroup } from "./types";
+
+export const groupLabels: Record<ShortcutGroup, string> = {
+    file: "Archivo",
+    run: "Ejecución",
+    tabs: "Pestañas",
+    editor: "Editor",
+    explorer: "Explorador",
+    terminal: "Terminal",
+    help: "Ayuda",
+};
+
+/** Order in which the groups are listed. */
+export const groupOrder: ShortcutGroup[] = ["file", "run", "tabs", "editor", "explorer", "terminal", "help"];
+
+export const gotoTabId = (position: number) => `tab.goto.${position}`;
+
+const gotoTabDefinitions: ShortcutDefinition[] = Array.from({ length: 9 }, (_, i) => ({
+    id: gotoTabId(i + 1),
+    label: `Ir a la pestaña ${i + 1}`,
+    group: "tabs",
+    scope: "app",
+    defaultAccelerator: `Alt+${i + 1}`,
+}));
+
+/**
+ * Every configurable shortcut. To add one: append it here, then react to it where it belongs
+ * (`useShortcut(id, handler)` for "app" scope, `matchesShortcut(event, id)` for the others).
+ * The settings screen and the shortcuts tab pick it up on their own.
+ */
+export const shortcutDefinitions: ShortcutDefinition[] = [
+    {
+        id: "file.save",
+        label: "Guardar",
+        group: "file",
+        scope: "app",
+        defaultAccelerator: "Mod+S",
+    },
+    {
+        id: "run.toggle",
+        label: "Ejecutar / detener",
+        group: "run",
+        scope: "app",
+        defaultAccelerator: "Mod+R",
+    },
+    {
+        id: "terminal.toggle",
+        label: "Mostrar u ocultar la terminal",
+        description: "Ctrl en todos los sistemas, para no chocar con los atajos de macOS.",
+        group: "run",
+        scope: "app",
+        defaultAccelerator: "Ctrl+Ñ",
+        allowInTerminal: true,
+        advancedOnly: true,
+    },
+    {
+        id: "tab.close",
+        label: "Cerrar pestaña",
+        group: "tabs",
+        scope: "app",
+        defaultAccelerator: "Mod+W",
+    },
+    ...gotoTabDefinitions,
+    {
+        id: "help.shortcuts",
+        label: "Atajos de teclado",
+        description: "Abre esta lista en una pestaña.",
+        group: "help",
+        scope: "app",
+        defaultAccelerator: "Mod+Shift+P",
+    },
+    {
+        id: "editor.toggleWordWrap",
+        label: "Ajuste de línea",
+        group: "editor",
+        scope: "app",
+        defaultAccelerator: "Alt+Z",
+    },
+    {
+        id: "explorer.rename",
+        label: "Renombrar",
+        description: "Con un archivo o carpeta seleccionado en el explorador.",
+        group: "explorer",
+        scope: "explorer",
+        defaultAccelerator: "F2",
+    },
+    {
+        id: "terminal.copy",
+        label: "Copiar selección",
+        description: "Ctrl+C se queda para interrumpir el proceso.",
+        group: "terminal",
+        scope: "terminal",
+        defaultAccelerator: { mac: "Mod+C", other: "Ctrl+Shift+C" },
+    },
+    {
+        id: "terminal.paste",
+        label: "Pegar",
+        group: "terminal",
+        scope: "terminal",
+        defaultAccelerator: { mac: "Mod+V", other: "Ctrl+Shift+V" },
+    },
+];
+
+/** The editor's own shortcuts (CodeMirror). Shown for reference; they cannot be changed here. */
+export const fixedShortcuts: FixedShortcut[] = [
+    { label: "Deshacer", group: "editor", accelerator: "Mod+Z" },
+    { label: "Rehacer", group: "editor", accelerator: "Mod+Shift+Z" },
+    { label: "Seleccionar todo", group: "editor", accelerator: "Mod+A" },
+    { label: "Buscar", group: "editor", accelerator: "Mod+F" },
+    { label: "Comentar línea", group: "editor", accelerator: "Mod+/" },
+    { label: "Mover línea", group: "editor", accelerator: "Alt+ArrowUp" },
+    { label: "Copiar línea", group: "editor", accelerator: "Shift+Alt+ArrowDown" },
+    { label: "Autocompletar", group: "editor", accelerator: "Ctrl+Space" },
+    { label: "Indentar", group: "editor", accelerator: "Tab" },
+];
+
+const byId = new Map(shortcutDefinitions.map((d) => [d.id, d]));
+
+export const getDefinition = (id: string): ShortcutDefinition | undefined => byId.get(id);
+
+export const defaultAcceleratorFor = (definition: ShortcutDefinition, mac: boolean): string =>
+    typeof definition.defaultAccelerator === "string"
+        ? definition.defaultAccelerator
+        : mac ? definition.defaultAccelerator.mac : definition.defaultAccelerator.other;

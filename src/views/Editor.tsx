@@ -1,4 +1,3 @@
-import { useEffect } from "react";
 import {
     Toolbar,
     Sidebar,
@@ -11,6 +10,7 @@ import {
     useEditor,
 } from "../features/editor";
 import { PackageManager } from "../features/packages";
+import { ShortcutsReference, useShortcut } from "../features/shortcuts";
 import { useConfig } from "../features/settings";
 
 interface EditorInterface {
@@ -43,6 +43,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         handlePathDeleted,
         gotoTarget,
         openPackagesTab,
+        openShortcutsTab,
         closeTab,
         updateActiveTabContent,
         setActiveTabDirty,
@@ -54,19 +55,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         handleSwitchProject,
     } = useEditor({ projectName, onBack, onSwitchProject });
 
-    useEffect(() => {
-        if (!config.advanced_mode) return;
-
-        const handleKeydown = (e: KeyboardEvent) => {
-            if (e.ctrlKey && !e.metaKey && !e.altKey && e.key.toLowerCase() === "ñ") {
-                e.preventDefault();
-                toggleShellTerminal();
-            }
-        };
-
-        window.addEventListener("keydown", handleKeydown);
-        return () => window.removeEventListener("keydown", handleKeydown);
-    });
+    useShortcut("terminal.toggle", toggleShellTerminal, config.advanced_mode);
 
     return (
         <div className="h-screen bg-app-bg flex flex-col text-white overflow-hidden">
@@ -77,6 +66,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                 isRunning={isRunning}
                 onSwitchProject={handleSwitchProject}
                 onOpenPackages={openPackagesTab}
+                onOpenShortcuts={openShortcutsTab}
                 onToggleTerminal={config.advanced_mode ? toggleShellTerminal : undefined}
             />
 
@@ -105,6 +95,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                                 projectName={projectName}
                                 onClose={() => closeTab(activeTab.relative_path)}
                             />
+                        ) : activeTab?.kind === "shortcuts" ? (
+                            <ShortcutsReference onClose={() => closeTab(activeTab.relative_path)} />
                         ) : activeTab ? (
                             <div className="flex h-full">
                                 <div className="flex-1 overflow-hidden">

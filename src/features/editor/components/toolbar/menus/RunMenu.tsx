@@ -1,5 +1,6 @@
 import { ToolbarButton } from "../ToolbarButton";
 import { MenuOption } from "./MenuOption";
+import { useShortcutLabel } from "../../../../shortcuts";
 
 interface RunMenuProps {
     isOpen: boolean;
@@ -11,6 +12,7 @@ interface RunMenuProps {
 }
 
 export const RunMenu = ({ isOpen, onToggle, onHover, isRunning, onRun, onToggleTerminal }: RunMenuProps) => {
+    const terminalShortcut = useShortcutLabel("terminal.toggle");
     const variant = isRunning ? "stop" : "run";
     const tint = isRunning
         ? "bg-red-500/10 text-red-400 hover:bg-red-500/20"
@@ -39,7 +41,7 @@ export const RunMenu = ({ isOpen, onToggle, onHover, isRunning, onRun, onToggleT
                             <MenuOption
                                 icon="bi bi-terminal"
                                 label="Terminal"
-                                shortcut="Ctrl+Ñ"
+                                shortcut={terminalShortcut}
                                 onClick={onToggleTerminal}
                             />
                         </div>

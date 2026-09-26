@@ -18,6 +18,7 @@ import { json } from "@codemirror/lang-json";
 import { chord } from "../../../../languages/chord-language";
 import { dischordEditorTheme } from "../../../../languages/editor-theme";
 import { useConfig } from "../../../settings";
+import { useShortcut } from "../../../shortcuts";
 
 interface CodeCanvasProps {
     projectName: string;
@@ -63,6 +64,8 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     const updateConfigRef = useRef(updateConfig);
     updateConfigRef.current = updateConfig;
+
+    useShortcut("editor.toggleWordWrap", () => updateConfigRef.current({ editor_word_wrap: !wordWrapRef.current }));
 
     useImperativeHandle(ref, () => ({
         scrollTo: (scrollTop: number) => {
@@ -162,9 +165,6 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     getCompletionExtension(fileName),
                     keymap.of([
                         indentWithTab,
-                        { key: "Ctrl-s", run: (v) => { handleSave(v); return true; } },
-                        { key: "Ctrl-r", run: () => { window.dispatchEvent(new CustomEvent("dischord-run")); return true; } },
-                        { key: "Alt-z", run: () => { updateConfigRef.current({ editor_word_wrap: !wordWrapRef.current }); return true; } }
                     ]),
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {

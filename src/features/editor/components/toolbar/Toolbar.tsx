@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { FileMenu } from "./menus/FileMenu";
 import { EditMenu } from "./menus/EditMenu";
 import { RunMenu } from "./menus/RunMenu";
+import { HelpMenu } from "./menus/HelpMenu";
 import { ProjectSwitcher } from "./menus/ProjectSwitcher";
 import { WindowControls, BackButton } from "../../../../components/ui";
 import type { ProjectSummary } from "../../../dashboard";
@@ -13,15 +14,16 @@ import { showError } from "../../../../utils/Dialogs";
 
 const appWindow = getCurrentWindow();
 
-type MenuKey = "file" | "edit" | "run" | "project" | null;
+type MenuKey = "file" | "edit" | "run" | "help" | "project" | null;
 
-export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject, onOpenPackages, onToggleTerminal }: {
+export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject, onOpenPackages, onOpenShortcuts, onToggleTerminal }: {
     projectName: string,
     onBack: () => void,
     onRun: () => void,
     isRunning: boolean,
     onSwitchProject?: (name: string) => void,
     onOpenPackages: () => void,
+    onOpenShortcuts: () => void,
     onToggleTerminal?: () => void
 }) => {
     const [openMenu, setOpenMenu] = useState<MenuKey>(null);
@@ -46,7 +48,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
         setOpenMenu((current) => (current === key ? null : key));
     };
 
-    const hoverMenu = (key: "file" | "edit" | "run") => {
+    const hoverMenu = (key: "file" | "edit" | "run" | "help") => {
         if (openMenu !== null && openMenu !== "project" && openMenu !== key) setOpenMenu(key);
     };
 
@@ -136,6 +138,14 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
                         isRunning={isRunning}
                         onRun={() => { setOpenMenu(null); onRun(); }}
                         onToggleTerminal={onToggleTerminal && (() => { setOpenMenu(null); onToggleTerminal(); })}
+                    />
+
+                    <HelpMenu
+                        isOpen={openMenu === "help"}
+                        onToggle={() => toggleMenu("help")}
+                        onHover={() => hoverMenu("help")}
+                        onClose={() => setOpenMenu(null)}
+                        onOpenShortcuts={onOpenShortcuts}
                     />
                 </div>
             </div>

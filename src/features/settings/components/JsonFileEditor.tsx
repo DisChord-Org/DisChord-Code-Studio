@@ -9,6 +9,7 @@ import { indentWithTab } from "@codemirror/commands";
 import { json } from "@codemirror/lang-json";
 import { dischordEditorTheme } from "../../../languages/editor-theme";
 import { ModifiedBadge } from "../../../components/ui";
+import { useShortcut } from "../../shortcuts";
 
 export const JsonFileEditor = () => {
     const editorRef = useRef<HTMLDivElement>(null);
@@ -44,6 +45,8 @@ export const JsonFileEditor = () => {
         }
     };
 
+    useShortcut("file.save", handleSave);
+
     useEffect(() => {
         if (!editorRef.current) return;
         let cancelled = false;
@@ -59,10 +62,7 @@ export const JsonFileEditor = () => {
                             basicSetup,
                             oneDark,
                             json(),
-                            keymap.of([
-                                indentWithTab,
-                                { key: "Ctrl-s", run: () => { handleSave(); return true; } },
-                            ]),
+                            keymap.of([indentWithTab]),
                             EditorView.updateListener.of((update) => {
                                 if (update.docChanged) {
                                     setIsDirty(true);

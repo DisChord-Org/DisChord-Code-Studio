@@ -26,8 +26,11 @@ export interface CodeCanvasHandle {
 /** Sentinel id for the "Dependencias" pseudo-tab, reusing `relative_path` as the generic tab id. */
 export const PACKAGES_TAB_ID = "__packages__";
 
+/** Sentinel id for the "Atajos de teclado" pseudo-tab. */
+export const SHORTCUTS_TAB_ID = "__shortcuts__";
+
 export interface OpenTab {
-    kind: "file" | "packages";
+    kind: "file" | "packages" | "shortcuts";
     relative_path: string;
     name: string;
     content: string;

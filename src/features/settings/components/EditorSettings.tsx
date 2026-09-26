@@ -3,6 +3,7 @@ import type { CSSProperties } from "react";
 import type { AppConfig } from "../types";
 import { buildFontFamilyCss, isFontAvailable } from "../font";
 import { downloadFont, downloadableFonts, removeDownloadedFont } from "../localFonts";
+import { useShortcutLabel } from "../../shortcuts";
 import { fontOptions } from "./EditorSettings.constants";
 
 const previewText = "var chord tipo texto es \"DisChord\"";
@@ -16,6 +17,7 @@ interface EditorSettingsProps {
 }
 
 export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) => {
+    const wrapShortcut = useShortcutLabel("editor.toggleWordWrap");
     const [customFont, setCustomFont] = useState(config.editor_font_family);
     const [checking, setChecking] = useState(false);
     const [downloading, setDownloading] = useState<string | null>(null);
@@ -359,7 +361,7 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
                     <div>
                         <p className="text-sm text-gray-200 font-medium mb-0.5">Ajuste de línea</p>
                         <p className="text-xs text-gray-500">
-                            Envuelve las líneas largas en vez de mostrar scroll horizontal. Atajo: <span className="font-mono">Alt+Z</span>.
+                            Envuelve las líneas largas en vez de mostrar scroll horizontal.{wrapShortcut && <> Atajo: <span className="font-mono">{wrapShortcut}</span>.</>}
                         </p>
                     </div>
                     <span

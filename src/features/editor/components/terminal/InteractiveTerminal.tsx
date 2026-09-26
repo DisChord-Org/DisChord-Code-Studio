@@ -6,6 +6,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import { buildFontFamilyCss } from "../../../settings";
+import { matchesShortcut } from "../../../shortcuts";
 
 interface InteractiveTerminalProps {
     projectName: string;
@@ -57,16 +58,14 @@ export const InteractiveTerminal = ({ projectName, fontFamily, active, height }:
         termRef.current = term;
         fitRef.current = fit;
 
-        // Ctrl+C must stay SIGINT, so copy/paste use Ctrl+Shift+C/V (Cmd+C/V on macOS).
+        // Ctrl+C must stay SIGINT, so copy and paste have their own (configurable) shortcuts.
         term.attachCustomKeyEventHandler((e) => {
             if (e.type !== "keydown") return true;
-            const modifier = (e.ctrlKey && e.shiftKey) || e.metaKey;
-            const key = e.key.toLowerCase();
-            if (modifier && key === "c" && term.hasSelection()) {
+            if (matchesShortcut(e, "terminal.copy") && term.hasSelection()) {
                 navigator.clipboard.writeText(term.getSelection()).catch(() => {});
                 return false;
             }
-            if (modifier && key === "v") {
+            if (matchesShortcut(e, "terminal.paste")) {
                 navigator.clipboard.readText().then((text) => term.paste(text)).catch(() => {});
                 return false;
             }

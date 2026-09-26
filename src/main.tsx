@@ -1,8 +1,11 @@
 import ReactDOM from "react-dom/client";
 import { invoke } from "@tauri-apps/api/core";
 import App from "./App";
+import { startShortcuts } from "./features/shortcuts";
 import './index.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
+
+startShortcuts();
 
 document.addEventListener("contextmenu", (e) => e.preventDefault());
 

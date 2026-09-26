@@ -10,6 +10,7 @@ export const navItems: NavItem[] = [
     { key: "dashboard", label: "Dashboard", icon: "bi-grid-3x3-gap-fill" },
     { key: "editor", label: "Editor", icon: "bi-fonts" },
     { key: "terminal", label: "Terminal", icon: "bi-window-desktop" },
+    { key: "shortcuts", label: "Atajos", icon: "bi-keyboard" },
     { key: "logs", label: "Logs", icon: "bi-file-earmark-text" },
     { key: "advanced", label: "Avanzado", icon: "bi-terminal" },
 ];

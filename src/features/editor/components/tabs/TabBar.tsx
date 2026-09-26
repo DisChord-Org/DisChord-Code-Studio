@@ -36,6 +36,7 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                         )}
 
                         {tab.kind === "packages" && <i className="bi bi-box-seam-fill text-[11px] shrink-0"></i>}
+                        {tab.kind === "shortcuts" && <i className="bi bi-keyboard-fill text-[11px] shrink-0"></i>}
                         <span className={`truncate flex-1 ${tab.kind === "file" && !tab.isPinned ? "underline decoration-dotted decoration-white/30 underline-offset-4" : ""}`}>{tab.name}</span>
 
                         <button
