@@ -156,3 +156,9 @@ html[data-platform="macos"] #root {
 .shake {
     animation: shake 0.4s cubic-bezier(.36, .07, .19, .97) both;
 }
+/* xterm 6 paints the theme background on its scroll container too, which stacks on top of the
+   cell background and hides the terminal background image. */
+.xterm .xterm-viewport,
+.xterm .xterm-scrollable-element {
+    background-color: transparent !important;
+}

@@ -47,6 +47,7 @@ sysinfo = "0.38.4"
 zip = { version = "2", default-features = false, features = ["deflate"] }
 flate2 = "1"
 tar = "0.4"
+tauri-plugin-dialog = "2"
 [target.'cfg(windows)'.dependencies]
 winreg = "0.52"
 windows-sys = { version = "0.52", features = [

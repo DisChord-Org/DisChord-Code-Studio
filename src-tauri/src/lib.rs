@@ -95,6 +95,7 @@ pub fn run() {
         })
         .manage(ChildProcessState(Arc::new(Mutex::new(None))))
         .plugin(tauri_plugin_opener::init())
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .invoke_handler(tauri::generate_handler![
             commands::project::create_projects_folder,
@@ -138,6 +139,7 @@ pub fn run() {
 
             commands::window_size::get_home_window_size,
 
+            commands::terminal_background::get_terminal_background_bytes,
             commands::fonts::download_font,
             commands::fonts::get_font_bytes,
             commands::fonts::delete_font,

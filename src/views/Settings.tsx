@@ -4,6 +4,7 @@ import {
     SettingsSidebar,
     DashboardSettings,
     EditorSettings,
+    TerminalSettings,
     AdvancedSettings,
     LogsSettings,
     JsonFileEditor,
@@ -64,6 +65,8 @@ function Settings({ onBack }: SettingsProps) {
                             <DashboardSettings config={config} updateConfig={updateConfig} />
                         ) : section === "editor" ? (
                             <EditorSettings config={config} updateConfig={updateConfig} />
+                        ) : section === "terminal" ? (
+                            <TerminalSettings config={config} updateConfig={updateConfig} />
                         ) : section === "advanced" ? (
                             <AdvancedSettings config={config} updateConfig={updateConfig} />
                         ) : loadedSection ? (

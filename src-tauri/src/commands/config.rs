@@ -27,6 +27,28 @@ pub enum LogRotation {
     Hourly,
 }
 
+#[derive(Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BackgroundFit {
+    /// The whole image, right-aligned, with the rest left plain.
+    Contain,
+    /// The image fills the panel, cropping what does not fit.
+    #[default]
+    Cover,
+}
+
+#[derive(Clone, Copy, Serialize, Deserialize, Default, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum BackgroundSource {
+    /// The image that ships with the IDE.
+    #[default]
+    Bundled,
+    /// The image at `terminal_background_image`.
+    Custom,
+    /// No background image.
+    None,
+}
+
 fn lenient<'de, D, T>(deserializer: D) -> Result<T, D::Error>
 where
     D: Deserializer<'de>,
@@ -40,8 +62,6 @@ fn default_editor_font_family() -> String {
     "Monocraft".to_string()
 }
 
-/// Accepts configs saved in the old format (a full CSS stack, e.g. "'Monocraft', monospace")
-/// and keeps only the bare font name.
 fn normalize_font_family<'de, D>(deserializer: D) -> Result<String, D::Error>
 where
     D: Deserializer<'de>,
@@ -88,6 +108,19 @@ where
     Ok((parsed as u32).clamp(1, 8))
 }
 
+fn default_background_dim() -> u32 {
+    96
+}
+
+fn clamp_dim<'de, D>(deserializer: D) -> Result<u32, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let value = serde_json::Value::deserialize(deserializer)?;
+    let parsed = value.as_u64().unwrap_or(default_background_dim() as u64);
+    Ok((parsed as u32).min(100))
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct AppConfig {
@@ -107,6 +140,15 @@ pub struct AppConfig {
     pub editor_keep_minimap: bool,
     pub editor_keep_statusbar: bool,
     pub editor_final_newline: bool,
+    #[serde(deserialize_with = "lenient")]
+    pub terminal_background_source: BackgroundSource,
+    /// Absolute path of the custom image, used when the source is `custom`.
+    pub terminal_background_image: String,
+    /// How much the image is darkened so the text stays readable (0-100).
+    #[serde(deserialize_with = "clamp_dim")]
+    pub terminal_background_dim: u32,
+    #[serde(deserialize_with = "lenient")]
+    pub terminal_background_fit: BackgroundFit,
 }
 
 impl Default for AppConfig {
@@ -123,6 +165,10 @@ impl Default for AppConfig {
             editor_keep_minimap: false,
             editor_keep_statusbar: false,
             editor_final_newline: true,
+            terminal_background_source: BackgroundSource::default(),
+            terminal_background_image: String::new(),
+            terminal_background_dim: default_background_dim(),
+            terminal_background_fit: BackgroundFit::default(),
         }
     }
 }

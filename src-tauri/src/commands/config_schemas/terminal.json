@@ -1,6 +1,6 @@
 {
   "id": "terminal",
-  "title": "Terminal",
+  "title": "Shell interactiva",
   "icon": "bi-terminal",
   "requires": "advanced_mode",
   "fields": [

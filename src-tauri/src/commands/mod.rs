@@ -10,3 +10,4 @@ pub mod fonts;
 pub mod terminal;
 pub mod config_sections;
 pub mod watcher;
+pub mod terminal_background;

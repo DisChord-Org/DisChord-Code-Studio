@@ -1,5 +1,5 @@
 export type LogRotation = "daily" | "session" | "hourly";
-export type BuiltinSettingsSection = "dashboard" | "editor" | "advanced" | "logs";
+export type BuiltinSettingsSection = "dashboard" | "editor" | "terminal" | "advanced" | "logs";
 /** Built-in sections plus the ones declared through the config-section loader (`section:<id>`). */
 export type SettingsSection = BuiltinSettingsSection | `section:${string}`;
 
@@ -15,4 +15,8 @@ export interface AppConfig {
     editor_keep_minimap: boolean;
     editor_keep_statusbar: boolean;
     editor_final_newline: boolean;
+    terminal_background_source: "bundled" | "custom" | "none";
+    terminal_background_image: string;
+    terminal_background_dim: number;
+    terminal_background_fit: "contain" | "cover";
 }

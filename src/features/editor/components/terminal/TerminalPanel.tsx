@@ -7,6 +7,7 @@ import { Tooltip } from "../../../../components/ui";
 import { useConfig, buildFontFamilyCss } from "../../../settings";
 import { useResizablePanel } from "../../useResizablePanel";
 import { InteractiveTerminal } from "./InteractiveTerminal";
+import { useTerminalBackground } from "./useTerminalBackground";
 
 interface TerminalPanelProps {
     projectName: string;
@@ -25,6 +26,7 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
     const xtermRef = useRef<Terminal | null>(null);
     const fitAddonRef = useRef<FitAddon | null>(null);
     const { config } = useConfig();
+    const backgroundUrl = useTerminalBackground(config);
     const [tab, setTab] = useState<TerminalTab>(initialTab);
     const showShell = config.advanced_mode && tab === "shell";
 
@@ -47,8 +49,9 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
             cursorBlink: true,
             fontSize: 12,
             fontFamily: buildFontFamilyCss(config.editor_font_family),
+            allowTransparency: true,
             theme: {
-                background: "#0B0E14",
+                background: "#00000000",
                 foreground: "#abb2bf",
                 cursor: "#5865f2",
                 selectionBackground: "#5865f233",
@@ -165,7 +168,24 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
                 </div>
             </div>
 
-            <div className="flex-1 p-3 overflow-hidden group relative">
+            <div className="flex-1 p-3 overflow-hidden group relative bg-[#0B0E14]">
+                {backgroundUrl && (
+                    <>
+                    <div
+                        className="absolute inset-0 bg-no-repeat pointer-events-none"
+                        style={{
+                            backgroundImage: `url("${backgroundUrl}")`,
+                            backgroundSize: config.terminal_background_fit,
+                            backgroundPosition: config.terminal_background_fit === "contain" ? "right center" : "center",
+                            imageRendering: "pixelated",
+                        }}
+                    />
+                    <div
+                        className="absolute inset-0 bg-[#0B0E14] pointer-events-none"
+                        style={{ opacity: config.terminal_background_dim / 100 }}
+                    />
+                    </>
+                )}
                 <div
                     ref={terminalRef}
                     className={`h-full w-full opacity-90 group-hover:opacity-100 transition-opacity ${showShell ? "hidden" : ""}`}

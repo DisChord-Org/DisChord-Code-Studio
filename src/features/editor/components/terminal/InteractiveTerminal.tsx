@@ -31,8 +31,9 @@ export const InteractiveTerminal = ({ projectName, fontFamily, active, height }:
             cursorBlink: true,
             fontSize: 12,
             fontFamily: buildFontFamilyCss(fontFamily),
+            allowTransparency: true,
             theme: {
-                background: "#0B0E14",
+                background: "#00000000",
                 foreground: "#abb2bf",
                 cursor: "#5865f2",
                 selectionBackground: "#5865f233",
