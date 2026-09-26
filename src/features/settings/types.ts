@@ -14,4 +14,5 @@ export interface AppConfig {
     advanced_mode: boolean;
     editor_keep_minimap: boolean;
     editor_keep_statusbar: boolean;
+    editor_final_newline: boolean;
 }

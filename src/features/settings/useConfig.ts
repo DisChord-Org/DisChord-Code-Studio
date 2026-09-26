@@ -15,6 +15,7 @@ const defaultConfig: AppConfig = {
     advanced_mode: false,
     editor_keep_minimap: false,
     editor_keep_statusbar: false,
+    editor_final_newline: true,
 };
 
 export const useConfig = () => {

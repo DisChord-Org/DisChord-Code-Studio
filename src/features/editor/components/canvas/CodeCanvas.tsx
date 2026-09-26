@@ -57,6 +57,9 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     const useTabsRef = useRef(config.editor_use_tabs);
     useTabsRef.current = config.editor_use_tabs;
 
+    const finalNewlineRef = useRef(config.editor_final_newline);
+    finalNewlineRef.current = config.editor_final_newline;
+
     const updateConfigRef = useRef(updateConfig);
     updateConfigRef.current = updateConfig;
 
@@ -123,12 +126,17 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         return autocompletion();
     };
 
-    const handleSave = async (currentContent: string) => {
+    const handleSave = async (view: EditorView) => {
+        const doc = view.state.doc;
+        if (finalNewlineRef.current && doc.length > 0 && doc.sliceString(doc.length - 1) !== "\n") {
+            view.dispatch({ changes: { from: doc.length, insert: "\n" } });
+        }
+
         try {
             await invoke("save_file_content", { 
                 projectName,
                 filePath: relative_path,
-                content: currentContent
+                content: view.state.doc.toString()
             });
             setIsDirty(false);
         } catch (error) {
@@ -153,7 +161,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     getCompletionExtension(fileName),
                     keymap.of([
                         indentWithTab,
-                        { key: "Ctrl-s", run: (v) => { handleSave(v.state.doc.toString()); return true; } },
+                        { key: "Ctrl-s", run: (v) => { handleSave(v); return true; } },
                         { key: "Ctrl-r", run: () => { window.dispatchEvent(new CustomEvent("dischord-run")); return true; } },
                         { key: "Alt-z", run: () => { updateConfigRef.current({ editor_word_wrap: !wordWrapRef.current }); return true; } }
                     ]),
@@ -248,7 +256,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     useEffect(() => {
         const triggerSave = () => {
             if (viewRef.current) {
-                handleSave(viewRef.current.state.doc.toString());
+                handleSave(viewRef.current);
             }
         };
 

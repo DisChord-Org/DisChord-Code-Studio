@@ -106,6 +106,7 @@ pub struct AppConfig {
     pub advanced_mode: bool,
     pub editor_keep_minimap: bool,
     pub editor_keep_statusbar: bool,
+    pub editor_final_newline: bool,
 }
 
 impl Default for AppConfig {
@@ -121,6 +122,7 @@ impl Default for AppConfig {
             advanced_mode: false,
             editor_keep_minimap: false,
             editor_keep_statusbar: false,
+            editor_final_newline: true,
         }
     }
 }
