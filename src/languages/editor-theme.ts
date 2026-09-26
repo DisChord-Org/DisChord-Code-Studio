@@ -28,6 +28,9 @@ export const dischordEditorTheme = EditorView.theme({
         paddingTop: "0px",
         minWidth: "40px"
     },
+    ".cm-lineNumbers .cm-gutterElement": {
+        minWidth: "calc(3ch + 8px)"
+    },
     ".cm-activeLine": {
         backgroundColor: "color-mix(in srgb, var(--color-border), transparent 80%)"
     },
