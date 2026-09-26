@@ -1,13 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Terminal } from "@xterm/xterm"
-import { FitAddon } from "@xterm/addon-fit";
-import { listen } from "@tauri-apps/api/event";
-import "@xterm/xterm/css/xterm.css";
 import { Tooltip } from "../../../../components/ui";
-import { useConfig, buildFontFamilyCss } from "../../../settings";
+import { useConfig } from "../../../settings";
 import { useResizablePanel } from "../../useResizablePanel";
 import { InteractiveTerminal } from "./InteractiveTerminal";
 import { useTerminalBackground } from "./useTerminalBackground";
+import { RunOutput } from "./RunOutput";
+import { clearOutput } from "./outputStore";
 
 interface TerminalPanelProps {
     projectName: string;
@@ -16,15 +14,13 @@ interface TerminalPanelProps {
     isRunning: boolean;
     onStop: () => void;
     onRestart: () => void;
+    onOpenLocation: (path: string, line: number, column: number) => void;
     onClose: () => void;
 }
 
 type TerminalTab = "output" | "shell";
 
-export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal = 0, isRunning, onStop, onRestart, onClose }: TerminalPanelProps) => {
-    const terminalRef = useRef<HTMLDivElement>(null);
-    const xtermRef = useRef<Terminal | null>(null);
-    const fitAddonRef = useRef<FitAddon | null>(null);
+export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal = 0, isRunning, onStop, onRestart, onOpenLocation, onClose }: TerminalPanelProps) => {
     const { config } = useConfig();
     const backgroundUrl = useTerminalBackground(config);
     const [tab, setTab] = useState<TerminalTab>(initialTab);
@@ -42,60 +38,6 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
     }, [isRunning]);
     const { size: height, startDrag } = useResizablePanel({ initialSize: 288, min: 120, max: 640, axis: "y", invert: true });
 
-    useEffect(() => {
-        if (!terminalRef.current) return;
-
-        const term = new Terminal({
-            cursorBlink: true,
-            fontSize: 12,
-            fontFamily: buildFontFamilyCss(config.editor_font_family),
-            allowTransparency: true,
-            theme: {
-                background: "#00000000",
-                foreground: "#abb2bf",
-                cursor: "#5865f2",
-                selectionBackground: "#5865f233",
-            },
-            convertEol: true,
-        });
-
-        const fitAddon = new FitAddon();
-        term.loadAddon(fitAddon);
-        term.open(terminalRef.current);
-        fitAddon.fit();
-
-        term.writeln("\x1b[1;34m[*] Terminal DisChord lista...\x1b[0m");
-        xtermRef.current = term;
-        fitAddonRef.current = fitAddon;
-
-        const unlisten = listen<string>("terminal-data", (event) => {
-            term.write(event.payload);
-        });
-
-        const handleResize = () => fitAddon.fit();
-        window.addEventListener("resize", handleResize);
-
-        return () => {
-            window.removeEventListener("resize", handleResize);
-            unlisten.then(f => f());
-            term.dispose();
-            xtermRef.current = null;
-            fitAddonRef.current = null;
-        };
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, []);
-
-    useEffect(() => {
-        if (!xtermRef.current) return;
-        xtermRef.current.options.fontFamily = buildFontFamilyCss(config.editor_font_family);
-        fitAddonRef.current?.fit();
-    }, [config.editor_font_family]);
-
-    useEffect(() => {
-        fitAddonRef.current?.fit();
-    }, [height, showShell]);
-
-    // "Ejecutar" should always reveal its output, even if the panel is already open on the shell tab.
     const lastOutputSignal = useRef(outputSignal);
     useEffect(() => {
         if (outputSignal !== lastOutputSignal.current) {
@@ -148,7 +90,7 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
                 
                 <div className="flex items-center gap-4">
                     {!showShell && <button 
-                        onClick={() => xtermRef.current?.clear()}
+                        onClick={clearOutput}
                         className="group flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-accent transition-all"
                     >
                         <i className="bi bi-trash3 text-xs opacity-50 group-hover:opacity-100"></i>
@@ -168,7 +110,7 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
                 </div>
             </div>
 
-            <div className="flex-1 p-3 overflow-hidden group relative bg-[#0B0E14]">
+            <div className="flex-1 p-3 overflow-hidden relative bg-[#0B0E14]">
                 {backgroundUrl && (
                     <>
                     <div
@@ -186,10 +128,7 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
                     />
                     </>
                 )}
-                <div
-                    ref={terminalRef}
-                    className={`h-full w-full opacity-90 group-hover:opacity-100 transition-opacity ${showShell ? "hidden" : ""}`}
-                />
+                <RunOutput onOpenLocation={onOpenLocation} className={`relative h-full w-full ${showShell ? "hidden" : ""}`} />
                 {config.advanced_mode && (
                     <div className={`h-full w-full ${showShell ? "" : "hidden"}`}>
                         <InteractiveTerminal

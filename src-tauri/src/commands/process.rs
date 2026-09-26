@@ -4,7 +4,7 @@ use std::process::{ChildStderr, ChildStdout, Command, Stdio};
 use std::io::{BufRead, BufReader};
 use std::thread::{self, JoinHandle};
 
-use tauri::{AppHandle, Emitter, Manager, State};
+use tauri::{AppHandle, Manager, State};
 use log::{info, error, warn};
 
 use crate::ChildProcessState;
@@ -13,17 +13,15 @@ use crate::paths::project_path;
 use crate::platform::silent_command;
 use crate::platform::{resolve_chord_command, strip_npm_env, bin_dir, pnpm_command, build_path_env};
 use crate::log_err::LogErr;
+use crate::output::{emit_line, emit_run_end, LineKind, RunStatus};
 
-/// Streams a child process' stdout/stderr into the "terminal-data" event, line by line
-/// (stderr lines are wrapped in red ANSI codes). Returns the two reader threads so the
-/// caller can `.join()` them before deciding what to do once the process is done.
 fn stream_to_terminal(app_handle: &AppHandle, stdout: ChildStdout, stderr: ChildStderr) -> (JoinHandle<()>, JoinHandle<()>) {
     let handle_out = app_handle.clone();
     let stdout_thread = thread::spawn(move || {
         let reader = BufReader::new(stdout);
         for line in reader.lines() {
             if let Ok(l) = line {
-                let _ = handle_out.emit("terminal-data", format!("{}\r\n", l));
+                emit_line(&handle_out, LineKind::Stdout, l);
             }
         }
     });
@@ -33,7 +31,7 @@ fn stream_to_terminal(app_handle: &AppHandle, stdout: ChildStdout, stderr: Child
         let reader = BufReader::new(stderr);
         for line in reader.lines() {
             if let Ok(l) = line {
-                let _ = handle_err.emit("terminal-data", format!("\x1b[31m{}\r\n\x1b[0m", l));
+                emit_line(&handle_err, LineKind::Stderr, l);
             }
         }
     });
@@ -99,23 +97,24 @@ fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Pa
         return Ok(());
     }
 
-    let _ = app_handle.emit("terminal-data", "\x1b[1;33m[*] Instalando dependencias del proyecto (pnpm install)...\x1b[0m\r\n");
+    emit_line(app_handle, LineKind::Info, "Instalando dependencias del proyecto (pnpm install)...");
 
     let mut last_err = String::new();
     for attempt in 1..=PNPM_INSTALL_ATTEMPTS {
         match run_pnpm_install_once(app_handle, project_dir) {
             Ok(()) => {
-                let _ = app_handle.emit("terminal-data", "\x1b[1;32m[*] Dependencias instaladas correctamente.\x1b[0m\r\n");
+                emit_line(app_handle, LineKind::Success, "Dependencias instaladas correctamente.");
                 return Ok(());
             }
             Err(e) => {
                 last_err = e;
                 if attempt < PNPM_INSTALL_ATTEMPTS {
                     warn!("'pnpm install' falló (intento {}/{}): {}", attempt, PNPM_INSTALL_ATTEMPTS, last_err);
-                    let _ = app_handle.emit("terminal-data", format!(
-                        "\x1b[33m[*] 'pnpm install' falló, reintentando ({}/{})...\x1b[0m\r\n",
-                        attempt, PNPM_INSTALL_ATTEMPTS
-                    ));
+                    emit_line(
+                        app_handle,
+                        LineKind::Warning,
+                        format!("'pnpm install' falló, reintentando ({}/{})...", attempt, PNPM_INSTALL_ATTEMPTS),
+                    );
                     thread::sleep(std::time::Duration::from_secs(2));
                 }
             }
@@ -179,12 +178,16 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
         let _ = stderr_thread.join();
 
         let mut lock = state_arc.lock().unwrap();
-        if let Some(mut child) = lock.take() {
-            let _ = child.wait();
-            info!("El proceso hijo {} ha finalizado", pid);
-        }
 
-        let _ = handle_clone.emit("terminal-data", "\x1b[1;32m[!] Ejecución finalizada.\x1b[0m\r\n");
+        if let Some(mut child) = lock.take() {
+            let status = match child.wait() {
+                Ok(exit) if exit.success() => RunStatus::Finished,
+                Ok(exit) => RunStatus::Failed { code: exit.code() },
+                Err(_) => RunStatus::Failed { code: None },
+            };
+            info!("El proceso hijo {} ha finalizado", pid);
+            emit_run_end(&handle_clone, status);
+        }
         *lock = None;
     });
 
@@ -220,7 +223,7 @@ pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPr
             }
         }
 
-        let _ = app_handle.emit("terminal-data", "\x1b[1;31m[!] Proceso detenido.\x1b[0m\r\n");
+        emit_run_end(&app_handle, RunStatus::Stopped);
         info!("Proceso {} detenido correctamente.", pid);
         Ok("Proceso detenido".into())
     } else {

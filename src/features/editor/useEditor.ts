@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow, LogicalSize, PhysicalPosition, PhysicalSize, currentMonitor } from "@tauri-apps/api/window";
-import { emit, listen } from "@tauri-apps/api/event";
-import type { CodeCanvasHandle, FileNode, MinimapViewport, OpenTab } from "./types";
+import { listen } from "@tauri-apps/api/event";
+import type { CodeCanvasHandle, FileNode, GotoTarget, MinimapViewport, OpenTab } from "./types";
 import { PACKAGES_TAB_ID } from "./types";
+import { startOutputListener, beginRun, pushLine, endRun } from "./components/terminal/outputStore";
 
 const appWindow = getCurrentWindow();
 
@@ -98,8 +99,6 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         };
     }, [projectName]);
 
-    // Keep the explorer in sync with the disk: the backend watches the project folder and tells
-    // us when something was created, renamed or deleted (by us or by any other program).
     useEffect(() => {
         invoke("watch_project", { projectName }).catch(console.error);
 
@@ -133,8 +132,9 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
     }, [projectName]);
 
     useEffect(() => {
-        const unlisten = listen<string>("terminal-data", (event) => {
-            if (event.payload.includes("[!] Ejecución finalizada")) {
+        startOutputListener();
+        const unlisten = listen<{ type: string }>("terminal-output", (event) => {
+            if (event.payload.type === "run_end") {
                 setIsRunning(false);
             }
         });
@@ -213,6 +213,17 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         window.addEventListener("keydown", handleSwitchTab);
         return () => window.removeEventListener("keydown", handleSwitchTab);
     }, []);
+
+    const [gotoTarget, setGotoTarget] = useState<GotoTarget | null>(null);
+
+    useEffect(() => {
+        setGotoTarget(null);
+    }, [activeTabPath]);
+
+    const openFileAt = async (path: string, line: number, column: number) => {
+        await handleFileSelect({ name: path.split("/").pop() ?? path, relative_path: path, is_dir: false } as FileNode);
+        setGotoTarget({ path, line, column, nonce: Date.now() });
+    };
 
     const handleFileSelect = async (node: FileNode) => {
         if (node.is_dir) return;
@@ -329,6 +340,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         setOutputSignal((n) => n + 1);
         setShowTerminal(true);
         setIsRunning(true);
+        beginRun();
 
         setTimeout(async () => {
             try {
@@ -336,7 +348,8 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
             } catch (e) {
                 setIsRunning(false);
                 console.error("Error al ejecutar:", e);
-                emit("terminal-data", `\x1b[1;31m[!] No se pudo ejecutar: ${e}\x1b[0m\r\n`);
+                pushLine("error", `No se pudo ejecutar: ${e}`);
+                endRun("failed", null);
             }
         }, 300);
     };
@@ -353,8 +366,6 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
 
     const handleRestartRun = async () => {
         await stopRun();
-        // The killed process reports "Ejecución finalizada" a moment later; starting right away
-        // would let that late message flip the new run back to "not running".
         await sleep(400);
         startRun();
     };
@@ -409,6 +420,8 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         setShowTerminal,
         setMinimapViewport,
         handleFileSelect,
+        openFileAt,
+        gotoTarget,
         openPackagesTab,
         closeTab,
         updateActiveTabContent,

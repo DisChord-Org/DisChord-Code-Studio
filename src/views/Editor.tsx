@@ -38,6 +38,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         setShowTerminal,
         setMinimapViewport,
         handleFileSelect,
+        openFileAt,
+        gotoTarget,
         openPackagesTab,
         closeTab,
         updateActiveTabContent,
@@ -112,6 +114,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                                         setIsDirty={setActiveTabDirty}
                                         onChange={updateActiveTabContent}
                                         onViewportChange={setMinimapViewport}
+                                        goto={gotoTarget}
                                     />
                                 </div>
                                 {(isMaximized || config.editor_keep_minimap) && (
@@ -137,7 +140,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                         )}
                     </div>
 
-                    {showTerminal && <TerminalPanel projectName={projectName} initialTab={terminalStartTab} outputSignal={outputSignal} isRunning={isRunning} onStop={handleStopRun} onRestart={handleRestartRun} onClose={() => setShowTerminal(false)} />}
+                    {showTerminal && <TerminalPanel projectName={projectName} initialTab={terminalStartTab} outputSignal={outputSignal} isRunning={isRunning} onStop={handleStopRun} onRestart={handleRestartRun} onOpenLocation={openFileAt} onClose={() => setShowTerminal(false)} />}
 
                     {(isMaximized || config.editor_keep_statusbar) && (
                         <StatusBar

@@ -9,7 +9,7 @@ import { indentWithTab } from "@codemirror/commands";
 import { autocompletion } from "@codemirror/autocomplete";
 import { indentUnit } from "@codemirror/language";
 import { chordCompletionSource, chordVariableCompletionSource } from "../../../../languages/chord-completions";
-import type { MinimapViewport, CodeCanvasHandle } from "../../types";
+import type { MinimapViewport, CodeCanvasHandle, GotoTarget } from "../../types";
 
 import { javascript } from "@codemirror/lang-javascript";
 import { html } from "@codemirror/lang-html";
@@ -27,6 +27,7 @@ interface CodeCanvasProps {
     content: string;
     onChange: (value: string) => void;
     onViewportChange?: (viewport: MinimapViewport) => void;
+    goto?: GotoTarget | null;
 }
 
 const languageConf = new Compartment();
@@ -39,7 +40,7 @@ const indentExtension = (size: number, useTabs: boolean) => [
 ];
 
 export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
-    projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange
+    projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange, goto
 }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
@@ -252,6 +253,16 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             effects: indentConf.reconfigure(indentExtension(config.editor_tab_size, config.editor_use_tabs))
         });
     }, [config.editor_tab_size, config.editor_use_tabs]);
+
+    useEffect(() => {
+        const view = viewRef.current;
+        if (!view || !goto || goto.path !== relative_path) return;
+
+        const line = view.state.doc.line(Math.min(Math.max(goto.line, 1), view.state.doc.lines));
+        const pos = line.from + Math.min(Math.max(goto.column - 1, 0), line.length);
+        view.dispatch({ selection: { anchor: pos }, effects: EditorView.scrollIntoView(pos, { y: "center" }) });
+        view.focus();
+    }, [goto?.nonce]);
 
     useEffect(() => {
         const triggerSave = () => {

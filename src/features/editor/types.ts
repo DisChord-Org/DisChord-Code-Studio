@@ -11,6 +11,14 @@ export interface MinimapViewport {
     clientHeight: number;
 }
 
+/** Ask the editor to put the cursor somewhere; `nonce` makes repeated requests to the same spot count. */
+export interface GotoTarget {
+    path: string;
+    line: number;
+    column: number;
+    nonce: number;
+}
+
 export interface CodeCanvasHandle {
     scrollTo: (scrollTop: number) => void;
 }
