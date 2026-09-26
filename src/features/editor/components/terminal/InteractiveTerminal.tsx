@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { Terminal } from "@xterm/xterm";
 import { FitAddon } from "@xterm/addon-fit";
+import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import { buildFontFamilyCss } from "../../../settings";
 
@@ -40,6 +41,17 @@ export const InteractiveTerminal = ({ projectName, fontFamily, active, height }:
         const fit = new FitAddon();
         term.loadAddon(fit);
         term.open(containerRef.current);
+
+        let rounded = false;
+        try {
+            const webgl = new WebglAddon();
+            webgl.onContextLoss(() => webgl.dispose());
+            term.loadAddon(webgl);
+            rounded = true;
+        } catch (error) {
+            console.warn("WebGL no disponible para la terminal, se usa el renderizador normal:", error);
+        }
+
         fit.fit();
         termRef.current = term;
         fitRef.current = fit;
@@ -82,7 +94,7 @@ export const InteractiveTerminal = ({ projectName, fontFamily, active, height }:
             }));
 
             try {
-                const opened = await invoke<string>("terminal_open", { projectName, cols: term.cols, rows: term.rows });
+                const opened = await invoke<string>("terminal_open", { projectName, cols: term.cols, rows: term.rows, rounded });
                 if (disposed) {
                     invoke("terminal_close", { id: opened }).catch(() => {});
                     return;
