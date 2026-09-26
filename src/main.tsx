@@ -10,12 +10,15 @@ startShortcuts();
 document.addEventListener("contextmenu", (e) => e.preventDefault());
 
 // WebKit turns a middle click into "autoscroll" (a circle with arrows that follows the mouse) and it gets
-// stuck. The middle button keeps working where it means something: pasting the selection into text fields
-// on Linux, and the terminal.
+// stuck. On Linux the middle button also pastes the mouse selection wherever it lands, which in the code
+// editor means silently rewriting a file, so it is cancelled there too. It stays in plain text fields and
+// in the terminal, where pasting is what people expect.
 document.addEventListener("mousedown", (e) => {
     if (e.button !== 1) return;
-    if ((e.target as HTMLElement | null)?.closest("input, textarea, [contenteditable], .cm-editor, .xterm")) return;
-    e.preventDefault();
+
+    const target = e.target as HTMLElement | null;
+    const keepsPaste = target?.closest("input, textarea, .xterm") || (target?.closest("[contenteditable]") && !target.closest(".cm-editor"));
+    if (!keepsPaste) e.preventDefault();
 });
 
 invoke<string>("get_platform")
