@@ -112,21 +112,16 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
 
             <div className="flex-1 p-3 overflow-hidden relative bg-[#0B0E14]">
                 {backgroundUrl && (
-                    <>
                     <div
-                        className="absolute inset-0 bg-no-repeat pointer-events-none"
+                        className="absolute inset-0 pointer-events-none"
                         style={{
-                            backgroundImage: `url("${backgroundUrl}")`,
-                            backgroundSize: config.terminal_background_fit,
-                            backgroundPosition: config.terminal_background_fit === "contain" ? "right center" : "center",
+                            backgroundImage: `linear-gradient(rgba(11, 14, 20, ${config.terminal_background_dim / 100}), rgba(11, 14, 20, ${config.terminal_background_dim / 100})), url("${backgroundUrl}")`,
+                            backgroundSize: `100% 100%, ${config.terminal_background_fit}`,
+                            backgroundPosition: `0 0, ${config.terminal_background_fit === "contain" ? "right center" : "center"}`,
+                            backgroundRepeat: "no-repeat",
                             imageRendering: "pixelated",
                         }}
                     />
-                    <div
-                        className="absolute inset-0 bg-[#0B0E14] pointer-events-none"
-                        style={{ opacity: config.terminal_background_dim / 100 }}
-                    />
-                    </>
                 )}
                 <RunOutput onOpenLocation={onOpenLocation} className={`relative h-full w-full ${showShell ? "hidden" : ""}`} />
                 {config.advanced_mode && (

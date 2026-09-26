@@ -150,6 +150,8 @@ pub struct AppConfig {
     pub terminal_background_dim: u32,
     #[serde(deserialize_with = "lenient")]
     pub terminal_background_fit: BackgroundFit,
+    /// Whether an animated background (GIF) plays. Off, or while the window is not in use, it shows its first frame.
+    pub terminal_background_animated: bool,
     #[serde(deserialize_with = "lenient")]
     pub keybindings: BTreeMap<String, String>,
 }
@@ -172,6 +174,7 @@ impl Default for AppConfig {
             terminal_background_image: String::new(),
             terminal_background_dim: default_background_dim(),
             terminal_background_fit: BackgroundFit::default(),
+            terminal_background_animated: true,
             keybindings: BTreeMap::new(),
         }
     }

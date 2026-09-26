@@ -19,6 +19,7 @@ export interface AppConfig {
     terminal_background_image: string;
     terminal_background_dim: number;
     terminal_background_fit: "contain" | "cover";
+    terminal_background_animated: boolean;
     /** Shortcuts changed by the user, by action id (see features/shortcuts). */
     keybindings: Record<string, string>;
 }

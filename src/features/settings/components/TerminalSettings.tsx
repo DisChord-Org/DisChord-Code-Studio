@@ -73,6 +73,27 @@ export const TerminalSettings = ({ config, updateConfig }: TerminalSettingsProps
             {hasImage && (
                 <>
                     <div className="py-3 border-b border-white/5">
+                        <button
+                            onClick={() => updateConfig({ terminal_background_animated: !config.terminal_background_animated })}
+                            className="w-full flex items-center justify-between text-left"
+                        >
+                            <div>
+                                <p className="text-sm text-gray-200 font-medium mb-0.5">Animar la imagen</p>
+                                <p className="text-xs text-gray-500">
+                                    Un GIF animado hace trabajar a la gráfica sin parar. Se detiene solo cuando la ventana no está en uso; apágalo para ahorrar más.
+                                </p>
+                            </div>
+                            <span
+                                className={`shrink-0 ml-3 w-9 h-5 rounded-full p-0.5 transition-colors ${config.terminal_background_animated ? "bg-accent" : "bg-white/10"}`}
+                            >
+                                <span
+                                    className={`block w-4 h-4 rounded-full bg-white transition-transform ${config.terminal_background_animated ? "translate-x-4" : "translate-x-0"}`}
+                                />
+                            </span>
+                        </button>
+                    </div>
+
+                    <div className="py-3 border-b border-white/5">
                         <p className="text-sm text-gray-200 font-medium mb-2">Ajuste</p>
                         <div className="flex gap-2">
                             {fitOptions.map((option) => (
