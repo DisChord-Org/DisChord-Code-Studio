@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { CodeCanvasHandle, FileNode, GotoTarget, MinimapViewport, OpenTab } from "./types";
 import { PACKAGES_TAB_ID } from "./types";
 import { baseName, isSameOrInside, remapPath } from "./pathUtils";
+import { restoreTabsSession, saveTabsSession } from "./tabsSession";
 import { startOutputListener, beginRun, pushLine, endRun } from "./components/terminal/outputStore";
 import { confirmAction } from "../../utils/Dialogs";
 
@@ -49,6 +50,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
     const [terminalStartTab, setTerminalStartTab] = useState<"output" | "shell">("shell");
     const [outputSignal, setOutputSignal] = useState(0);
     const [isMaximized, setIsMaximized] = useState(true);
+    const [restoredProject, setRestoredProject] = useState<string | null>(null);
     const codeCanvasRef = useRef<CodeCanvasHandle>(null);
     const [minimapViewport, setMinimapViewport] = useState<MinimapViewport | undefined>(undefined);
 
@@ -86,7 +88,18 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         setActiveTabPath(null);
         setShowTerminal(false);
 
+        // Saving is held back until the saved tabs are back, or the empty list would overwrite them.
+        setRestoredProject(null);
+        let cancelled = false;
+        restoreTabsSession(projectName).then(({ tabs, active }) => {
+            if (cancelled) return;
+            setOpenTabs(tabs);
+            setActiveTabPath(active);
+            setRestoredProject(projectName);
+        });
+
         return () => {
+            cancelled = true;
             enqueueWindowOp(async () => {
                 const platform = await getPlatform();
                 if (platform !== "macos") {
@@ -100,6 +113,11 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
             });
         };
     }, [projectName]);
+
+    useEffect(() => {
+        // Compared by name so a render right after a project switch never files the old tabs under the new project.
+        if (restoredProject === projectName) saveTabsSession(projectName, openTabs, activeTabPath);
+    }, [restoredProject, openTabs, activeTabPath, projectName]);
 
     useEffect(() => {
         invoke("watch_project", { projectName }).catch(console.error);
