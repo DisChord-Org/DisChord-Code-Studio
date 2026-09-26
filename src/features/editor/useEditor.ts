@@ -5,6 +5,7 @@ import { listen } from "@tauri-apps/api/event";
 import type { CodeCanvasHandle, FileNode, GotoTarget, MinimapViewport, OpenTab } from "./types";
 import { PACKAGES_TAB_ID } from "./types";
 import { startOutputListener, beginRun, pushLine, endRun } from "./components/terminal/outputStore";
+import { confirmAction } from "../../utils/Dialogs";
 
 const appWindow = getCurrentWindow();
 
@@ -280,11 +281,12 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         });
     };
 
-    const closeTab = (path: string) => {
+    const closeTab = async (path: string) => {
         const tab = openTabsRef.current.find(t => t.relative_path === path);
         if (tab?.isDirty) {
-            const confirmed = window.confirm(
-                `Tienes cambios sin guardar en "${tab.name}". ¿Quieres cerrarlo de todos modos? Se perderán.`
+            const confirmed = await confirmAction(
+                `Tienes cambios sin guardar en "${tab.name}". ¿Quieres cerrarlo de todos modos? Se perderán.`,
+                "Cerrar"
             );
             if (!confirmed) return;
         }
@@ -370,18 +372,19 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         startRun();
     };
 
-    const confirmLeaveProject = (): boolean => {
+    const confirmLeaveProject = async (): Promise<boolean> => {
         const dirtyTabs = openTabs.filter(t => t.isDirty);
         if (dirtyTabs.length === 0) return true;
-        return window.confirm(
+        return confirmAction(
             dirtyTabs.length === 1
                 ? `Tienes cambios sin guardar en "${dirtyTabs[0].name}". ¿Quieres salir de todos modos? Se perderán.`
-                : `Tienes cambios sin guardar en ${dirtyTabs.length} ficheros. ¿Quieres salir de todos modos? Se perderán.`
+                : `Tienes cambios sin guardar en ${dirtyTabs.length} ficheros. ¿Quieres salir de todos modos? Se perderán.`,
+            "Salir"
         );
     };
 
     const handleBack = async () => {
-        if (!confirmLeaveProject()) return;
+        if (!(await confirmLeaveProject())) return;
 
         if (isRunning) {
             try {
@@ -393,9 +396,9 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         onBack();
     };
 
-    const handleSwitchProject = (name: string) => {
+    const handleSwitchProject = async (name: string) => {
         if (name === projectName) return;
-        if (!confirmLeaveProject()) return;
+        if (!(await confirmLeaveProject())) return;
         if (!onSwitchProject) return;
 
         onSwitchProject(name);

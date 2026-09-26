@@ -1,6 +1,7 @@
 export { BackButton } from "./BackButton";
 export { Button } from "./Button";
 export { ContextMenu } from "./ContextMenu";
+export { DialogHost } from "./DialogHost";
 export { Modal } from "./Modal";
 export { ModifiedBadge } from "./ModifiedBadge";
 export { Tooltip } from "./Tooltip";

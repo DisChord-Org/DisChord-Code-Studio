@@ -9,6 +9,7 @@ import { ProjectSwitcher } from "./menus/ProjectSwitcher";
 import { WindowControls, BackButton } from "../../../../components/ui";
 import type { ProjectSummary } from "../../../dashboard";
 import type { FileNode } from "../../types";
+import { showError } from "../../../../utils/Dialogs";
 
 const appWindow = getCurrentWindow();
 
@@ -78,7 +79,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
             await invoke("open_in_explorer", { projectName });
             setOpenMenu(null);
         } catch (error) {
-            alert("No se pudo abrir el explorador: " + error);
+            showError("No se pudo abrir el explorador: " + error);
         }
     };
 

@@ -4,10 +4,11 @@ import Dashboard from "./views/Dashboard";
 import Editor from "./views/Editor";
 import Update from "./views/Update";
 import Settings from "./views/Settings";
+import { DialogHost } from "./components/ui";
 
 const windowLabel = getCurrentWindow().label;
 
-function App() {
+function AppRoutes() {
     const [currentProject, setCurrentProject] = useState<string | null>(null);
     const [showSettings, setShowSettings] = useState(false);
 
@@ -34,6 +35,15 @@ function App() {
             onSelectProject={(name) => setCurrentProject(name)}
             onOpenSettings={() => setShowSettings(true)}
         />
+    );
+}
+
+function App() {
+    return (
+        <>
+            <AppRoutes />
+            <DialogHost />
+        </>
     );
 }
 

@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button } from "../../../components/ui";
 import { ViewModeToggle } from "./ViewModeToggle";
 import type { AppConfig } from "../types";
+import { showError } from "../../../utils/Dialogs";
 
 interface DashboardSettingsProps {
     config: AppConfig;
@@ -13,7 +14,7 @@ export const DashboardSettings = ({ config, updateConfig }: DashboardSettingsPro
         try {
             await invoke("open_app_data_folder");
         } catch (error) {
-            alert("No se pudo abrir la carpeta de datos del IDE: " + error);
+            showError("No se pudo abrir la carpeta de datos del IDE: " + error);
         }
     };
 
@@ -21,7 +22,7 @@ export const DashboardSettings = ({ config, updateConfig }: DashboardSettingsPro
         try {
             await invoke("open_binaries_folder");
         } catch (error) {
-            alert("No se pudo abrir la carpeta de binarios: " + error);
+            showError("No se pudo abrir la carpeta de binarios: " + error);
         }
     };
 

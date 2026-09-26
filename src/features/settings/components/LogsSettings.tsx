@@ -2,6 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Button } from "../../../components/ui";
 import type { AppConfig } from "../types";
 import { rotationOptions } from "./LogsSettings.constants";
+import { showError } from "../../../utils/Dialogs";
 
 interface LogsSettingsProps {
     config: AppConfig;
@@ -13,7 +14,7 @@ export const LogsSettings = ({ config, updateConfig }: LogsSettingsProps) => {
         try {
             await invoke("open_logs_folder");
         } catch (error) {
-            alert("No se pudo abrir la carpeta de logs: " + error);
+            showError("No se pudo abrir la carpeta de logs: " + error);
         }
     };
 

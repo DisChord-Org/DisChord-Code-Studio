@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { Modal, ContextMenu, Label, Tooltip } from "../../../../components/ui";
 import { FileItem } from "./FileItem";
 import { useResizablePanel } from "../../useResizablePanel";
+import { confirmAction } from "../../../../utils/Dialogs";
 
 interface SidebarProps {
     files: FileNode[];
@@ -83,7 +84,7 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh }: SidebarP
     };
 
     const handleDelete = async (path: string) => {
-        if (window.confirm(`¿Seguro que quieres borrar ${path}?`)) {
+        if (await confirmAction(`¿Seguro que quieres borrar ${path}?`, "Borrar")) {
             try {
                 await invoke("delete_item", { projectName, path });
                 onRefresh();

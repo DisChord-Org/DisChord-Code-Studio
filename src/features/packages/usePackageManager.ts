@@ -3,6 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { Feedback, PackageEntry, PkgOpOutcome, PkgProgressEvent, ProjectLibrary } from "./types";
 import { opKey, phaseLabel } from "./components/PackageManager.utils";
+import { confirmAction } from "../../utils/Dialogs";
 
 interface UsePackageManagerArgs {
     projectName: string;
@@ -128,8 +129,8 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
             invoke<PkgOpOutcome>("pkg_unuse", { projectName, name }), refreshInstalledAndLibs);
     };
 
-    const handleUninstall = (name: string, version: string) => {
-        const confirmed = window.confirm(`¿Desinstalar ${name}@${version} de tu sistema? Esto afecta a todos tus proyectos, no solo a este.`);
+    const handleUninstall = async (name: string, version: string) => {
+        const confirmed = await confirmAction(`¿Desinstalar ${name}@${version} de tu sistema? Esto afecta a todos tus proyectos, no solo a este.`, "Desinstalar");
         if (!confirmed) return;
 
         runOp(opKey("uninstall", name, version), [name], () =>
