@@ -1,5 +1,5 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
-import { Label, Tooltip } from "../../../components/ui";
+import { Label, Tooltip, EmptyState, ListGroup, ListRow } from "../../../components/ui";
 import type { Feedback, PackageEntry, PkgProgressEvent } from "../types";
 import { opKey, phaseLabel } from "./PackageManager.utils";
 import { ProgressRow } from "./ProgressRow";
@@ -62,17 +62,11 @@ export const RegistrySection = ({
             {loading ? (
                 <p className="text-xs text-gray-500 animate-pulse mt-3">Buscando...</p>
             ) : error ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-center">
-                    <i className="bi bi-exclamation-triangle text-xl text-red-400/60"></i>
-                    <p className="text-xs text-red-400">{error}</p>
-                </div>
+                <EmptyState icon="bi-exclamation-triangle" tone="danger" size="md">{error}</EmptyState>
             ) : results.length === 0 ? (
-                <div className="flex flex-col items-center gap-2 py-10 text-center">
-                    <i className="bi bi-search text-xl text-gray-700"></i>
-                    <p className="text-xs text-gray-500">No se encontraron librerías.</p>
-                </div>
+                <EmptyState icon="bi-search" size="md">No se encontraron librerías.</EmptyState>
             ) : (
-                <div className="mt-1 divide-y divide-white/[0.05]">
+                <ListGroup className="mt-1">
                     {results.map((pkg) => {
                         const version = versionFor(pkg);
                         const isUsed = usedVersion(pkg.name) === version;
@@ -87,10 +81,7 @@ export const RegistrySection = ({
                         const feedbackEntry = feedback[installKey] ?? feedback[useKey] ?? feedback[uninstallKey];
 
                         return (
-                            <div
-                                key={pkg.name}
-                                className="group relative -mx-2 px-2 py-3 rounded-md hover:bg-white/[0.03] transition-colors"
-                            >
+                            <ListRow key={pkg.name} padding="lg">
                                 <div className="flex items-start justify-between gap-4 flex-wrap sm:flex-nowrap">
                                     <div className="min-w-0">
                                         <div className="flex items-center gap-2.5 flex-wrap">
@@ -192,10 +183,10 @@ export const RegistrySection = ({
                                 )}
 
                                 {rowProgress && <ProgressRow progress={rowProgress} />}
-                            </div>
+                            </ListRow>
                         );
                     })}
-                </div>
+                </ListGroup>
             )}
         </section>
     );

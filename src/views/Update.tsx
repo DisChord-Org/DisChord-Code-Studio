@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import { Button, Title, WindowControls } from "../components/ui";
+import { Button, ListGroup, ListRow, Title, WindowControls } from "../components/ui";
 import { SystemMonitorRings } from "../features/system-monitor";
 import { targetMeta, statusText } from "./Update.constants";
 import { formatBytes } from "../utils/Bytes";
@@ -91,7 +91,7 @@ const UpdateRow = ({ target, state }: UpdateRow) => {
         : "";
 
     return (
-        <div className="group relative -mx-5 px-5 py-2.5 rounded-md hover:bg-white/[0.03] transition-colors overflow-hidden">
+        <ListRow inset="lg" className="overflow-hidden">
             <div className="flex items-center justify-between gap-4">
                 <div className="flex items-center gap-3.5 min-w-0 ml-1">
                     <i className={`bi ${meta.icon} text-sm shrink-0 transition-colors duration-300 ${statusColor}`}></i>
@@ -138,7 +138,7 @@ const UpdateRow = ({ target, state }: UpdateRow) => {
                     </div>
                 </div>
             )}
-        </div>
+        </ListRow>
     );
 };
 
@@ -266,7 +266,7 @@ function Update() {
                 </div>
             </div>
 
-            <div className="custom-scrollbar divide-y divide-white/[0.05] max-w-xl mx-auto w-full overflow-y-auto overflow-x-hidden">
+            <ListGroup className="custom-scrollbar max-w-xl mx-auto w-full overflow-y-auto overflow-x-hidden">
                 {targetOrder.map((key, i) => (
                     <div
                         key={key}
@@ -276,7 +276,7 @@ function Update() {
                         <UpdateRow target={key} state={states[key]} />
                     </div>
                 ))}
-            </div>
+            </ListGroup>
 
             <div className="mt-auto pt-8 flex items-center justify-between max-w-xl mx-auto w-full">
                 <span className="text-[10px] text-gray-600">

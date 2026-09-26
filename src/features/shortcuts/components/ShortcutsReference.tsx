@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Label, TabPage } from "../../../components/ui";
+import { Badge, EmptyState, Label, ListGroup, ListRow, TabPage } from "../../../components/ui";
 import { fixedShortcuts, groupLabels, groupOrder, shortcutDefinitions } from "../definitions";
 import { useKeybindings } from "../store";
 import type { ShortcutGroup } from "../types";
@@ -63,28 +63,23 @@ export const ShortcutsReference = ({ onClose }: ShortcutsReferenceProps) => {
             }
         >
             {groups.length === 0 && (
-                <div className="flex flex-col items-center gap-2 py-8 text-center">
-                    <i className="bi bi-keyboard text-xl text-gray-700"></i>
-                    <p className="text-xs text-gray-500">Ningún atajo coincide con la búsqueda.</p>
-                </div>
+                <EmptyState icon="bi-keyboard">Ningún atajo coincide con la búsqueda.</EmptyState>
             )}
 
             {groups.map(({ group, rows }) => (
                 <section key={group}>
                     <Label>{groupLabels[group]}</Label>
-                    <div className="mt-1 divide-y divide-white/[0.05]">
+                    <ListGroup className="mt-1">
                         {rows.map((row) => (
-                            <div key={row.key} className="-mx-2 px-2 py-2 flex items-center justify-between gap-4 rounded-md hover:bg-white/[0.03] transition-colors">
+                            <ListRow key={row.key} padding="sm" className="flex items-center justify-between gap-4">
                                 <span className="text-xs text-gray-300">
                                     {row.label}
-                                    {row.note && (
-                                        <span className="ml-2 text-[9px] font-bold uppercase tracking-wide text-amber-400/80 bg-amber-400/10 px-1.5 py-0.5 rounded">{row.note}</span>
-                                    )}
+                                    {row.note && <Badge>{row.note}</Badge>}
                                 </span>
                                 <ShortcutKeys accelerator={row.accelerator} />
-                            </div>
+                            </ListRow>
                         ))}
-                    </div>
+                    </ListGroup>
                 </section>
             ))}
         </TabPage>

@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { Badge, ListGroup } from "../../../components/ui";
 import { isMac } from "../../../utils/Platform";
 import { acceleratorFromEvent, normalizeAccelerator } from "../accelerator";
 import { pauseShortcuts } from "../dispatcher";
@@ -113,7 +114,7 @@ export const ShortcutSettings = ({ onSave }: ShortcutSettingsProps) => {
                 return (
                     <section key={group} className="pt-4">
                         <p className="text-[10px] font-bold uppercase tracking-wide text-gray-500 mb-1">{groupLabels[group]}</p>
-                        <div className="divide-y divide-white/[0.05]">
+                        <ListGroup>
                             {definitions.map((definition) => {
                                 const isRecording = recording === definition.id;
                                 const rowProblem = problem?.id === definition.id ? problem.message : null;
@@ -126,7 +127,7 @@ export const ShortcutSettings = ({ onSave }: ShortcutSettingsProps) => {
                                                 <p className="text-xs text-gray-200">
                                                     {definition.label}
                                                     {definition.advancedOnly && (
-                                                        <span className="ml-2 text-[9px] font-bold uppercase tracking-wide text-amber-400/80 bg-amber-400/10 px-1.5 py-0.5 rounded">Modo avanzado</span>
+                                                        <Badge>Modo avanzado</Badge>
                                                     )}
                                                 </p>
                                                 {definition.description && <p className="text-[10px] text-gray-600">{definition.description}</p>}
@@ -185,7 +186,7 @@ export const ShortcutSettings = ({ onSave }: ShortcutSettingsProps) => {
                                     </div>
                                 );
                             })}
-                        </div>
+                        </ListGroup>
                     </section>
                 );
             })}

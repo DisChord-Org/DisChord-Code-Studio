@@ -1,4 +1,4 @@
-import { Label, Tooltip } from "../../../components/ui";
+import { Label, Tooltip, EmptyState, ListGroup, ListRow } from "../../../components/ui";
 import type { Feedback, PkgProgressEvent, ProjectLibrary } from "../types";
 import { opKey, phaseLabel } from "./PackageManager.utils";
 import { ProgressRow } from "./ProgressRow";
@@ -45,19 +45,16 @@ export const InUseSection = ({ projectLibs, busy, syncing, feedback, progress, o
         )}
 
         {projectLibs.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-8 text-center">
-                <i className="bi bi-box2 text-xl text-gray-700"></i>
-                <p className="text-xs text-gray-500">Este proyecto no usa ninguna librería todavía.</p>
-            </div>
+            <EmptyState icon="bi-box2">Este proyecto no usa ninguna librería todavía.</EmptyState>
         ) : (
-            <div className="mt-1 divide-y divide-white/[0.05]">
+            <ListGroup className="mt-1">
                 {projectLibs.map((lib) => {
                     const key = opKey("unuse", lib.name);
                     const isBusy = busy === key;
                     const rowProgress = isBusy ? progress[lib.name] : undefined;
 
                     return (
-                        <div key={lib.name} className="relative -mx-2 px-2 py-2.5 rounded-md hover:bg-white/[0.03] transition-colors">
+                        <ListRow key={lib.name}>
                             <div className="flex items-center gap-2.5 flex-wrap">
                                 <i className="bi bi-box-seam-fill text-accent-light text-[12px] shrink-0"></i>
                                 <span className="text-sm text-gray-100">{lib.name}</span>
@@ -91,10 +88,10 @@ export const InUseSection = ({ projectLibs, busy, syncing, feedback, progress, o
                             )}
 
                             {rowProgress && <ProgressRow progress={rowProgress} />}
-                        </div>
+                        </ListRow>
                     );
                 })}
-            </div>
+            </ListGroup>
         )}
     </section>
 );
