@@ -15,6 +15,41 @@ use crate::platform::{resolve_chord_command, strip_npm_env, bin_dir, pnpm_comman
 use crate::log_err::LogErr;
 use crate::output::{emit_line, emit_run_end, LineKind, RunStatus};
 
+/// Terminates a project run together with everything it started. `chord` launches the bot through other
+/// processes (a shell, node), so killing only `chord` left those alive and they piled up in memory.
+/// On Unix the run is its own process group, so the whole group gets the signal; on Windows `taskkill /T`
+/// walks the tree.
+pub fn kill_run(mut child: std::process::Child) {
+    let pid = child.id();
+
+    #[cfg(target_os = "windows")]
+    {
+        let res = silent_command("taskkill").arg("/F").arg("/T").arg("/PID").arg(pid.to_string()).spawn();
+        if res.is_err() {
+            error!("Fallo al ejecutar taskkill para PID {}", pid);
+            let _ = child.kill();
+        }
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let group = pid as libc::pid_t;
+        // Politely first, so the bot can close its connections; whatever is still alive soon after is killed.
+        unsafe { libc::killpg(group, libc::SIGTERM) };
+        thread::spawn(move || {
+            thread::sleep(std::time::Duration::from_secs(2));
+            unsafe { libc::killpg(group, libc::SIGKILL) };
+        });
+    }
+
+    // Reaping the child keeps it from lingering as a zombie.
+    thread::spawn(move || {
+        let _ = child.wait();
+    });
+}
+
+/// Streams a child process' stdout/stderr into the "terminal-output" event, line by line, tagged by stream.
+/// Returns the two reader threads so the caller can `.join()` them before deciding what to do once the process is done.
 fn stream_to_terminal(app_handle: &AppHandle, stdout: ChildStdout, stderr: ChildStderr) -> (JoinHandle<()>, JoinHandle<()>) {
     let handle_out = app_handle.clone();
     let stdout_thread = thread::spawn(move || {
@@ -156,6 +191,13 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
+    // Its own process group, so stopping the run can take down everything it spawned.
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+
     let mut child = command.spawn().log_err("No se pudo spawnear el proceso 'chord'")?;
 
     let pid = child.id();
@@ -201,27 +243,7 @@ pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPr
         let pid = child.id();
         info!("Solicitud de detención para proceso PID: {}", pid);
 
-        #[cfg(target_os = "windows")]
-        {
-            let res = silent_command("taskkill")
-                .arg("/F")
-                .arg("/T")
-                .arg("/PID")
-                .arg(pid.to_string())
-                .spawn();
-
-            if res.is_err() {
-                error!("Fallo al ejecutar taskkill para PID {}", pid);
-            }
-        }
-
-        #[cfg(not(target_os = "windows"))]
-        {
-            let mut child = child;
-            if let Err(e) = child.kill() {
-                error!("Fallo al matar el proceso {}: {}", pid, e);
-            }
-        }
+        kill_run(child);
 
         emit_run_end(&app_handle, RunStatus::Stopped);
         info!("Proceso {} detenido correctamente.", pid);
@@ -293,4 +315,35 @@ pub fn open_binaries_folder(app_handle: tauri::AppHandle) -> Result<(), String> 
 
     info!("Abriendo carpeta de binarios en: {:?}", dir);
     open_path_in_explorer(&dir)
+}
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::process::CommandExt;
+
+    fn alive(marker: &str) -> bool {
+        Command::new("pgrep").args(["-f", marker]).output().map(|o| o.status.success()).unwrap_or(false)
+    }
+
+    #[test]
+    fn stopping_a_run_takes_down_what_it_spawned() {
+        let marker = format!("sleep 4{}", std::process::id());
+        // Like `chord`: a process that starts others and would leave them behind if only it were killed.
+        let script = format!("{m} & {m} & wait", m = marker);
+        let child = Command::new("sh").arg("-c").arg(&script).process_group(0).spawn().unwrap();
+
+        thread::sleep(std::time::Duration::from_millis(300));
+        assert!(alive(&marker), "the helpers should be running before the stop");
+
+        kill_run(child);
+
+        for _ in 0..30 {
+            if !alive(&marker) {
+                return;
+            }
+            thread::sleep(std::time::Duration::from_millis(100));
+        }
+        panic!("processes started by the run survived the stop");
+    }
 }

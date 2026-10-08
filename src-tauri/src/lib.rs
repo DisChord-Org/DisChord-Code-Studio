@@ -174,6 +174,9 @@ pub fn run() {
         .run(|app_handle, event| {
             if let tauri::RunEvent::Exit = event {
                 commands::terminal::close_all(app_handle);
+                if let Some(child) = app_handle.state::<ChildProcessState>().0.lock().unwrap().take() {
+                    commands::process::kill_run(child);
+                }
             }
         });
 }
