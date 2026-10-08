@@ -162,3 +162,17 @@ html[data-platform="macos"] #root {
 .xterm .xterm-scrollable-element {
     background-color: transparent !important;
 }
+
+/* Windows (WebView2) draws its own wide scrollbar on xterm's scroll container; match the app's thin one. */
+.xterm .xterm-viewport::-webkit-scrollbar {
+    width: 4px;
+    height: 4px;
+    background: transparent;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb {
+    background: #1e1f22;
+    border-radius: 10px;
+}
+.xterm .xterm-viewport::-webkit-scrollbar-thumb:hover {
+    background: #5865F2;
+}
