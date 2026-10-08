@@ -72,8 +72,9 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
             if (platform === "macos") {
                 const monitor = await currentMonitor();
                 if (!monitor) return;
-                await appWindow.setPosition(new PhysicalPosition(monitor.position.x, monitor.position.y));
-                await appWindow.setSize(new PhysicalSize(monitor.size.width, monitor.size.height));
+                const area = monitor.workArea;
+                await appWindow.setPosition(new PhysicalPosition(area.position.x, area.position.y));
+                await appWindow.setSize(new PhysicalSize(area.size.width, area.size.height));
             } else {
                 await maximizeReliably();
             }
