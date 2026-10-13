@@ -4,6 +4,7 @@ import { invoke } from "@tauri-apps/api/core";
 
 import { ContextMenu, Label, Tooltip } from "../../../../components/ui";
 import { FileItem, CreateRow } from "./FileItem";
+import { Outline } from "./Outline";
 import { SidebarContext } from "./SidebarContext";
 import { useResizablePanel } from "../../useResizablePanel";
 import { canMoveInto, isSameOrInside, joinPath, parentPath, remapPath } from "../../pathUtils";
@@ -15,17 +16,15 @@ interface SidebarProps {
     onFileClick: (node: FileNode) => void;
     projectName: string;
     onRefresh: () => void;
-    /** Called after an item was renamed or moved, so open tabs can follow it. */
     onPathMoved: (from: string, to: string) => void;
-    /** Called after an item was deleted, so its open tabs can be closed. */
     onPathDeleted: (path: string) => void;
+    activeFilePath?: string;
+    onJumpTo: (path: string, line: number, column: number) => void;
 }
 
-// How long a dragged item must rest on a closed folder before it opens.
 const autoExpandDelayMs = 600;
 
 const expandedPathsStorageKey = (projectName: string) => `dischord:sidebar-expanded:${projectName}`;
-
 const loadExpandedPaths = (projectName: string): Set<string> => {
     try {
         const raw = localStorage.getItem(expandedPathsStorageKey(projectName));
@@ -36,7 +35,7 @@ const loadExpandedPaths = (projectName: string): Set<string> => {
     return new Set(["src"]);
 };
 
-export const Sidebar = ({ files, onFileClick, projectName, onRefresh, onPathMoved, onPathDeleted }: SidebarProps) => {
+export const Sidebar = ({ files, onFileClick, projectName, onRefresh, onPathMoved, onPathDeleted, activeFilePath, onJumpTo }: SidebarProps) => {
     const [creating, setCreating] = useState<{ type: "file" | "folder"; parentPath: string } | null>(null);
     const [renamingPath, setRenamingPath] = useState<string | null>(null);
     const [contextMenu, setContextMenu] = useState<{ x: number, y: number, path: string } | null>(null);
@@ -83,7 +82,6 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh, onPathMove
         setCreating({ type, parentPath });
     };
 
-    /** Resolves to an error message, or null when it worked. */
     const submitCreate = async (name: string): Promise<string | null> => {
         if (!creating) return null;
 
@@ -279,6 +277,10 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh, onPathMove
                         files.map((file) => <FileItem key={file.relative_path} node={file} level={0} />)
                     )}
                 </div>
+
+                {activeFilePath?.toLowerCase().endsWith(".chord") && (
+                    <Outline path={activeFilePath} onJump={(line, column) => onJumpTo(activeFilePath, line, column)} />
+                )}
 
                 {contextMenu && (
                     <ContextMenu

@@ -84,6 +84,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                     onRefresh={refreshFiles}
                     onPathMoved={handlePathMoved}
                     onPathDeleted={handlePathDeleted}
+                    activeFilePath={activeTab?.kind === "file" ? activeTab.relative_path : undefined}
+                    onJumpTo={openFileAt}
                 />
 
                 <main className="flex-1 flex flex-col bg-app-bg overflow-hidden">

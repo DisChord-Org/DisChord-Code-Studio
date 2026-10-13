@@ -10,7 +10,6 @@ export const groupLabels: Record<ShortcutGroup, string> = {
     help: "Ayuda",
 };
 
-/** Order in which the groups are listed. */
 export const groupOrder: ShortcutGroup[] = ["file", "run", "tabs", "editor", "explorer", "terminal", "help"];
 
 export const gotoTabId = (position: number) => `tab.goto.${position}`;
@@ -23,11 +22,6 @@ const gotoTabDefinitions: ShortcutDefinition[] = Array.from({ length: 9 }, (_, i
     defaultAccelerator: `Alt+${i + 1}`,
 }));
 
-/**
- * Every configurable shortcut. To add one: append it here, then react to it where it belongs
- * (`useShortcut(id, handler)` for "app" scope, `matchesShortcut(event, id)` for the others).
- * The settings screen and the shortcuts tab pick it up on their own.
- */
 export const shortcutDefinitions: ShortcutDefinition[] = [
     {
         id: "file.save",
@@ -70,6 +64,14 @@ export const shortcutDefinitions: ShortcutDefinition[] = [
         defaultAccelerator: "Mod+Shift+P",
     },
     {
+        id: "editor.goToDefinition",
+        label: "Ir a la definición",
+        description: "Con el cursor sobre un nombre. También Ctrl o Cmd + clic.",
+        group: "editor",
+        scope: "app",
+        defaultAccelerator: "F12",
+    },
+    {
         id: "editor.toggleWordWrap",
         label: "Ajuste de línea",
         group: "editor",
@@ -101,17 +103,52 @@ export const shortcutDefinitions: ShortcutDefinition[] = [
     },
 ];
 
-/** The editor's own shortcuts (CodeMirror). Shown for reference; they cannot be changed here. */
 export const fixedShortcuts: FixedShortcut[] = [
-    { label: "Deshacer", group: "editor", accelerator: "Mod+Z" },
-    { label: "Rehacer", group: "editor", accelerator: "Mod+Shift+Z" },
-    { label: "Seleccionar todo", group: "editor", accelerator: "Mod+A" },
-    { label: "Buscar", group: "editor", accelerator: "Mod+F" },
-    { label: "Comentar línea", group: "editor", accelerator: "Mod+/" },
-    { label: "Mover línea", group: "editor", accelerator: "Alt+ArrowUp" },
-    { label: "Copiar línea", group: "editor", accelerator: "Shift+Alt+ArrowDown" },
-    { label: "Autocompletar", group: "editor", accelerator: "Ctrl+Space" },
-    { label: "Indentar", group: "editor", accelerator: "Tab" },
+    {
+        label: "Deshacer",
+        group: "editor",
+        accelerator: "Mod+Z"
+    },
+    {
+        label: "Rehacer",
+        group: "editor",
+        accelerator: "Mod+Shift+Z"
+    },
+    {
+        label: "Seleccionar todo",
+        group: "editor",
+        accelerator: "Mod+A"
+    },
+    {
+        label: "Buscar",
+        group: "editor",
+        accelerator: "Mod+F"
+    },
+    {
+        label: "Comentar línea",
+        group: "editor",
+        accelerator: "Mod+/"
+    },
+    {
+        label: "Mover línea",
+        group: "editor",
+        accelerator: "Alt+ArrowUp"
+    },
+    {
+        label: "Copiar línea",
+        group: "editor",
+        accelerator: "Shift+Alt+ArrowDown"
+    },
+    {
+        label: "Autocompletar",
+        group: "editor",
+        accelerator: "Ctrl+Space"
+    },
+    {
+        label: "Indentar",
+        group: "editor",
+        accelerator: "Tab"
+    },
 ];
 
 const byId = new Map(shortcutDefinitions.map((d) => [d.id, d]));

@@ -152,6 +152,7 @@ pub fn run() {
 
             commands::compiler::compiler_check,
             commands::compiler::compiler_corelib,
+            commands::compiler::compiler_declarations,
             commands::library_sources::get_library_sources,
             commands::terminal_background::get_terminal_background_bytes,
             commands::fonts::download_font,

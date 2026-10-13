@@ -20,7 +20,7 @@ import { loadLibraryExports } from "../../../../languages/chord-libraries";
 import { dischordEditorTheme } from "../../../../languages/editor-theme";
 import { useConfig } from "../../../settings";
 import { useShortcut } from "../../../shortcuts";
-import { forgetDiagnostics, liveDiagnostics } from "../../../compiler";
+import { forgetDiagnostics, goToDefinition, languageIntelligence, liveDiagnostics } from "../../../compiler";
 
 interface CodeCanvasProps {
     projectName: string;
@@ -71,6 +71,10 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     const updateConfigRef = useRef(updateConfig);
     updateConfigRef.current = updateConfig;
+
+    useShortcut("editor.goToDefinition", () => {
+        if (viewRef.current) goToDefinition(viewRef.current, relative_path);
+    });
 
     useShortcut("editor.toggleWordWrap", () => updateConfigRef.current({ editor_word_wrap: !wordWrapRef.current }));
 
@@ -171,6 +175,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     languageConf.of(getLanguage(fileName)),
                     wrapConf.of(wordWrapRef.current ? EditorView.lineWrapping : []),
                     indentConf.of(indentExtension(tabSizeRef.current, useTabsRef.current)),
+                    ...(fileName.toLowerCase().endsWith(".chord") ? [languageIntelligence(projectName, relative_path)] : []),
                     diagnosticsConf.of(diagnosticsOnRef.current ? liveDiagnostics(projectName, relative_path) : []),
                     getCompletionExtension(fileName),
                     keymap.of([

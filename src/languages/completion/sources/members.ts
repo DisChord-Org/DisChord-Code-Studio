@@ -12,7 +12,7 @@ const signature = (member: CorelibMember): string => {
     return `(${params}) → ${member.returns}`;
 };
 
-const memberSuggestion = (member: CorelibMember, owner: string, isMethod: boolean): Suggestion => ({
+export const memberSuggestion = (member: CorelibMember, owner: string, isMethod: boolean): Suggestion => ({
     label: member.name,
     type: isMethod ? "method" : "property",
     detail: isMethod ? signature(member) : member.returns,
@@ -21,7 +21,6 @@ const memberSuggestion = (member: CorelibMember, owner: string, isMethod: boolea
     boost: 5,
 });
 
-/** The class a type annotation names (`texto` → Texto, `texto[]` → Lista), if the compiler has one. */
 const classOfType = (corelib: CorelibData, type: string): CorelibClass | undefined => {
     const clean = type.trim();
     const wanted = clean.endsWith("[]") ? "lista" : clean;
@@ -32,8 +31,7 @@ const classOfType = (corelib: CorelibData, type: string): CorelibClass | undefin
 
 const only = (klass: CorelibClass | undefined): CorelibClass[] | null => (klass ? [klass] : null);
 
-/** What is known about the expression before a dot: a literal, a class, a typed variable, or nothing. */
-const receiverClasses = (text: string, dotAt: number, corelib: CorelibData): CorelibClass[] | null => {
+export const receiverClasses = (text: string, dotAt: number, corelib: CorelibData): CorelibClass[] | null => {
     const trimmed = text.slice(0, dotAt).trimEnd();
     const last = trimmed[trimmed.length - 1];
 
@@ -48,12 +46,10 @@ const receiverClasses = (text: string, dotAt: number, corelib: CorelibData): Cor
     if (direct) return [direct];
     if (name === "usuario") return only(corelib.classes.find((c) => c.name === "Usuario"));
 
-    // A variable or parameter written with its type: `edad tipo numero`, `lista tipo texto[]`.
     const typed = new RegExp(`\\b${name}\\s+tipo\\s+([A-Za-z_]\\w*(?:\\[\\])?)`).exec(text);
     return typed ? only(classOfType(corelib, typed[1])) : null;
 };
 
-/** After a dot: the members of what is on the left. */
 export const membersSource: ExclusiveSource = {
     kind: "exclusive",
     name: "members",
@@ -68,7 +64,6 @@ export const membersSource: ExclusiveSource = {
         }
 
         const known = receiverClasses(text, dotAt, corelib);
-        // Unknown receiver: offer what any value could have, saying which class each member belongs to.
         const pool = known ?? corelib.classes.filter((c) => c.instantiable || c.receiver);
         const seen = new Map<string, Suggestion>();
 

@@ -24,6 +24,11 @@ const declarations: Record<string, SymbolKind> = {
     evento: "event",
 };
 
+const grammarWords = new Set([...chordKeywords, ...chordControlFlow, ...chordAtoms, "@asincrono"]);
+
+const isDeclarable = (token: Token | undefined): token is Token =>
+    !!token && token.type === "word" && !grammarWords.has(token.text);
+
 const isName = (token: Token | undefined): token is Token =>
     !!token && token.type === "word" && !isReserved(token.text);
 
@@ -53,9 +58,18 @@ const endOfType = (tokens: Token[], start: number, onType: (token: Token) => voi
     return j;
 };
 
+export interface DeclaredName {
+    name: string;
+    kind: SymbolKind;
+    from: number;
+    to: number;
+    container?: string;
+}
+
 class Scan {
     readonly symbols = new Map<string, ChordSymbol>();
     readonly claimed = new Set<number>();
+    readonly names: DeclaredName[] = [];
 
     constructor(readonly tokens: Token[], private readonly ignore?: { from: number; to: number }) {}
 
@@ -63,15 +77,17 @@ class Scan {
         return !!this.ignore && token.from <= this.ignore.to && token.to >= this.ignore.from;
     }
 
-    declare(token: Token, kind: SymbolKind) {
+    declare(token: Token, kind: SymbolKind, container?: string) {
         this.claimed.add(token.from);
         if (this.touchesIgnored(token)) return;
+
+        this.names.push({ name: token.text, kind, from: token.from, to: token.to, container });
 
         const known = this.symbols.get(token.text);
         if (!known || known.kind === "used") this.symbols.set(token.text, { name: token.text, kind });
     }
 
-    declareParameters(open: number) {
+    declareParameters(open: number, owner: string) {
         let parens = 0;
         let brackets = 0;
         let expectName = true;
@@ -84,8 +100,8 @@ class Scan {
             else if (t.text === "[") brackets++;
             else if (t.text === "]") brackets--;
             else if (t.text === "," && parens === 1 && brackets === 0) expectName = true;
-            else if (expectName && parens === 1 && isName(t)) {
-                this.declare(t, "parameter");
+            else if (expectName && parens === 1 && isDeclarable(t)) {
+                this.declare(t, "parameter", owner);
                 expectName = false;
             }
         }
@@ -96,9 +112,9 @@ class Scan {
 
         if (next?.text === "{") {
             for (let j = afterKeyword + 1; j < this.tokens.length && this.tokens[j].text !== "}"; j++) {
-                if (isName(this.tokens[j])) this.declare(this.tokens[j], "import");
+                if (isDeclarable(this.tokens[j])) this.declare(this.tokens[j], "import");
             }
-        } else if (isName(next)) {
+        } else if (isDeclarable(next)) {
             this.declare(next, "module");
         }
     }
@@ -113,9 +129,9 @@ class Scan {
         const kind = declarations[token.text];
         const name = this.tokens[i + 1];
 
-        if (kind && isName(name)) {
+        if (kind && isDeclarable(name)) {
             this.declare(name, kind);
-            if (kind === "function" && this.tokens[i + 2]?.text === "(") this.declareParameters(i + 2);
+            if (kind === "function" && this.tokens[i + 2]?.text === "(") this.declareParameters(i + 2, name.text);
         } else if (token.text === "importar") {
             this.declareImport(i + 1);
         }
@@ -139,6 +155,12 @@ export const collectSymbols = (text: string, ignore?: { from: number; to: number
     scan.collectUses();
 
     return Array.from(scan.symbols.values());
+};
+
+export const collectDeclarations = (text: string): DeclaredName[] => {
+    const scan = new Scan(tokenize(text));
+    for (let i = 0; i < scan.tokens.length; ) i = scan.visit(i);
+    return scan.names;
 };
 
 export const collectExports = (text: string, library: string): ChordSymbol[] => {

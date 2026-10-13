@@ -175,6 +175,90 @@ pub async fn compiler_check(
     .map_err(|e| e.to_string())?
 }
 
+/// A name the source declares, with the exact range of the name (`line` and `column` start at 1, `end` is
+/// just after the last character).
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Declaration {
+    pub kind: String,
+    pub name: String,
+    #[serde(default)]
+    pub container: Option<String>,
+    pub start: Position,
+    pub end: Position,
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct Position {
+    pub line: u32,
+    pub column: u32,
+}
+
+#[derive(Serialize)]
+pub struct DeclarationsResult {
+    /// Whether the code parsed: when it did not, `declarations` is empty and the editor keeps what it had.
+    ok: bool,
+    declarations: Vec<Declaration>,
+    tool_error: Option<String>,
+}
+
+#[derive(Deserialize)]
+struct RawEmit {
+    #[serde(default)]
+    ok: bool,
+    #[serde(default)]
+    declarations: Vec<Declaration>,
+}
+
+fn parse_declarations(output: &Output) -> DeclarationsResult {
+    if output.code == Some(2) {
+        let reason = if output.stderr.trim().is_empty() { &output.stdout } else { &output.stderr };
+        return DeclarationsResult { ok: false, declarations: Vec::new(), tool_error: Some(shorten(reason)) };
+    }
+
+    match serde_json::from_str::<RawEmit>(output.stdout.trim()) {
+        Ok(raw) => DeclarationsResult { ok: raw.ok, declarations: raw.declarations, tool_error: None },
+        Err(_) => DeclarationsResult {
+            ok: false,
+            declarations: Vec::new(),
+            tool_error: Some(shorten(&format!("{}{}", output.stdout, output.stderr))),
+        },
+    }
+}
+
+/// The names a buffer declares (`--emit ast`, which also works on code that is not saved).
+#[tauri::command]
+pub async fn compiler_declarations(
+    app_handle: tauri::AppHandle,
+    project_name: String,
+    file_path: String,
+    source: String,
+) -> Result<DeclarationsResult, String> {
+    if source.len() > MAX_SOURCE_BYTES {
+        return Ok(DeclarationsResult { ok: false, declarations: Vec::new(), tool_error: Some("El archivo es demasiado grande.".into()) });
+    }
+
+    let project_dir = project_path(&app_handle, &project_name);
+    let file = project_dir.join(&file_path);
+
+    let mut command = compiler_command(&app_handle);
+    command
+        .current_dir(&project_dir)
+        .arg("--stdin")
+        .arg("--stdin-filepath")
+        .arg(&file)
+        .arg("--emit")
+        .arg("ast");
+
+    tauri::async_runtime::spawn_blocking(move || {
+        Ok(match run_process(command, Some(source), CHECK_TIMEOUT) {
+            Ok(output) => parse_declarations(&output),
+            Err(message) => DeclarationsResult { ok: false, declarations: Vec::new(), tool_error: Some(message) },
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 #[derive(PartialEq)]
 struct BinaryStamp {
     path: Option<PathBuf>,
@@ -273,6 +357,29 @@ mod tests {
 
         assert!(result.tool_error.is_some());
         assert!(result.diagnostics.is_empty());
+    }
+
+    #[test]
+    fn reads_the_declarations_of_valid_code() {
+        let result = parse_declarations(&output(
+            0,
+            r#"{"ok":true,"diagnostics":[],"schema":1,"emit":"ast","ast":[],"declarations":[{"kind":"parameter","name":"n","container":"saludar","start":{"line":3,"column":17},"end":{"line":3,"column":18}}]}"#,
+            "",
+        ));
+
+        assert!(result.ok);
+        assert_eq!(result.declarations.len(), 1);
+        assert_eq!(result.declarations[0].container.as_deref(), Some("saludar"));
+        assert_eq!(result.declarations[0].start.column, 17);
+    }
+
+    #[test]
+    fn code_that_does_not_parse_has_no_declarations() {
+        let result = parse_declarations(&output(1, r#"{"ok":false,"diagnostics":[{"message":"mal","line":1,"column":1}]}"#, ""));
+
+        assert!(!result.ok);
+        assert!(result.declarations.is_empty());
+        assert!(result.tool_error.is_none());
     }
 
     #[test]
