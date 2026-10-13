@@ -141,16 +141,14 @@ pub struct AppConfig {
     pub editor_keep_minimap: bool,
     pub editor_keep_statusbar: bool,
     pub editor_final_newline: bool,
+    pub editor_live_diagnostics: bool,
     #[serde(deserialize_with = "lenient")]
     pub terminal_background_source: BackgroundSource,
-    /// Absolute path of the custom image, used when the source is `custom`.
     pub terminal_background_image: String,
-    /// How much the image is darkened so the text stays readable (0-100).
     #[serde(deserialize_with = "clamp_dim")]
     pub terminal_background_dim: u32,
     #[serde(deserialize_with = "lenient")]
     pub terminal_background_fit: BackgroundFit,
-    /// Whether an animated background (GIF) plays. Off, or while the window is not in use, it shows its first frame.
     pub terminal_background_animated: bool,
     #[serde(deserialize_with = "lenient")]
     pub keybindings: BTreeMap<String, String>,
@@ -170,6 +168,7 @@ impl Default for AppConfig {
             editor_keep_minimap: false,
             editor_keep_statusbar: false,
             editor_final_newline: true,
+            editor_live_diagnostics: true,
             terminal_background_source: BackgroundSource::default(),
             terminal_background_image: String::new(),
             terminal_background_dim: default_background_dim(),

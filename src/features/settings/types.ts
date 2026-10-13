@@ -1,6 +1,5 @@
 export type LogRotation = "daily" | "session" | "hourly";
 export type BuiltinSettingsSection = "dashboard" | "editor" | "terminal" | "shortcuts" | "advanced" | "logs";
-/** Built-in sections plus the ones declared through the config-section loader (`section:<id>`). */
 export type SettingsSection = BuiltinSettingsSection | `section:${string}`;
 
 export interface AppConfig {
@@ -15,11 +14,11 @@ export interface AppConfig {
     editor_keep_minimap: boolean;
     editor_keep_statusbar: boolean;
     editor_final_newline: boolean;
+    editor_live_diagnostics: boolean;
     terminal_background_source: "bundled" | "custom" | "none";
     terminal_background_image: string;
     terminal_background_dim: number;
     terminal_background_fit: "contain" | "cover";
     terminal_background_animated: boolean;
-    /** Shortcuts changed by the user, by action id (see features/shortcuts). */
     keybindings: Record<string, string>;
 }

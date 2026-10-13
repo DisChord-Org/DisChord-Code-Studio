@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
     Toolbar,
     Sidebar,
@@ -12,6 +13,7 @@ import {
 import { PackageManager } from "../features/packages";
 import { ShortcutsReference, useShortcut } from "../features/shortcuts";
 import { useConfig } from "../features/settings";
+import { loadCorelib } from "../features/compiler";
 
 interface EditorInterface {
     projectName: string,
@@ -54,6 +56,10 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         handleBack,
         handleSwitchProject,
     } = useEditor({ projectName, onBack, onSwitchProject });
+
+    useEffect(() => {
+        loadCorelib();
+    }, []);
 
     useShortcut("terminal.toggle", toggleShellTerminal, config.advanced_mode);
 
@@ -141,6 +147,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                     {(isMaximized || config.editor_keep_statusbar) && (
                         <StatusBar
                             fileName={activeTab?.kind === "file" ? activeTab.name : undefined}
+                            filePath={activeTab?.kind === "file" ? activeTab.relative_path : undefined}
                             isDirty={activeTab?.kind === "file" && activeTab.isDirty}
                             contentLength={activeTab?.kind === "file" ? activeTab.content.length : 0}
                             wordWrap={config.editor_word_wrap}

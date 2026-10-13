@@ -20,6 +20,7 @@ import { loadLibraryExports } from "../../../../languages/chord-libraries";
 import { dischordEditorTheme } from "../../../../languages/editor-theme";
 import { useConfig } from "../../../settings";
 import { useShortcut } from "../../../shortcuts";
+import { forgetDiagnostics, liveDiagnostics } from "../../../compiler";
 
 interface CodeCanvasProps {
     projectName: string;
@@ -35,6 +36,7 @@ interface CodeCanvasProps {
 const languageConf = new Compartment();
 const wrapConf = new Compartment();
 const indentConf = new Compartment();
+const diagnosticsConf = new Compartment();
 
 const indentExtension = (size: number, useTabs: boolean) => [
     EditorState.tabSize.of(size),
@@ -59,6 +61,10 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     const useTabsRef = useRef(config.editor_use_tabs);
     useTabsRef.current = config.editor_use_tabs;
+
+    const diagnosticsOn = config.editor_live_diagnostics && fileName.toLowerCase().endsWith(".chord");
+    const diagnosticsOnRef = useRef(diagnosticsOn);
+    diagnosticsOnRef.current = diagnosticsOn;
 
     const finalNewlineRef = useRef(config.editor_final_newline);
     finalNewlineRef.current = config.editor_final_newline;
@@ -165,6 +171,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     languageConf.of(getLanguage(fileName)),
                     wrapConf.of(wordWrapRef.current ? EditorView.lineWrapping : []),
                     indentConf.of(indentExtension(tabSizeRef.current, useTabsRef.current)),
+                    diagnosticsConf.of(diagnosticsOnRef.current ? liveDiagnostics(projectName, relative_path) : []),
                     getCompletionExtension(fileName),
                     keymap.of([
                         indentWithTab,
@@ -225,6 +232,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             resizeObserver.disconnect();
             view.destroy();
             viewRef.current = null;
+            forgetDiagnostics(relative_path);
         }
     }, [relative_path]);
 
@@ -250,6 +258,13 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             effects: wrapConf.reconfigure(config.editor_word_wrap ? EditorView.lineWrapping : [])
         });
     }, [config.editor_word_wrap]);
+
+    useEffect(() => {
+        viewRef.current?.dispatch({
+            effects: diagnosticsConf.reconfigure(diagnosticsOn ? liveDiagnostics(projectName, relative_path) : []),
+        });
+        if (!diagnosticsOn) forgetDiagnostics(relative_path);
+    }, [diagnosticsOn]);
 
     useEffect(() => {
         viewRef.current?.dispatch({

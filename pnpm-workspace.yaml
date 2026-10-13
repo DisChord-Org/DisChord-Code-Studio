@@ -2,3 +2,8 @@ packages:
   - '.'
 allowBuilds:
   esbuild: true
+# The editor must run on a single copy of CodeMirror's packages: two copies of view/state/lint do not
+# understand each other's extensions (a linter silently never runs). `codemirror` asks for lint ^6, which
+# would otherwise resolve to a newer one that drags a second view along.
+overrides:
+  '@codemirror/lint': 6.9.5

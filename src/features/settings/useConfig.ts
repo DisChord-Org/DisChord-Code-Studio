@@ -16,6 +16,7 @@ const defaultConfig: AppConfig = {
     editor_keep_minimap: false,
     editor_keep_statusbar: false,
     editor_final_newline: true,
+    editor_live_diagnostics: true,
     terminal_background_source: "bundled",
     terminal_background_image: "",
     terminal_background_dim: 96,

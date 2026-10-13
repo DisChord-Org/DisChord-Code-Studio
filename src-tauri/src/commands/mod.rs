@@ -10,5 +10,6 @@ pub mod fonts;
 pub mod terminal;
 pub mod config_sections;
 pub mod watcher;
+pub mod compiler;
 pub mod library_sources;
 pub mod terminal_background;
