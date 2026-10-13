@@ -37,9 +37,9 @@ fn default_severity() -> String {
 
 #[derive(Serialize)]
 pub struct CheckResult {
-    ok: bool,
-    diagnostics: Vec<Diagnostic>,
-    tool_error: Option<String>,
+    pub ok: bool,
+    pub diagnostics: Vec<Diagnostic>,
+    pub tool_error: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -175,8 +175,16 @@ pub async fn compiler_check(
     .map_err(|e| e.to_string())?
 }
 
-/// A name the source declares, with the exact range of the name (`line` and `column` start at 1, `end` is
-/// just after the last character).
+pub fn check_project(app_handle: &tauri::AppHandle, project_dir: &std::path::Path) -> CheckResult {
+    let mut command = compiler_command(app_handle);
+    command.current_dir(project_dir).arg("--check").arg("--json");
+
+    match run_process(command, None, CHECK_TIMEOUT) {
+        Ok(output) => parse_check(&output),
+        Err(message) => tool_failure(message),
+    }
+}
+
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Declaration {
     pub kind: String,
@@ -225,7 +233,6 @@ fn parse_declarations(output: &Output) -> DeclarationsResult {
     }
 }
 
-/// The names a buffer declares (`--emit ast`, which also works on code that is not saved).
 #[tauri::command]
 pub async fn compiler_declarations(
     app_handle: tauri::AppHandle,

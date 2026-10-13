@@ -5,7 +5,6 @@ export type LineKind = "stdout" | "stderr" | "info" | "success" | "warning" | "e
 
 export type RunStatus = "running" | "finished" | "failed" | "stopped";
 
-/** A place in a project file that a line points at (1-based line and column). */
 export interface OutputLocation {
     path: string;
     line: number;
@@ -26,13 +25,12 @@ export interface OutputRun {
     endedAt: number | null;
     status: RunStatus;
     exitCode: number | null;
-    /** File the compiler reported working on last; compiler errors only carry "[line:col]". */
     currentFile: string;
     lines: OutputLine[];
 }
 
 type OutputEvent =
-    | { type: "line"; kind: LineKind; text: string; ts: number }
+    | { type: "line"; kind: LineKind; text: string; ts: number; location?: OutputLocation }
     | { type: "run_end"; status: { state: "finished" | "stopped" } | { state: "failed"; code: number | null }; ts: number };
 
 const defaultFile = "src/index.chord";
@@ -68,7 +66,6 @@ let flushScheduled = false;
 let listening = false;
 const subscribers = new Set<() => void>();
 
-// Lines arrive in bursts; React only sees the state once per animation frame.
 const scheduleFlush = () => {
     if (flushScheduled) return;
     flushScheduled = true;
@@ -96,7 +93,7 @@ export const beginRun = () => {
     scheduleFlush();
 };
 
-export const pushLine = (kind: LineKind, text: string, ts = Date.now()) => {
+export const pushLine = (kind: LineKind, text: string, ts = Date.now(), place?: OutputLocation) => {
     let run = activeRun();
     if (!run) {
         beginRun();
@@ -106,7 +103,7 @@ export const pushLine = (kind: LineKind, text: string, ts = Date.now()) => {
     const compiling = kind === "stdout" ? text.match(compilingLine) : null;
     if (compiling && isProjectRelative(compiling[1].trim())) run.currentFile = compiling[1].trim();
 
-    const location = kind === "stderr" || kind === "error" ? findLocation(text, run.currentFile) : undefined;
+    const location = place ?? (kind === "stderr" || kind === "error" ? findLocation(text, run.currentFile) : undefined);
     run.lines.push({ id: nextLineId++, kind, text, ts, location });
     if (run.lines.length > maxLinesPerRun) run.lines.splice(0, run.lines.length - maxLinesPerRun);
     dirty.add(run.id);
@@ -138,7 +135,7 @@ export const startOutputListener = () => {
 
     listen<OutputEvent>("terminal-output", ({ payload }) => {
         if (payload.type === "line") {
-            pushLine(payload.kind, payload.text, payload.ts);
+            pushLine(payload.kind, payload.text, payload.ts, payload.location);
         } else if (payload.status.state === "failed") {
             endRun("failed", payload.status.code, payload.ts);
         } else {

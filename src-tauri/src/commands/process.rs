@@ -13,7 +13,8 @@ use crate::paths::project_path;
 use crate::platform::silent_command;
 use crate::platform::{resolve_chord_command, strip_npm_env, bin_dir, pnpm_command, build_path_env};
 use crate::log_err::LogErr;
-use crate::output::{emit_line, emit_run_end, LineKind, RunStatus};
+use crate::commands::compiler::check_project;
+use crate::output::{emit_line, emit_located_line, emit_run_end, LineKind, Location, RunStatus};
 
 /// Terminates a project run together with everything it started. `chord` launches the bot through other
 /// processes (a shell, node), so killing only `chord` left those alive and they piled up in memory.
@@ -159,6 +160,53 @@ fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Pa
     Err(last_err)
 }
 
+fn relative_to(project_dir: &Path, file: &str) -> Option<String> {
+    let relative = Path::new(file).strip_prefix(project_dir).ok()?;
+    Some(relative.to_string_lossy().replace('\\', "/"))
+}
+
+fn report_compile_errors(app_handle: &tauri::AppHandle, project_dir: &Path) -> bool {
+    let result = check_project(app_handle, project_dir);
+
+    if let Some(reason) = &result.tool_error {
+        warn!("No se pudo comprobar el proyecto antes de ejecutarlo: {}", reason);
+        return false;
+    }
+
+    let errors: Vec<_> = result.diagnostics.iter().filter(|d| d.severity == "error").collect();
+
+    for diagnostic in &result.diagnostics {
+        let kind = if diagnostic.severity == "error" { LineKind::Error } else { LineKind::Warning };
+        let text = match &diagnostic.phase {
+            Some(phase) => format!("[{}] {}", phase, diagnostic.message),
+            None => diagnostic.message.clone(),
+        };
+        let location = match (&diagnostic.file, diagnostic.line) {
+            (Some(file), Some(line)) => relative_to(project_dir, file).map(|path| Location {
+                path,
+                line,
+                column: diagnostic.column.unwrap_or(1),
+            }),
+            _ => None,
+        };
+
+        emit_located_line(app_handle, kind, text, location);
+    }
+
+    if errors.is_empty() {
+        return false;
+    }
+
+    let count = errors.len();
+    emit_line(
+        app_handle,
+        LineKind::Error,
+        format!("{} {} de compilación: el bot no se ha ejecutado.", count, if count == 1 { "error" } else { "errores" }),
+    );
+    emit_run_end(app_handle, RunStatus::Failed { code: Some(1) });
+    true
+}
+
 #[tauri::command]
 pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>, project_name: String) -> Result<(), String> {
     let project_dir = project_path(&app_handle, &project_name);
@@ -177,6 +225,10 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
     ensure_dependencies_installed(&app_handle, &project_dir)
         .log_err("No se pudieron instalar las dependencias del proyecto")?;
 
+    if report_compile_errors(&app_handle, &project_dir) {
+        return Ok(());
+    }
+
     let mut command = resolve_chord_command(&app_handle);
     command.current_dir(&project_dir);
     command.env("NODE_OPTIONS", "--experimental-default-type=module");
@@ -191,7 +243,6 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    // Its own process group, so stopping the run can take down everything it spawned.
     #[cfg(unix)]
     {
         use std::os::unix::process::CommandExt;
@@ -345,5 +396,24 @@ mod tests {
             thread::sleep(std::time::Duration::from_millis(100));
         }
         panic!("processes started by the run survived the stop");
+    }
+}
+
+#[cfg(test)]
+mod path_tests {
+    use super::*;
+
+    #[test]
+    fn paths_inside_the_project_become_relative() {
+        let project = Path::new("/home/u/proyectos/bot");
+
+        assert_eq!(relative_to(project, "/home/u/proyectos/bot/src/index.chord").as_deref(), Some("src/index.chord"));
+    }
+
+    #[test]
+    fn paths_outside_the_project_are_dropped() {
+        let project = Path::new("/home/u/proyectos/bot");
+
+        assert_eq!(relative_to(project, "/home/u/otro/src/index.chord"), None);
     }
 }
