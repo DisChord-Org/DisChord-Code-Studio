@@ -150,6 +150,7 @@ pub fn run() {
 
             commands::window_size::get_home_window_size,
 
+            commands::library_sources::get_library_sources,
             commands::terminal_background::get_terminal_background_bytes,
             commands::fonts::download_font,
             commands::fonts::get_font_bytes,

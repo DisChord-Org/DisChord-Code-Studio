@@ -16,6 +16,7 @@ import { html } from "@codemirror/lang-html";
 import { css } from "@codemirror/lang-css";
 import { json } from "@codemirror/lang-json";
 import { chord } from "../../../../languages/chord-language";
+import { loadLibraryExports } from "../../../../languages/chord-libraries";
 import { dischordEditorTheme } from "../../../../languages/editor-theme";
 import { useConfig } from "../../../settings";
 import { useShortcut } from "../../../shortcuts";
@@ -150,6 +151,8 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     useEffect(() => {
         if (!editorRef.current) return;
+
+        loadLibraryExports(projectName);
 
         const view = new EditorView({
             state: EditorState.create({
