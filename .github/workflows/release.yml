@@ -25,7 +25,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: install pnpm
-        uses: pnpm/action-setup@v3
+        uses: pnpm/action-setup@v4
 
       - name: install bun
         uses: oven-sh/setup-bun@v1
@@ -79,3 +79,8 @@ jobs:
           releaseBody: "Actualización automática desde GitHub Actions."
           releaseDraft: false
           prerelease: false
+
+  notify-server:
+    needs: publish-tauri
+    uses: DisChord-Org/.github/.github/workflows/notify_server.yml@v1.1
+    secrets: inherit
