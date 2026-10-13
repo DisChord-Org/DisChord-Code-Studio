@@ -20,7 +20,7 @@ A desktop IDE built for developing, managing, and deploying Discord bots and app
 
 ### Prerequisites
 
-- [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/) (`pnpm@10.34.5`, as pinned in `package.json`)
+- [Node.js](https://nodejs.org/) and [pnpm](https://pnpm.io/) (`pnpm@12.6.0`, as pinned in `package.json`)
 - [Rust](https://www.rust-lang.org/tools/install) and the [Tauri prerequisites](https://v2.tauri.app/start/prerequisites/) for your platform
 
 ### Install
