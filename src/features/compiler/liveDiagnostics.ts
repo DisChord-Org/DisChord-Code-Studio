@@ -2,6 +2,7 @@ import type { Extension, Text } from "@codemirror/state";
 import { linter, lintGutter, type Diagnostic } from "@codemirror/lint";
 import { checkSource } from "./api";
 import { errorLens } from "./errorLens";
+import { lintTheme } from "./lintTheme";
 import { clearFileDiagnostics, setFileDiagnostics } from "./diagnosticsStore";
 import type { CompilerDiagnostic } from "./types";
 
@@ -60,6 +61,7 @@ export const liveDiagnostics = (projectName: string, filePath: string): Extensio
         { delay: checkDelayMs },
     ),
     lintGutter(),
+    lintTheme,
     errorLens(),
 ];
 
