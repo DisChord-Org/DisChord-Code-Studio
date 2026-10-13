@@ -1,5 +1,5 @@
 import { snippetCompletion, type Completion, type CompletionContext, type CompletionResult } from "@codemirror/autocomplete";
-import { computeSuggestions, type Suggestion } from "./chord-complete-core";
+import { computeSuggestions, type Suggestion } from "./completion";
 import { getCorelib } from "./chord-corelib";
 import { getLibraryExports } from "./chord-libraries";
 
