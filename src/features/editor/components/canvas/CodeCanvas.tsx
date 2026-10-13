@@ -8,7 +8,7 @@ import { Decoration, keymap, scrollPastEnd } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
 import { autocompletion } from "@codemirror/autocomplete";
 import { indentUnit } from "@codemirror/language";
-import { chordCompletionSource, chordVariableCompletionSource } from "../../../../languages/chord-completions";
+import { chordCompletionSource } from "../../../../languages/chord-completions";
 import type { MinimapViewport, CodeCanvasHandle, GotoTarget } from "../../types";
 
 import { javascript } from "@codemirror/lang-javascript";
@@ -131,9 +131,9 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     const getCompletionExtension = (fname: string) => {
         const ext = fname.split('.').pop()?.toLowerCase();
-        if (ext === 'chord') {
-            return autocompletion({ override: [chordCompletionSource, chordVariableCompletionSource] });
-        }
+        
+        if (ext === 'chord') return autocompletion({ override: [chordCompletionSource] });
+
         return autocompletion();
     };
 
