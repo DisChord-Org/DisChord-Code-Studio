@@ -1,5 +1,6 @@
 import ReactDOM from "react-dom/client";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import App from "./App";
 import { startShortcuts } from "./features/shortcuts";
 import { installMiddleClickGuard } from "./utils/MiddleClick";
@@ -11,6 +12,16 @@ startShortcuts();
 document.addEventListener("contextmenu", (e) => e.preventDefault());
 
 installMiddleClickGuard();
+
+const appWindow = getCurrentWindow();
+const syncMaximized = () =>
+    appWindow
+        .isMaximized()
+        .then((maximized) => document.documentElement.toggleAttribute("data-maximized", maximized))
+        .catch(() => {});
+
+syncMaximized();
+appWindow.onResized(syncMaximized).catch(() => {});
 
 invoke<string>("get_platform")
     .then((platform) => document.documentElement.setAttribute("data-platform", platform))

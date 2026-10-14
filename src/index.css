@@ -96,6 +96,15 @@ html[data-platform="macos"] #root {
     overflow: hidden;
 }
 
+/*
+ * The window has no decorations and a transparent background, so its corners are ours to round. Not while it is
+ * maximized: the corners would show the desktop behind a window that fills the screen.
+ */
+html[data-platform="linux"]:not([data-maximized]) #root {
+    border-radius: 8px;
+    overflow: hidden;
+}
+
 .custom-scrollbar::-webkit-scrollbar {
     width: 4px;
     height: 4px;
