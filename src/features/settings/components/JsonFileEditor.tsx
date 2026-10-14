@@ -2,14 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 import { EditorView, basicSetup } from "codemirror";
-import { EditorState } from "@codemirror/state";
+import { EditorState, Compartment } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { keymap } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
-import { json } from "@codemirror/lang-json";
 import { dischordEditorTheme } from "../../../languages/editor-theme";
+import { languageFor, loadedLanguageFor } from "../../../languages/language-for-file";
 import { ModifiedBadge } from "../../../components/ui";
 import { useShortcut } from "../../shortcuts";
+
+const language = new Compartment();
 
 export const JsonFileEditor = () => {
     const editorRef = useRef<HTMLDivElement>(null);
@@ -61,7 +63,7 @@ export const JsonFileEditor = () => {
                         extensions: [
                             basicSetup,
                             oneDark,
-                            json(),
+                            language.of(loadedLanguageFor("config.json") ?? []),
                             keymap.of([indentWithTab]),
                             EditorView.updateListener.of((update) => {
                                 if (update.docChanged) {
@@ -75,6 +77,10 @@ export const JsonFileEditor = () => {
                 });
 
                 viewRef.current = view;
+
+                languageFor("config.json")
+                    .then((support) => support && !cancelled && view.dispatch({ effects: language.reconfigure(support) }))
+                    .catch(() => {});
             })
             .catch((error) => setError(String(error)));
 

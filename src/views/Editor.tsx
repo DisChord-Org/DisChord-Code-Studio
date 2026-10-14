@@ -14,6 +14,7 @@ import { PackageManager } from "../features/packages";
 import { ShortcutsReference, useShortcut } from "../features/shortcuts";
 import { useConfig } from "../features/settings";
 import { loadCorelib } from "../features/compiler";
+import { preloadCommonLanguages } from "../languages/language-for-file";
 
 interface EditorInterface {
     projectName: string,
@@ -59,6 +60,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
 
     useEffect(() => {
         loadCorelib();
+        preloadCommonLanguages();
     }, []);
 
     useShortcut("terminal.toggle", toggleShellTerminal, config.advanced_mode);

@@ -11,11 +11,8 @@ import { indentUnit } from "@codemirror/language";
 import { chordCompletionSource } from "../../../../languages/chord-completions";
 import type { MinimapViewport, CodeCanvasHandle, GotoTarget } from "../../types";
 
-import { javascript } from "@codemirror/lang-javascript";
-import { html } from "@codemirror/lang-html";
-import { css } from "@codemirror/lang-css";
-import { json } from "@codemirror/lang-json";
 import { chord } from "../../../../languages/chord-language";
+import { languageFor, loadedLanguageFor } from "../../../../languages/language-for-file";
 import { loadLibraryExports } from "../../../../languages/chord-libraries";
 import { dischordEditorTheme } from "../../../../languages/editor-theme";
 import { completionTheme } from "../../../../languages/completion-theme";
@@ -113,27 +110,8 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         provide: f => EditorView.decorations.from(f)
     });
 
-    const getLanguage = (fname: string) => {
-        const ext = fname.split('.').pop()?.toLowerCase();
-        switch (ext) {
-            case 'chord':
-                return chord();
-            case 'js':
-            case 'jsx':
-            case 'mjs':
-            case 'ts':
-            case 'tsx':
-                return javascript({ jsx: true, typescript: ext.includes('t') });
-            case 'html':
-                return html();
-            case 'css':
-                return css();
-            case 'json':
-                return json();
-            default:
-                return [];
-        }
-    };
+    const isChord = (fname: string) => fname.toLowerCase().endsWith(".chord");
+    const getLanguage = (fname: string) => (isChord(fname) ? chord() : (loadedLanguageFor(fname) ?? []));
 
     const getCompletionExtension = (fname: string) => {
         const ext = fname.split('.').pop()?.toLowerCase();
@@ -218,6 +196,15 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         });
 
         viewRef.current = view;
+
+        if (!isChord(fileName) && !loadedLanguageFor(fileName)) {
+            languageFor(fileName)
+                .then((support) => {
+                    if (support && viewRef.current === view) view.dispatch({ effects: languageConf.reconfigure(support) });
+                })
+                .catch((error) => console.error(`No se pudo cargar la sintaxis de ${fileName}:`, error));
+        }
+
         setIsDirty(false);
         view.focus();
 
