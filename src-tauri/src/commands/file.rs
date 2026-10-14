@@ -17,12 +17,36 @@ pub struct ProjectFile {
     children: Option<Vec<ProjectFile>>,
 }
 
+/// Makes a `.gitignore` line apply only where it points to: a name with no path (`lib`, `*.log`, `dist/`) would
+/// match at any depth in git, hiding `src/lib` along with `lib`; here it is pinned to the project root. A line
+/// that contains a path (`src/gen`, `**/cache`) says where it applies by itself and is left as it is.
+fn anchor_to_root(line: &str) -> String {
+    let trimmed = line.trim_end();
+    if trimmed.is_empty() || trimmed.starts_with('#') {
+        return line.to_string();
+    }
+
+    let (negation, pattern) = match trimmed.strip_prefix('!') {
+        Some(rest) => ("!", rest),
+        None => ("", trimmed),
+    };
+
+    // A trailing slash only says "directories"; it is not a path separator.
+    let body = pattern.strip_suffix('/').unwrap_or(pattern);
+    if body.is_empty() || body.contains('/') {
+        return line.to_string();
+    }
+
+    format!("{}/{}", negation, pattern)
+}
+
 pub(crate) fn build_gitignore_matcher(root_path: &Path) -> Result<Gitignore, String> {
     let mut builder = GitignoreBuilder::new(root_path);
 
-    let gitignore_path = root_path.join(".gitignore");
-    if gitignore_path.exists() {
-        let _ = builder.add(&gitignore_path);
+    if let Ok(contents) = fs::read_to_string(root_path.join(".gitignore")) {
+        for line in contents.lines() {
+            let _ = builder.add_line(None, &anchor_to_root(line));
+        }
     }
 
     builder.build().log_err("Error al construir el matcher de gitignore")
@@ -310,6 +334,43 @@ mod tests {
         fs::write(root.join("src/commands/ping.chord"), "y").unwrap();
         fs::create_dir_all(root.join("lib")).unwrap();
         root
+    }
+
+    fn ignored(root: &Path, relative: &str, is_dir: bool) -> bool {
+        let matcher = build_gitignore_matcher(root).unwrap();
+        matcher.matched(root.join(relative), is_dir).is_ignore()
+    }
+
+    #[test]
+    fn a_plain_name_is_pinned_to_the_root() {
+        assert_eq!(anchor_to_root("lib"), "/lib");
+        assert_eq!(anchor_to_root("*.log"), "/*.log");
+        assert_eq!(anchor_to_root("dist/"), "/dist/");
+        assert_eq!(anchor_to_root("!keep.log"), "!/keep.log");
+    }
+
+    #[test]
+    fn lines_with_a_path_or_no_pattern_are_left_alone() {
+        assert_eq!(anchor_to_root("src/gen"), "src/gen");
+        assert_eq!(anchor_to_root("/build"), "/build");
+        assert_eq!(anchor_to_root("**/cache"), "**/cache");
+        assert_eq!(anchor_to_root("# comentario"), "# comentario");
+        assert_eq!(anchor_to_root(""), "");
+    }
+
+    #[test]
+    fn only_the_root_and_the_given_paths_are_hidden() {
+        let root = scratch_project("gitignore");
+        fs::write(root.join(".gitignore"), "lib\n*.log\nsrc/commands/gen/\n").unwrap();
+
+        assert!(ignored(&root, "lib", true));
+        assert!(ignored(&root, "debug.log", false));
+        assert!(ignored(&root, "src/commands/gen", true));
+
+        // The same names deeper in the tree are not the ones the line points at.
+        assert!(!ignored(&root, "src/lib", true));
+        assert!(!ignored(&root, "src/debug.log", false));
+        assert!(!ignored(&root, "other/src/commands/gen", true));
     }
 
     #[test]
