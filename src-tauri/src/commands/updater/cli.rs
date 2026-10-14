@@ -31,10 +31,14 @@ pub fn is_cli_installed(app_handle: &tauri::AppHandle) -> bool {
     }
 }
 
+fn compiler_is_broken(path: &std::path::Path) -> bool {
+    !platform::looks_like_valid_binary(path) || !platform::command_works(platform::silent_command(path), "dischord-compiler")
+}
+
 fn repair_corrupted_compiler(app_handle: &tauri::AppHandle) {
     let Some(path) = platform::compiler_binary_path(app_handle) else { return };
 
-    if path.exists() && !platform::looks_like_valid_binary(&path) {
+    if path.exists() && compiler_is_broken(&path) {
         warn!("Compilador corrupto detectado, borrándolo para forzar su reinstalación: {:?}", path);
         if let Err(e) = fs::remove_file(&path) {
             error!("No se pudo borrar el compilador corrupto: {}", e);
@@ -149,7 +153,6 @@ pub fn ensure_cli_updated(app_handle: &tauri::AppHandle) -> bool {
     }
 }
 
-// Step 3 of the sequence: only called if step 2 (CLI) finished successfully.
 pub fn update_compiler(app_handle: &tauri::AppHandle) -> bool {
     repair_corrupted_compiler(app_handle);
     run_component_update(app_handle, "compiler")
@@ -169,3 +172,33 @@ pub fn setup_environment(app: &tauri::App) -> Result<(), Box<dyn std::error::Err
 
     Ok(())
 }
+
+#[cfg(all(test, unix))]
+mod tests {
+    use super::*;
+    use std::os::unix::fs::PermissionsExt;
+
+    fn scratch(label: &str) -> std::path::PathBuf {
+        std::env::temp_dir().join(format!("dischord-compiler-test-{}-{}", label, std::process::id()))
+    }
+
+    #[test]
+    fn a_truncated_binary_is_broken_even_with_a_valid_header() {
+        let path = scratch("truncated");
+        let mut bytes = b"\x7FELF".to_vec();
+        bytes.resize(4096, 0);
+        fs::write(&path, bytes).unwrap();
+        fs::set_permissions(&path, fs::Permissions::from_mode(0o644)).unwrap();
+
+        assert!(platform::looks_like_valid_binary(&path));
+        assert!(compiler_is_broken(&path));
+
+        let _ = fs::remove_file(&path);
+    }
+
+    #[test]
+    fn a_missing_file_is_broken() {
+        assert!(compiler_is_broken(&scratch("missing")));
+    }
+}
+
