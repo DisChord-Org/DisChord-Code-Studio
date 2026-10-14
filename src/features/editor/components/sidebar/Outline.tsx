@@ -57,10 +57,10 @@ export const Outline = ({ path, onJump }: OutlineProps) => {
     };
 
     return (
-        <section className="border-t border-white/[0.06] flex flex-col min-h-0 max-h-[40%]">
+        <section className="relative flex flex-col min-h-0 max-h-[40%] shadow-[0_-1px_3px_0_rgba(0,0,0,0.35)]">
             <button
                 onClick={toggle}
-                className="shrink-0 flex items-center gap-1.5 px-3 py-1.5 text-left hover:bg-white/[0.03] transition-colors"
+                className="h-6 shrink-0 flex items-center gap-1.5 px-3 text-left hover:bg-white/[0.03] transition-colors"
             >
                 <i className={`bi bi-chevron-right text-[8px] text-gray-600 transition-transform duration-150 ${collapsed ? "" : "rotate-90"}`} />
                 <Label>Esquema</Label>
