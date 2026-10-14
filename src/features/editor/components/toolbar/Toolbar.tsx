@@ -112,7 +112,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
         >
             <div data-tauri-drag-region className="flex items-center gap-1 flex-1">
                 <span className="text-accent font-black text-xl px-2">D</span>
-                <div className="flex items-center" ref={menuBarRef}>
+                <div className="flex items-center gap-0.5" ref={menuBarRef}>
                     <FileMenu
                         isOpen={openMenu === "file"}
                         onToggle={() => toggleMenu("file")}
