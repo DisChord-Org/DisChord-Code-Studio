@@ -18,6 +18,7 @@ import { json } from "@codemirror/lang-json";
 import { chord } from "../../../../languages/chord-language";
 import { loadLibraryExports } from "../../../../languages/chord-libraries";
 import { dischordEditorTheme } from "../../../../languages/editor-theme";
+import { completionTheme } from "../../../../languages/completion-theme";
 import { useConfig } from "../../../settings";
 import { useShortcut } from "../../../shortcuts";
 import { forgetDiagnostics, goToDefinition, languageIntelligence, liveDiagnostics } from "../../../compiler";
@@ -207,7 +208,8 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                             }
                         }
                     }),
-                    dischordEditorTheme
+                    dischordEditorTheme,
+                    completionTheme
                 ]
             }),
             parent: editorRef.current
