@@ -96,26 +96,36 @@ const UpdateRow = ({ target, state }: UpdateRow) => {
                 <div className="flex items-center gap-3.5 min-w-0 ml-1">
                     <i className={`bi ${meta.icon} text-sm shrink-0 transition-colors duration-300 ${statusColor}`}></i>
                     <div className="min-w-0">
-                        <p className="text-sm font-medium text-white truncate">{meta.label}</p>
+                        <div className="flex items-center gap-2 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">{meta.label}</p>
+                            {state.version && (
+                                <span
+                                    className={`shrink-0 px-2 py-0.5 rounded-full text-[10px] font-semibold leading-none tabular-nums transition-colors ${
+                                        isActive ? "bg-accent/15 text-accent-light" : "bg-white/[0.05] text-gray-400"
+                                    }`}
+                                >
+                                    {isActive ? "→ " : ""}v{state.version}
+                                </span>
+                            )}
+                        </div>
                         <p className="text-[11px] text-gray-600 truncate">{meta.desc}</p>
                     </div>
-                    {state.version && (
-                        <span className="text-[10px] text-gray-600 font-mono shrink-0">v{state.version}</span>
-                    )}
                 </div>
 
-                <div className="flex items-center gap-3.5 shrink-0 mr-1">
+                <div className="shrink-0 mr-1 flex flex-col items-end gap-0.5">
+                    <div className="flex items-center gap-3.5">
+                        <span className={`text-[11px] font-medium ${statusColor}`}>
+                            {statusText[state.phase]}
+                        </span>
+                        {isDone && (
+                            <i className="bi bi-check-circle-fill text-emerald-400 text-sm animate-in zoom-in duration-300"></i>
+                        )}
+                        {isError && (
+                            <i className="bi bi-exclamation-circle-fill text-red-400 text-sm animate-in zoom-in duration-300"></i>
+                        )}
+                    </div>
                     {isActive && progressLabel && (
                         <span className="text-[10px] text-gray-600 font-mono">{progressLabel}</span>
-                    )}
-                    <span className={`text-[11px] font-medium ${statusColor}`}>
-                        {statusText[state.phase]}
-                    </span>
-                    {isDone && (
-                        <i className="bi bi-check-circle-fill text-emerald-400 text-sm animate-in zoom-in duration-300"></i>
-                    )}
-                    {isError && (
-                        <i className="bi bi-exclamation-circle-fill text-red-400 text-sm animate-in zoom-in duration-300"></i>
                     )}
                 </div>
             </div>
