@@ -21,6 +21,7 @@ import { dischordEditorTheme } from "../../../../languages/editor-theme";
 import { completionTheme } from "../../../../languages/completion-theme";
 import { useConfig } from "../../../settings";
 import { useShortcut } from "../../../shortcuts";
+import { middleClickJustHappened } from "../../../../utils/MiddleClick";
 import { forgetDiagnostics, goToDefinition, languageIntelligence, liveDiagnostics } from "../../../compiler";
 
 interface CodeCanvasProps {
@@ -190,6 +191,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                         }
                     }),
                     EditorView.domEventHandlers({
+                        paste: () => middleClickJustHappened(),
                         copy: (_event, view) => {
                             const { from, to } = view.state.selection.main;
                     
