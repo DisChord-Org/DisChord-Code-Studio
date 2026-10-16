@@ -228,19 +228,101 @@ struct PkgProgressPayload {
     path: Option<String>,
 }
 
+#[derive(Serialize, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug)]
+#[serde(rename_all = "snake_case")]
+pub enum Severity {
+    Info,
+    Success,
+    Error,
+}
+
 #[derive(Serialize, Clone)]
 pub struct PkgResult {
     pub package: String,
     pub version: Option<String>,
     pub phase: String,
     pub message: Option<String>,
+    pub severity: Severity,
+    pub warned: bool,
 }
 
 #[derive(Serialize)]
 pub struct PkgOpOutcome {
     pub success: bool,
+    pub changed: bool,
     pub output: String,
     pub results: Vec<PkgResult>,
+}
+
+fn phase_severity(op: &str, phase: &str) -> Option<Severity> {
+    match phase {
+        "done" | "linked" | "synced" | "uninstalled" | "unlinked" => Some(Severity::Success),
+        "already_installed" | "already_linked" | "not_linked" | "version_not_installed" => Some(Severity::Info),
+        "not_installed" if op == "uninstall" => Some(Severity::Info),
+        "not_installed" | "not_found" | "invalid_signature" | "error" => Some(Severity::Error),
+        _ => None,
+    }
+}
+
+fn summarize(op: &str, root: Option<&str>, events: &[PkgLine], exit_ok: bool) -> PkgOpOutcome {
+    let mut results: Vec<PkgResult> = Vec::new();
+
+    for event in events {
+        let severity = phase_severity(op, &event.phase);
+
+        let index = match results.iter().position(|r| r.package == event.package) {
+            Some(index) => index,
+            None => {
+                results.push(PkgResult {
+                    package: event.package.clone(),
+                    version: None,
+                    phase: event.phase.clone(),
+                    message: None,
+                    severity: Severity::Info,
+                    warned: false,
+                });
+                results.len() - 1
+            }
+        };
+        let result = &mut results[index];
+
+        result.phase = event.phase.clone();
+        if event.version.is_some() {
+            result.version = event.version.clone();
+        }
+        if event.phase == "unsigned" {
+            result.warned = true;
+        }
+
+        if let Some(severity) = severity {
+            result.severity = result.severity.max(severity);
+
+            if event.message.is_some() && (severity == Severity::Error || result.severity != Severity::Error) {
+                result.message = event.message.clone();
+            }
+        }
+    }
+
+    let reached_outcome = |name: &str| {
+        events.iter().any(|e| e.package == name && phase_severity(op, &e.phase).is_some_and(|s| s != Severity::Error))
+    };
+
+    let any_error = results.iter().any(|r| r.severity == Severity::Error);
+    let root_done = root.map_or(true, reached_outcome);
+    let success = exit_ok && !any_error && root_done;
+
+    let changed = results.iter().any(|r| r.severity == Severity::Success);
+
+    let output = results
+        .iter()
+        .map(|r| match &r.message {
+            Some(msg) => format!("{}: {}", r.package, msg),
+            None => format!("{}: {}", r.package, r.phase),
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+
+    PkgOpOutcome { success, changed, output, results }
 }
 
 fn run_pkg_json_op(
@@ -248,7 +330,7 @@ fn run_pkg_json_op(
     op: &str,
     args: &[&str],
     cwd: Option<&Path>,
-    success_phases: &[&str],
+    root: Option<&str>,
     context: &str,
 ) -> Result<PkgOpOutcome, String> {
     let mut command = resolve_chord_command(app_handle);
@@ -265,7 +347,7 @@ fn run_pkg_json_op(
     let stdout = child.stdout.take().expect("Fallo al capturar stdout de chord pkg");
     let reader = BufReader::new(stdout);
 
-    let mut results: Vec<PkgResult> = Vec::new();
+    let mut events: Vec<PkgLine> = Vec::new();
 
     for line in reader.lines() {
         let Ok(line) = line else { continue };
@@ -294,41 +376,26 @@ fn run_pkg_json_op(
             },
         );
 
-        match results.iter_mut().find(|r| r.package == evt.package) {
-            Some(existing) => {
-                existing.phase = evt.phase;
-                existing.version = evt.version.or(existing.version.take());
-                existing.message = evt.message.or(existing.message.take());
-            }
-            None => results.push(PkgResult { package: evt.package, version: evt.version, phase: evt.phase, message: evt.message }),
-        }
+        events.push(evt);
     }
 
     let exit_ok = matches!(child.wait(), Ok(status) if status.success());
-    let success = exit_ok && results.iter().all(|r| success_phases.contains(&r.phase.as_str()));
-    let output = results
-        .iter()
-        .map(|r| match &r.message {
-            Some(msg) => format!("{}: {}", r.package, msg),
-            None => format!("{}: {}", r.package, r.phase),
-        })
-        .collect::<Vec<_>>()
-        .join("\n");
+    let outcome = summarize(op, root, &events, exit_ok);
 
-    if success {
+    if outcome.success {
         info!("{}: éxito ({})", context, args.join(" "));
     } else {
-        warn!("{}: falló ({}) -> {}", context, args.join(" "), output);
+        warn!("{}: falló ({}) -> {}", context, args.join(" "), outcome.output);
     }
 
-    Ok(PkgOpOutcome { success, output, results })
+    Ok(outcome)
 }
 
 #[tauri::command]
 pub async fn pkg_install(app_handle: tauri::AppHandle, name: String, version: String) -> Result<PkgOpOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let target = format!("{}@{}", name, normalize_version(&version));
-        run_pkg_json_op(&app_handle, "install", &["install", &target], None, &["done", "already_installed"], "No se pudo ejecutar 'chord pkg install'")
+        run_pkg_json_op(&app_handle, "install", &["install", &target], None, Some(&name), "No se pudo ejecutar 'chord pkg install'")
     })
     .await
     .map_err(|e| e.to_string())?
@@ -338,7 +405,7 @@ pub async fn pkg_install(app_handle: tauri::AppHandle, name: String, version: St
 pub async fn pkg_uninstall(app_handle: tauri::AppHandle, name: String, version: String) -> Result<PkgOpOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let version = normalize_version(&version);
-        run_pkg_json_op(&app_handle, "uninstall", &["uninstall", &name, &version], None, &["uninstalled"], "No se pudo ejecutar 'chord pkg uninstall'")
+        run_pkg_json_op(&app_handle, "uninstall", &["uninstall", &name, &version], None, Some(&name), "No se pudo ejecutar 'chord pkg uninstall'")
     })
     .await
     .map_err(|e| e.to_string())?
@@ -349,7 +416,7 @@ pub async fn pkg_use(app_handle: tauri::AppHandle, project_name: String, name: S
     tauri::async_runtime::spawn_blocking(move || {
         let version = normalize_version(&version);
         let project_dir = project_path(&app_handle, &project_name);
-        let outcome = run_pkg_json_op(&app_handle, "use", &["use", &name, &version], Some(&project_dir), &["linked"], "No se pudo ejecutar 'chord pkg use'")?;
+        let outcome = run_pkg_json_op(&app_handle, "use", &["use", &name, &version], Some(&project_dir), Some(&name), "No se pudo ejecutar 'chord pkg use'")?;
 
         if outcome.success {
             ensure_lib_gitignored(&project_dir);
@@ -365,7 +432,7 @@ pub async fn pkg_use(app_handle: tauri::AppHandle, project_name: String, name: S
 pub async fn pkg_unuse(app_handle: tauri::AppHandle, project_name: String, name: String) -> Result<PkgOpOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let project_dir = project_path(&app_handle, &project_name);
-        run_pkg_json_op(&app_handle, "unuse", &["unuse", &name], Some(&project_dir), &["unlinked"], "No se pudo ejecutar 'chord pkg unuse'")
+        run_pkg_json_op(&app_handle, "unuse", &["unuse", &name], Some(&project_dir), Some(&name), "No se pudo ejecutar 'chord pkg unuse'")
     })
     .await
     .map_err(|e| e.to_string())?
@@ -375,7 +442,7 @@ pub async fn pkg_unuse(app_handle: tauri::AppHandle, project_name: String, name:
 pub async fn pkg_sync(app_handle: tauri::AppHandle, project_name: String) -> Result<PkgOpOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let project_dir = project_path(&app_handle, &project_name);
-        let outcome = run_pkg_json_op(&app_handle, "sync", &["sync"], Some(&project_dir), &["synced"], "No se pudo ejecutar 'chord pkg sync'")?;
+        let outcome = run_pkg_json_op(&app_handle, "sync", &["sync"], Some(&project_dir), None, "No se pudo ejecutar 'chord pkg sync'")?;
 
         if outcome.success {
             ensure_lib_gitignored(&project_dir);
@@ -385,4 +452,126 @@ pub async fn pkg_sync(app_handle: tauri::AppHandle, project_name: String) -> Res
     })
     .await
     .map_err(|e| e.to_string())?
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn line(package: &str, phase: &str, message: Option<&str>) -> PkgLine {
+        PkgLine {
+            package: package.into(),
+            version: Some("v1.0.0".into()),
+            phase: phase.into(),
+            percent: None,
+            current_bytes: None,
+            total_bytes: None,
+            message: message.map(String::from),
+            path: None,
+        }
+    }
+
+    #[test]
+    fn installing_a_package_with_dependencies_is_a_success() {
+        let events = vec![
+            line("ent", "checking", None),
+            line("ent", "downloading", None),
+            line("ent", "installing_deps", None),
+            line("sf", "checking", None),
+            line("sf", "done", None),
+            line("sf", "linked", None),
+            line("sf", "synced", None),
+            line("procesos", "already_linked", None),
+            line("ent", "compiling", None),
+            line("ent", "done", None),
+        ];
+
+        let outcome = summarize("install", Some("ent"), &events, true);
+
+        assert!(outcome.success);
+        assert!(outcome.changed);
+        assert!(outcome.results.iter().all(|r| r.severity != Severity::Error));
+        assert_eq!(outcome.results.iter().find(|r| r.package == "procesos").unwrap().severity, Severity::Info);
+    }
+
+    #[test]
+    fn something_already_installed_is_a_success_that_changed_nothing() {
+        let outcome = summarize("install", Some("ent"), &[line("ent", "already_installed", None)], true);
+
+        assert!(outcome.success);
+        assert!(!outcome.changed);
+    }
+
+    #[test]
+    fn a_failed_dependency_fails_the_install_even_if_it_ends_in_synced() {
+        let events = vec![
+            line("sf", "error", Some("No se pudo descargar")),
+            line("sf", "not_installed", None),
+            line("sf", "synced", None),
+            line("ent", "done", None),
+        ];
+
+        let outcome = summarize("install", Some("ent"), &events, true);
+        let sf = outcome.results.iter().find(|r| r.package == "sf").unwrap();
+
+        assert!(!outcome.success);
+        assert_eq!(sf.severity, Severity::Error);
+        assert_eq!(sf.message.as_deref(), Some("No se pudo descargar"));
+    }
+
+    #[test]
+    fn an_install_whose_root_never_finishes_fails() {
+        let events = vec![line("ent", "checking", None), line("ent", "downloading", None)];
+
+        assert!(!summarize("install", Some("ent"), &events, true).success);
+    }
+
+    #[test]
+    fn a_crash_fails_even_without_an_error_event() {
+        assert!(!summarize("install", Some("ent"), &[line("ent", "done", None)], false).success);
+    }
+
+    #[test]
+    fn an_unsigned_package_installs_with_a_warning() {
+        let events = vec![line("ent", "unsigned", Some("El paquete no está firmado")), line("ent", "done", None)];
+
+        let outcome = summarize("install", Some("ent"), &events, true);
+
+        assert!(outcome.success);
+        assert!(outcome.results[0].warned);
+    }
+
+    #[test]
+    fn removing_what_is_not_there_is_not_an_error() {
+        let uninstall = summarize("uninstall", Some("ent"), &[line("ent", "not_installed", Some("No instalado"))], true);
+        let unuse = summarize("unuse", Some("ent"), &[line("ent", "not_linked", None)], true);
+        let version = summarize("uninstall", Some("ent"), &[line("ent", "version_not_installed", None)], true);
+
+        for outcome in [uninstall, unuse, version] {
+            assert!(outcome.success);
+            assert!(!outcome.changed);
+        }
+    }
+
+    #[test]
+    fn using_what_is_not_installed_is_an_error() {
+        let outcome = summarize("use", Some("ent"), &[line("ent", "not_installed", Some("ent@v1 no está instalada."))], true);
+
+        assert!(!outcome.success);
+    }
+
+    #[test]
+    fn the_happy_paths_of_the_other_operations() {
+        assert!(summarize("uninstall", Some("ent"), &[line("ent", "uninstalled", None)], true).changed);
+        assert!(summarize("use", Some("ent"), &[line("ent", "linked", None)], true).changed);
+        assert!(summarize("unuse", Some("ent"), &[line("ent", "unlinked", None)], true).changed);
+    }
+
+    #[test]
+    fn syncing_nothing_succeeds_without_changing_anything() {
+        let outcome = summarize("sync", None, &[], true);
+
+        assert!(outcome.success);
+        assert!(!outcome.changed);
+    }
 }
