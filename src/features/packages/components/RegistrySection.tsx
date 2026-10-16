@@ -1,6 +1,6 @@
 import { openUrl } from "@tauri-apps/plugin-opener";
 import { Label, Tooltip, EmptyState, ListGroup, ListRow } from "../../../components/ui";
-import type { Feedback, PackageEntry, PkgProgressEvent } from "../types";
+import type { PackageEntry, PkgProgressEvent } from "../types";
 import { opKey, phaseLabel } from "./PackageManager.utils";
 import { ProgressRow } from "./ProgressRow";
 import { TrustBadge } from "./TrustBadge";
@@ -23,7 +23,9 @@ interface RegistrySectionProps {
     loading: boolean;
     error: string | null;
     busy: string | null;
-    feedback: Record<string, Feedback>;
+    /** The search the list belongs to, to say what was not found. */
+    searchedQuery: string;
+    onRetry: () => void;
     progress: Record<string, PkgProgressEvent>;
     installedVersions: Map<string, Set<string>>;
     usedVersion: (name: string) => string | null;
@@ -39,8 +41,9 @@ export const RegistrySection = ({
     results,
     loading,
     error,
+    searchedQuery,
+    onRetry,
     busy,
-    feedback,
     progress,
     installedVersions,
     usedVersion,
@@ -62,9 +65,16 @@ export const RegistrySection = ({
             {loading ? (
                 <p className="text-xs text-gray-500 animate-pulse mt-3">Buscando...</p>
             ) : error ? (
-                <EmptyState icon="bi-exclamation-triangle" tone="danger" size="md">{error}</EmptyState>
+                <EmptyState icon="bi-exclamation-triangle" tone="danger" size="md">
+                    {error}
+                    <button onClick={onRetry} className="mt-2 block mx-auto text-[11px] font-medium text-gray-400 hover:text-white transition-colors">
+                        Reintentar
+                    </button>
+                </EmptyState>
             ) : results.length === 0 ? (
-                <EmptyState icon="bi-search" size="md">No se encontraron librerías.</EmptyState>
+                <EmptyState icon="bi-search" size="md">
+                    {searchedQuery ? `No se encontraron librerías para «${searchedQuery}».` : "El registro no tiene librerías todavía."}
+                </EmptyState>
             ) : (
                 <ListGroup className="mt-1">
                     {results.map((pkg) => {
@@ -74,11 +84,11 @@ export const RegistrySection = ({
                         const installKey = opKey("install", pkg.name, version);
                         const useKey = opKey("use", pkg.name, version);
                         const uninstallKey = opKey("uninstall", pkg.name, version);
-                        const activeKey = busy === installKey ? installKey : busy === useKey ? useKey : busy === uninstallKey ? uninstallKey : null;
+                        const unuseKey = opKey("unuse", pkg.name);
+                        const activeKey = [installKey, useKey, uninstallKey, unuseKey].find((key) => busy === key) ?? null;
                         const rowProgress = activeKey ? progress[pkg.name] : undefined;
                         const selectedVersionInfo = pkg.versions.find((v) => v.tag === version);
                         const relativeDate = selectedVersionInfo ? formatRelativeDate(selectedVersionInfo.created_at) : null;
-                        const feedbackEntry = feedback[installKey] ?? feedback[useKey] ?? feedback[uninstallKey];
 
                         return (
                             <ListRow key={pkg.name} padding="lg">
@@ -126,7 +136,7 @@ export const RegistrySection = ({
                                                     disabled={busy !== null}
                                                     className="text-[11px] font-medium text-gray-400 hover:text-red-400 transition-colors disabled:opacity-40"
                                                 >
-                                                    Dejar de usar
+                                                    {busy === unuseKey ? "Dejando de usar..." : "Dejar de usar"}
                                                 </button>
                                             ) : isInstalled ? (
                                                 <button
@@ -175,12 +185,6 @@ export const RegistrySection = ({
                                         </div>
                                     </div>
                                 </div>
-
-                                {feedbackEntry && (
-                                    <div className={`mt-1.5 text-[10px] whitespace-pre-wrap ${feedbackEntry.ok ? "text-emerald-400" : "text-red-400"}`}>
-                                        {feedbackEntry.message}
-                                    </div>
-                                )}
 
                                 {rowProgress && <ProgressRow progress={rowProgress} />}
                             </ListRow>

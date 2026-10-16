@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { Feedback, PackageEntry, PkgOpOutcome, PkgProgressEvent, ProjectLibrary } from "./types";
-import { opKey, phaseLabel } from "./components/PackageManager.utils";
+import type { PackageEntry, PkgOp, PkgOpOutcome, PkgProgressEvent, ProjectLibrary } from "./types";
+import { describeOutcome, friendlyError, opKey } from "./components/PackageManager.utils";
 import { confirmAction } from "../../utils/Dialogs";
+import { notify } from "../../utils/Toasts";
 
 interface UsePackageManagerArgs {
     projectName: string;
@@ -17,9 +18,10 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
     const [selectedVersion, setSelectedVersion] = useState<Record<string, string>>({});
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
+    /** The search the list on screen belongs to, to say what was not found. */
+    const [searchedQuery, setSearchedQuery] = useState("");
     const [busy, setBusy] = useState<string | null>(null);
     const [syncing, setSyncing] = useState(false);
-    const [feedback, setFeedback] = useState<Record<string, Feedback>>({});
     const [progress, setProgress] = useState<Record<string, PkgProgressEvent>>({});
     const busyRef = useRef<string | null>(null);
 
@@ -36,6 +38,7 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
     const loadRegistry = async (searchQuery: string) => {
         setLoading(true);
         setError(null);
+        setSearchedQuery(searchQuery.trim());
         try {
             const [searchResults, installedResults, libs] = await Promise.all([
                 invoke<PackageEntry[]>("pkg_search", { query: searchQuery || null, installedOnly: false }),
@@ -46,13 +49,14 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
             setInstalled(installedResults);
             setProjectLibs(libs);
         } catch (e) {
-            setError(String(e));
+            setError(friendlyError(e).message);
         } finally {
             setLoading(false);
         }
     };
 
-    const refreshInstalledAndLibs = async () => {
+    /** Reads again what is installed and in use. Resolves to false when it could not, without touching the list. */
+    const refreshInstalledAndLibs = async (): Promise<boolean> => {
         try {
             const [installedResults, libs] = await Promise.all([
                 invoke<PackageEntry[]>("pkg_search", { query: null, installedOnly: true }),
@@ -60,8 +64,9 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
             ]);
             setInstalled(installedResults);
             setProjectLibs(libs);
-        } catch (e) {
-            setError(String(e));
+            return true;
+        } catch {
+            return false;
         }
     };
 
@@ -79,32 +84,35 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
     const usedVersion = (name: string) => projectLibs.find((lib) => lib.name === name)?.version ?? null;
     const versionFor = (pkg: PackageEntry) => selectedVersion[pkg.name] ?? usedVersion(pkg.name) ?? pkg.latest_version;
 
-    const runOp = async (key: string, packageNames: string[], action: () => Promise<PkgOpOutcome>, onSuccess?: () => void) => {
+    /** Runs one operation, tells the user how it went (a notice, not text inside the row) and refreshes the lists. */
+    const runOp = async (
+        op: PkgOp,
+        name: string,
+        key: string,
+        action: () => Promise<PkgOpOutcome>,
+        onSuccess?: () => Promise<boolean>,
+    ) => {
+        // One operation at a time, even if a second click gets in before the buttons are disabled.
+        if (busyRef.current) return;
+
         setBusy(key);
         busyRef.current = key;
-        setFeedback((prev) => {
-            const next = { ...prev };
-            delete next[key];
-            return next;
-        });
         try {
             const outcome = await action();
-            const message =
-                outcome.results.length > 0
-                    ? outcome.results.map((r) => `${r.package}${r.version ? `@${r.version}` : ""}: ${r.message ?? phaseLabel(r.phase)}`).join("\n")
-                    : outcome.output || (outcome.success ? "Operación completada." : "La operación falló.");
-            setFeedback((prev) => ({ ...prev, [key]: { ok: outcome.success, message } }));
-            if (outcome.success) await onSuccess?.();
+            const described = describeOutcome(op, name, outcome);
+            notify(described.level, described.message, described.details);
+
+            if (outcome.success && onSuccess && !(await onSuccess())) {
+                notify("warning", "Hecho, pero no se pudo actualizar la lista. Vuelve a buscar para refrescarla.");
+            }
         } catch (e) {
-            setFeedback((prev) => ({ ...prev, [key]: { ok: false, message: String(e) } }));
+            const failure = friendlyError(e);
+            notify("error", failure.message, failure.details);
         } finally {
             setBusy(null);
             busyRef.current = null;
-            setProgress((prev) => {
-                const next = { ...prev };
-                for (const name of packageNames) delete next[name];
-                return next;
-            });
+            // Dependencies report progress under their own names, so everything goes.
+            setProgress({});
         }
     };
 
@@ -114,49 +122,53 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
 
     const handleInstall = (pkg: PackageEntry) => {
         const version = versionFor(pkg);
-        runOp(opKey("install", pkg.name, version), [pkg.name], () =>
+        runOp("install", pkg.name, opKey("install", pkg.name, version), () =>
             invoke<PkgOpOutcome>("pkg_install", { name: pkg.name, version }), refreshInstalledAndLibs);
     };
 
     const handleUse = (pkg: PackageEntry) => {
         const version = versionFor(pkg);
-        runOp(opKey("use", pkg.name, version), [pkg.name], () =>
+        runOp("use", pkg.name, opKey("use", pkg.name, version), () =>
             invoke<PkgOpOutcome>("pkg_use", { projectName, name: pkg.name, version }), refreshInstalledAndLibs);
     };
 
     const handleUnuse = (name: string) => {
-        runOp(opKey("unuse", name), [name], () =>
+        runOp("unuse", name, opKey("unuse", name), () =>
             invoke<PkgOpOutcome>("pkg_unuse", { projectName, name }), refreshInstalledAndLibs);
     };
 
     const handleUninstall = async (name: string, version: string) => {
+        if (busyRef.current) return;
+
         const confirmed = await confirmAction(`¿Desinstalar ${name}@${version} de tu sistema? Esto afecta a todos tus proyectos, no solo a este.`, "Desinstalar");
+        // Something else may have started while the question was open; runOp checks that again.
         if (!confirmed) return;
 
-        runOp(opKey("uninstall", name, version), [name], () =>
+        runOp("uninstall", name, opKey("uninstall", name, version), () =>
             invoke<PkgOpOutcome>("pkg_uninstall", { name, version }), refreshInstalledAndLibs);
     };
 
     const handleSync = async () => {
+        if (busyRef.current) return;
+
         setSyncing(true);
-        setFeedback((prev) => {
-            const next = { ...prev };
-            delete next.sync;
-            return next;
-        });
+        // Busy as well, so no other operation starts while the libraries are being linked.
+        setBusy("sync");
         busyRef.current = "sync";
         try {
             const outcome = await invoke<PkgOpOutcome>("pkg_sync", { projectName });
-            const message =
-                outcome.results.length > 0
-                    ? outcome.results.map((r) => `${r.package}${r.version ? `@${r.version}` : ""}: ${r.message ?? phaseLabel(r.phase)}`).join("\n")
-                    : "El proyecto ya está sincronizado.";
-            setFeedback((prev) => ({ ...prev, sync: { ok: outcome.success, message } }));
-            if (outcome.success) await refreshInstalledAndLibs();
+            const described = describeOutcome("sync", "", outcome);
+            notify(described.level, described.message, described.details);
+
+            if (outcome.success && !(await refreshInstalledAndLibs())) {
+                notify("warning", "Hecho, pero no se pudo actualizar la lista. Vuelve a buscar para refrescarla.");
+            }
         } catch (e) {
-            setFeedback((prev) => ({ ...prev, sync: { ok: false, message: String(e) } }));
+            const failure = friendlyError(e);
+            notify("error", failure.message, failure.details);
         } finally {
             setSyncing(false);
+            setBusy(null);
             busyRef.current = null;
             setProgress({});
         }
@@ -171,9 +183,9 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
         setSelectedVersion,
         loading,
         error,
+        searchedQuery,
         busy,
         syncing,
-        feedback,
         progress,
         installedVersions,
         usedVersion,

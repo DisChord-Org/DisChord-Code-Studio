@@ -20,18 +20,28 @@ export interface ProjectLibrary {
     version: string;
 }
 
+/** How serious what happened to a package is: "info" means it was already as asked. */
+export type PkgSeverity = "info" | "success" | "error";
+
 export interface PkgResult {
     package: string;
     version: string | null;
     phase: string;
     message: string | null;
+    severity: PkgSeverity;
+    /** The CLI warned about it (for example, an unsigned package) even though the operation went on. */
+    warned: boolean;
 }
 
 export interface PkgOpOutcome {
     success: boolean;
+    /** False when everything was already as asked. */
+    changed: boolean;
     output: string;
     results: PkgResult[];
 }
+
+export type PkgOp = PkgProgressEvent["op"];
 
 export interface PkgProgressEvent {
     op: "install" | "uninstall" | "use" | "unuse" | "sync";
@@ -45,7 +55,3 @@ export interface PkgProgressEvent {
     path?: string;
 }
 
-export interface Feedback {
-    ok: boolean;
-    message: string;
-}

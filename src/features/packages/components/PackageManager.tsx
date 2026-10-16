@@ -18,9 +18,9 @@ export const PackageManager = ({ onClose, projectName }: PackageManagerProps) =>
         setSelectedVersion,
         loading,
         error,
+        searchedQuery,
         busy,
         syncing,
-        feedback,
         progress,
         installedVersions,
         usedVersion,
@@ -62,7 +62,6 @@ export const PackageManager = ({ onClose, projectName }: PackageManagerProps) =>
                 projectLibs={projectLibs}
                 busy={busy}
                 syncing={syncing}
-                feedback={feedback}
                 progress={progress}
                 onSync={handleSync}
                 onUnuse={handleUnuse}
@@ -73,7 +72,8 @@ export const PackageManager = ({ onClose, projectName }: PackageManagerProps) =>
                 loading={loading}
                 error={error}
                 busy={busy}
-                feedback={feedback}
+                searchedQuery={searchedQuery}
+                onRetry={handleSearch}
                 progress={progress}
                 installedVersions={installedVersions}
                 usedVersion={usedVersion}
