@@ -4,7 +4,7 @@ import Dashboard from "./views/Dashboard";
 import Editor from "./views/Editor";
 import Update from "./views/Update";
 import Settings from "./views/Settings";
-import { DialogHost } from "./components/ui";
+import { DialogHost, ToastHost } from "./components/ui";
 
 const windowLabel = getCurrentWindow().label;
 
@@ -43,6 +43,7 @@ function App() {
         <>
             <AppRoutes />
             <DialogHost />
+            <ToastHost />
         </>
     );
 }

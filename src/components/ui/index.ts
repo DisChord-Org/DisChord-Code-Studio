@@ -7,6 +7,7 @@ export { ListGroup, ListRow } from "./ListRow";
 export { DialogHost } from "./DialogHost";
 export { Logo } from "./Logo";
 export { Modal } from "./Modal";
+export { ToastHost } from "./ToastHost";
 export { ModifiedBadge } from "./ModifiedBadge";
 export { Tooltip } from "./Tooltip";
 export type { TooltipPlacement, TooltipAlign } from "./Tooltip";
