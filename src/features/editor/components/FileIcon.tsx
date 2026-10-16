@@ -2,10 +2,10 @@ import { FileTypeIcon, FolderTypeIcon } from "../fileIcons";
 
 const genericFile = <i className="bi bi-file-earmark-text text-[12px] text-[#8c9491]" />;
 
-/** The icon of a file by its name, so it can follow what is being typed. `.chord` keeps the project's own "D". */
+/** The icon of a file by its name, so it can follow what is being typed. `.chord` files have the project's own. */
 export const FileIcon = ({ name, size = 14 }: { name: string; size?: number }) => {
     if (name.toLowerCase().endsWith(".chord")) {
-        return <span className="text-accent font-black text-[12px] w-[13px] text-center leading-none shrink-0">D</span>;
+        return <img src="/chord-file.svg" alt="" aria-hidden="true" draggable={false} width={size} height={size} className="shrink-0 select-none" />;
     }
 
     return <FileTypeIcon fileName={name} size={size} fallback={genericFile} />;
