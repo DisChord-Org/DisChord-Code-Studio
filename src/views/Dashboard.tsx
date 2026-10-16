@@ -105,7 +105,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
             </div>
             </div>
 
-            <div data-tauri-drag-region className="flex items-end justify-between shrink-0 pr-6 pt-3">
+            <div data-tauri-drag-region className="relative flex items-end justify-between shrink-0 pr-6 pt-3">
             <div className="flex items-center z-50">
                 <Tooltip label="Configuración" placement="top" align="start">
                     <button
@@ -132,10 +132,11 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                 </Tooltip>
             </div>
 
-            <div className="flex items-center gap-4 pb-3">
-                <span className="text-[10px] font-mono text-gray-600 tracking-widest uppercase opacity-50 pointer-events-none">
-                    v{appVersion}
-                </span>
+            <span className="absolute bottom-0 left-1/2 -translate-x-1/2 h-10 flex items-center text-[10px] font-mono text-gray-600 tracking-widest uppercase opacity-50 pointer-events-none">
+                v{appVersion}
+            </span>
+
+            <div className="flex items-center pb-3">
                 <SystemMonitorRings size={40} />
             </div>
             </div>
