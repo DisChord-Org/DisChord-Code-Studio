@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { baseName } from "./pathUtils";
+import { baseName, toPosix } from "./pathUtils";
 import { PACKAGES_TAB_ID, SHORTCUTS_TAB_ID, type OpenTab } from "./types";
 
 interface SavedTab {
@@ -36,8 +36,10 @@ const readSession = (projectName: string): SavedSession | null => {
         const parsed = JSON.parse(raw);
         if (!Array.isArray(parsed?.tabs)) return null;
 
-        const tabs = parsed.tabs.filter((t: unknown): t is SavedTab => typeof (t as SavedTab)?.path === "string");
-        return { tabs, active: typeof parsed.active === "string" ? parsed.active : null };
+        const tabs = parsed.tabs
+            .filter((t: unknown): t is SavedTab => typeof (t as SavedTab)?.path === "string")
+            .map((t: SavedTab) => ({ ...t, path: toPosix(t.path) }));
+        return { tabs, active: typeof parsed.active === "string" ? toPosix(parsed.active) : null };
     } catch {
         return null;
     }

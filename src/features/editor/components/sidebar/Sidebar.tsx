@@ -7,7 +7,7 @@ import { FileItem, CreateRow } from "./FileItem";
 import { Outline } from "./Outline";
 import { SidebarContext } from "./SidebarContext";
 import { useResizablePanel } from "../../useResizablePanel";
-import { canMoveInto, isSameOrInside, joinPath, parentPath, remapPath } from "../../pathUtils";
+import { canMoveInto, isSameOrInside, joinPath, parentPath, remapPath, toPosix } from "../../pathUtils";
 import { matchesShortcut } from "../../../shortcuts";
 import { confirmAction } from "../../../../utils/Dialogs";
 
@@ -28,7 +28,7 @@ const expandedPathsStorageKey = (projectName: string) => `dischord:sidebar-expan
 const loadExpandedPaths = (projectName: string): Set<string> => {
     try {
         const raw = localStorage.getItem(expandedPathsStorageKey(projectName));
-        if (raw) return new Set(JSON.parse(raw));
+        if (raw) return new Set((JSON.parse(raw) as string[]).map(toPosix));
     } catch {
         // Ignore corrupt/inaccessible storage and fall back to the default below.
     }

@@ -40,6 +40,16 @@ fn anchor_to_root(line: &str) -> String {
     format!("{}/{}", negation, pattern)
 }
 
+/// The path of `file` inside the project as the frontend sees it: relative, with `/` as the separator on every
+/// system (Windows accepts it too), so that a path is the same string wherever it comes from.
+fn to_relative(file: &Path, root: &str) -> String {
+    file.to_string_lossy()
+        .replace(root, "")
+        .replace('\\', "/")
+        .trim_start_matches('/')
+        .to_string()
+}
+
 pub(crate) fn build_gitignore_matcher(root_path: &Path) -> Result<Gitignore, String> {
     let mut builder = GitignoreBuilder::new(root_path);
 
@@ -77,10 +87,7 @@ pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<
                 }
 
                 let is_dir = file_path.is_dir();
-                let relative_path = file_path.to_string_lossy()
-                    .replace(root_str, "")
-                    .trim_start_matches(|c| c == '/' || c == '\\')
-                    .to_string();
+                let relative_path = to_relative(&file_path, root_str);
 
                 files.push(ProjectFile {
                     name: file_name,
@@ -125,10 +132,7 @@ pub fn read_hidden_files(app_handle: tauri::AppHandle, name: String) -> Result<V
                 let is_dir = file_path.is_dir();
 
                 if !is_dir && matcher.matched(&file_path, false).is_ignore() {
-                    let relative_path = file_path.to_string_lossy()
-                        .replace(root_str, "")
-                        .trim_start_matches(|c| c == '/' || c == '\\')
-                        .to_string();
+                    let relative_path = to_relative(&file_path, root_str);
 
                     out.push(ProjectFile {
                         name: file_name,
@@ -276,7 +280,7 @@ fn relocate(root: &Path, from: &str, target_dir: &str, new_name: &str) -> Result
     let source = root.join(from);
     let destination_dir = root.join(target_dir);
     let destination = destination_dir.join(new_name);
-    let new_relative = Path::new(target_dir).join(new_name).to_string_lossy().to_string();
+    let new_relative = Path::new(target_dir).join(new_name).to_string_lossy().replace('\\', "/");
 
     if !source.exists() {
         return Err("El elemento no existe.".into());
@@ -342,6 +346,13 @@ mod tests {
     }
 
     #[test]
+    fn relative_paths_use_forward_slashes() {
+        assert_eq!(to_relative(Path::new("C:\\proj\\bot\\src\\index.chord"), "C:\\proj\\bot"), "src/index.chord");
+        assert_eq!(to_relative(Path::new("/home/u/bot/src/a.chord"), "/home/u/bot"), "src/a.chord");
+        assert_eq!(to_relative(Path::new("/home/u/bot/index.chord"), "/home/u/bot"), "index.chord");
+    }
+
+    #[test]
     fn a_plain_name_is_pinned_to_the_root() {
         assert_eq!(anchor_to_root("lib"), "/lib");
         assert_eq!(anchor_to_root("*.log"), "/*.log");
@@ -378,7 +389,7 @@ mod tests {
         let root = scratch_project("rename");
         let moved = relocate(&root, "src/index.chord", "src", "main.chord").unwrap();
 
-        assert_eq!(moved, Path::new("src").join("main.chord").to_string_lossy());
+        assert_eq!(moved, "src/main.chord");
         assert!(root.join("src/main.chord").exists());
         assert!(!root.join("src/index.chord").exists());
     }

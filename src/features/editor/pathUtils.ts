@@ -1,7 +1,8 @@
 /** Separator the backend uses for the relative paths it hands out. */
-export const pathSeparator = navigator.userAgent.includes("Windows") ? "\\" : "/";
+/** Project paths use `/` everywhere (the backend hands them out like that and Windows accepts it). */
+export const toPosix = (path: string) => path.replace(/\\/g, "/");
 
-export const joinPath = (dir: string, name: string) => (dir ? `${dir}${pathSeparator}${name}` : name);
+export const joinPath = (dir: string, name: string) => (dir ? `${dir}/${name}` : name);
 
 export const parentPath = (path: string) => {
     const cut = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
