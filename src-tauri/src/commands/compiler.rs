@@ -166,10 +166,15 @@ pub async fn compiler_check(
         .arg("--json");
 
     tauri::async_runtime::spawn_blocking(move || {
-        Ok(match run_process(command, Some(source), CHECK_TIMEOUT) {
+        let result = match run_process(command, Some(source), CHECK_TIMEOUT) {
             Ok(output) => parse_check(&output),
             Err(message) => tool_failure(message),
-        })
+        };
+
+        if let Some(reason) = &result.tool_error {
+            warn!("El compilador no pudo comprobar {:?}: {}", file, reason);
+        }
+        Ok(result)
     })
     .await
     .map_err(|e| e.to_string())?
