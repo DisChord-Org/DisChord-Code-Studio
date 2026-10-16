@@ -1,6 +1,7 @@
 import type { FileNode } from "../../types";
-import { Tooltip } from "../../../../components/ui";
 import { NameInput } from "./NameInput";
+import { CreateRow } from "./CreateRow";
+import { CreateButtons } from "./CreateButtons";
 import { useEffect, useState } from "react";
 import { useSidebar } from "./SidebarContext";
 import { FileIcon, FolderIcon } from "../FileIcon";
@@ -9,23 +10,6 @@ interface FileItemProps {
     node: FileNode;
     level: number;
 }
-
-/** The row shown while a new file or folder is being named. */
-export const CreateRow = ({ level }: { level: number }) => {
-    const { creating, onCreateSubmit, onCreateCancel } = useSidebar();
-    const [typedName, setTypedName] = useState("");
-    if (!creating) return null;
-
-    return (
-        <div className="pr-2 py-0.5 flex items-center gap-1.5" style={{ paddingLeft: `${level * 10 + 8}px` }}>
-            <span className="w-[8px] shrink-0" />
-            {creating.type === "folder"
-                ? <FolderIcon name={typedName.trim()} open={false} />
-                : <FileIcon name={typedName.trim()} />}
-            <NameInput onSubmit={onCreateSubmit} onCancel={onCreateCancel} onValueChange={setTypedName} />
-        </div>
-    );
-};
 
 export const FileItem = ({ node, level }: FileItemProps) => {
     const {
@@ -103,22 +87,12 @@ export const FileItem = ({ node, level }: FileItemProps) => {
 
                 {node.is_dir && !isRenaming && (
                     <div className="flex items-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
-                        <Tooltip label="Nuevo archivo">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onCreateRequest('file', node.relative_path); }}
-                                className="hover:text-accent p-0.5 rounded transition-colors"
-                            >
-                                <i className="bi bi-file-earmark-plus text-[11px]"></i>
-                            </button>
-                        </Tooltip>
-                        <Tooltip label="Nueva carpeta">
-                            <button
-                                onClick={(e) => { e.stopPropagation(); onCreateRequest('folder', node.relative_path); }}
-                                className="hover:text-accent p-0.5 rounded transition-colors"
-                            >
-                                <i className="bi bi-folder-plus text-[11px]"></i>
-                            </button>
-                        </Tooltip>
+                        <CreateButtons
+                            onCreateFile={() => onCreateRequest("file", node.relative_path)}
+                            onCreateFolder={() => onCreateRequest("folder", node.relative_path)}
+                            iconSize="text-[11px]"
+                            buttonClassName="hover:text-accent p-0.5 rounded transition-colors"
+                        />
                     </div>
                 )}
             </div>

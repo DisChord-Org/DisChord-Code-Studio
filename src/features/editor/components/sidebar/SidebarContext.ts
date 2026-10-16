@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import type { FileNode } from "../../types";
+import type { CreatingState } from "./useFileOperations";
 
 export interface SidebarContextValue {
     selectedPath: string | null;
@@ -11,7 +12,7 @@ export interface SidebarContextValue {
     onCreateRequest: (type: "file" | "folder", parentPath: string) => void;
 
     /** Where the inline "new file/folder" input is showing, if anywhere. */
-    creating: { type: "file" | "folder"; parentPath: string } | null;
+    creating: CreatingState | null;
     onCreateSubmit: (name: string) => Promise<string | null>;
     onCreateCancel: () => void;
 

@@ -1,25 +1,17 @@
 import { useMemo, useState } from "react";
 import { Label } from "../../../../components/ui";
+import { outlineContainerKinds, outlineIcons } from "./Outline.constants";
 import { useFileDeclarations, type Declaration } from "../../../compiler";
+
+interface OutlineRow {
+    item: Declaration;
+    depth: number;
+}
 
 interface OutlineProps {
     path: string;
     onJump: (line: number, column: number) => void;
 }
-
-const icons: Record<string, string> = {
-    class: "bi-diagram-3",
-    function: "bi-braces",
-    method: "bi-braces",
-    constructor: "bi-braces",
-    command: "bi-terminal",
-    event: "bi-lightning-charge",
-    variable: "bi-dot",
-    property: "bi-dot",
-    import: "bi-box-arrow-in-right",
-    button: "bi-ui-radios",
-    embed: "bi-card-text",
-};
 
 const storageKey = "dischord:outline-collapsed";
 
@@ -31,8 +23,8 @@ const readCollapsed = () => {
     }
 };
 
-const outlineItems = (items: Declaration[]): Array<{ item: Declaration; depth: number }> => {
-    const containers = new Set(items.filter((d) => ["class", "function", "command", "event"].includes(d.kind)).map((d) => d.name));
+const outlineItems = (items: Declaration[]): OutlineRow[] => {
+    const containers = new Set(items.filter((d) => outlineContainerKinds.includes(d.kind)).map((d) => d.name));
 
     return items
         .filter((d) => d.kind !== "parameter" && d.kind !== "used")
@@ -81,7 +73,7 @@ export const Outline = ({ path, onJump }: OutlineProps) => {
                                 style={{ paddingLeft: `${depth * 12 + 16}px` }}
                                 title={`${item.kind} · línea ${item.start.line}`}
                             >
-                                <i className={`bi ${icons[item.kind] ?? "bi-dot"} text-[11px] text-gray-500 shrink-0`} />
+                                <i className={`bi ${outlineIcons[item.kind] ?? "bi-dot"} text-[11px] text-gray-500 shrink-0`} />
                                 <span className="truncate flex-1">{item.name}</span>
                                 <span className="text-[10px] text-gray-700 tabular-nums">{item.start.line}</span>
                             </button>
