@@ -1,24 +1,35 @@
 import type { TooltipAlign, TooltipPlacement } from "./Tooltip";
 
-export const placementClasses: Record<TooltipPlacement, Record<TooltipAlign, string>> = {
+export const tooltipGapPx = 6;
+
+// Above every other layer (modals, toasts, menus), so no stacking context can cover it.
+export const tooltipZIndex = 1000;
+
+export interface TooltipAnchor {
+    x: number;
+    y: number;
+}
+
+/** Translation that places the tooltip box relative to its anchor point. */
+export const placementTransforms: Record<TooltipPlacement, Record<TooltipAlign, string>> = {
     top: {
-        center: "bottom-full left-1/2 -translate-x-1/2 mb-1.5",
-        start: "bottom-full left-0 mb-1.5",
-        end: "bottom-full right-0 mb-1.5",
+        center: "translate(-50%, -100%)",
+        start: "translate(0, -100%)",
+        end: "translate(-100%, -100%)",
     },
     bottom: {
-        center: "top-full left-1/2 -translate-x-1/2 mt-1.5",
-        start: "top-full left-0 mt-1.5",
-        end: "top-full right-0 mt-1.5",
+        center: "translate(-50%, 0)",
+        start: "translate(0, 0)",
+        end: "translate(-100%, 0)",
     },
     left: {
-        center: "right-full top-1/2 -translate-y-1/2 mr-1.5",
-        start: "right-full top-1/2 -translate-y-1/2 mr-1.5",
-        end: "right-full top-1/2 -translate-y-1/2 mr-1.5",
+        center: "translate(-100%, -50%)",
+        start: "translate(-100%, -50%)",
+        end: "translate(-100%, -50%)",
     },
     right: {
-        center: "left-full top-1/2 -translate-y-1/2 ml-1.5",
-        start: "left-full top-1/2 -translate-y-1/2 ml-1.5",
-        end: "left-full top-1/2 -translate-y-1/2 ml-1.5",
+        center: "translate(0, -50%)",
+        start: "translate(0, -50%)",
+        end: "translate(0, -50%)",
     },
 };
