@@ -8,12 +8,16 @@ use std::time::{Duration, Instant, SystemTime};
 use log::{debug, warn};
 use serde::{Deserialize, Serialize};
 
+use crate::log_err::LogErr;
 use crate::paths::project_path;
 use crate::platform::{build_path_env, compiler_binary_path, silent_command, strip_npm_env};
 
 const CHECK_TIMEOUT: Duration = Duration::from_secs(15);
 const CORELIB_TIMEOUT: Duration = Duration::from_secs(20);
 const MAX_SOURCE_BYTES: usize = 2 * 1024 * 1024;
+/// Exit code the compiler uses for "could not run" (bad usage, unreadable input), as opposed to "code has errors" (1).
+const EXIT_TOOL_FAILURE: i32 = 2;
+const POLL_INTERVAL: Duration = Duration::from_millis(10);
 
 #[derive(Clone, Serialize, Deserialize)]
 pub struct Diagnostic {
@@ -71,7 +75,7 @@ fn run_process(mut command: Command, stdin: Option<String>, timeout: Duration) -
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    let mut child = command.spawn().map_err(|e| format!("No se pudo ejecutar el compilador: {}", e))?;
+    let mut child = command.spawn().log_err("No se pudo ejecutar el compilador")?;
 
     if let (Some(text), Some(mut pipe)) = (stdin, child.stdin.take()) {
         thread::spawn(move || {
@@ -101,7 +105,7 @@ fn run_process(mut command: Command, stdin: Option<String>, timeout: Duration) -
                 let _ = child.wait();
                 return Err(format!("El compilador no respondió en {} s.", timeout.as_secs()));
             }
-            Ok(None) => thread::sleep(Duration::from_millis(10)),
+            Ok(None) => thread::sleep(POLL_INTERVAL),
             Err(e) => return Err(e.to_string()),
         }
     };
@@ -111,6 +115,16 @@ fn run_process(mut command: Command, stdin: Option<String>, timeout: Duration) -
         stdout: out_reader.join().unwrap_or_default(),
         stderr: err_reader.join().unwrap_or_default(),
     })
+}
+
+/// Text to show when the compiler could not run the check: stderr first, falling back to stdout.
+fn failure_reason(output: &Output) -> String {
+    let reason = if output.stderr.trim().is_empty() { &output.stdout } else { &output.stderr };
+    shorten(reason)
+}
+
+fn combined_output(output: &Output) -> String {
+    shorten(&format!("{}{}", output.stdout, output.stderr))
 }
 
 fn compiler_command(app_handle: &tauri::AppHandle) -> Command {
@@ -132,15 +146,24 @@ fn tool_failure(message: String) -> CheckResult {
 }
 
 fn parse_check(output: &Output) -> CheckResult {
-    if output.code == Some(2) {
-        let reason = if output.stderr.trim().is_empty() { &output.stdout } else { &output.stderr };
-        return tool_failure(shorten(reason));
+    if output.code == Some(EXIT_TOOL_FAILURE) {
+        return tool_failure(failure_reason(output));
     }
 
     match serde_json::from_str::<RawCheck>(output.stdout.trim()) {
         Ok(raw) => CheckResult { ok: raw.ok, diagnostics: raw.diagnostics, tool_error: None },
-        Err(_) => tool_failure(shorten(&format!("{}{}", output.stdout, output.stderr))),
+        Err(_) => tool_failure(combined_output(output)),
     }
+}
+
+/// Command that reads `source` from stdin while resolving paths as if it were `file_path` in the project.
+fn stdin_command(app_handle: &tauri::AppHandle, project_name: &str, file_path: &str) -> (Command, PathBuf) {
+    let project_dir = project_path(app_handle, project_name);
+    let file = project_dir.join(file_path);
+
+    let mut command = compiler_command(app_handle);
+    command.current_dir(&project_dir).arg("--stdin").arg("--stdin-filepath").arg(&file);
+    (command, file)
 }
 
 #[tauri::command]
@@ -154,16 +177,8 @@ pub async fn compiler_check(
         return Ok(tool_failure("El archivo es demasiado grande para comprobarlo mientras escribes.".into()));
     }
 
-    let project_dir = project_path(&app_handle, &project_name);
-    let file = project_dir.join(&file_path);
-
-    let mut command = compiler_command(&app_handle);
-    command
-        .current_dir(&project_dir)
-        .arg("--stdin")
-        .arg("--stdin-filepath")
-        .arg(&file)
-        .arg("--json");
+    let (mut command, file) = stdin_command(&app_handle, &project_name, &file_path);
+    command.arg("--json");
 
     tauri::async_runtime::spawn_blocking(move || {
         let result = match run_process(command, Some(source), CHECK_TIMEOUT) {
@@ -222,19 +237,18 @@ struct RawEmit {
     declarations: Vec<Declaration>,
 }
 
+fn declarations_failure(message: String) -> DeclarationsResult {
+    DeclarationsResult { ok: false, declarations: Vec::new(), tool_error: Some(message) }
+}
+
 fn parse_declarations(output: &Output) -> DeclarationsResult {
-    if output.code == Some(2) {
-        let reason = if output.stderr.trim().is_empty() { &output.stdout } else { &output.stderr };
-        return DeclarationsResult { ok: false, declarations: Vec::new(), tool_error: Some(shorten(reason)) };
+    if output.code == Some(EXIT_TOOL_FAILURE) {
+        return declarations_failure(failure_reason(output));
     }
 
     match serde_json::from_str::<RawEmit>(output.stdout.trim()) {
         Ok(raw) => DeclarationsResult { ok: raw.ok, declarations: raw.declarations, tool_error: None },
-        Err(_) => DeclarationsResult {
-            ok: false,
-            declarations: Vec::new(),
-            tool_error: Some(shorten(&format!("{}{}", output.stdout, output.stderr))),
-        },
+        Err(_) => declarations_failure(combined_output(output)),
     }
 }
 
@@ -246,25 +260,16 @@ pub async fn compiler_declarations(
     source: String,
 ) -> Result<DeclarationsResult, String> {
     if source.len() > MAX_SOURCE_BYTES {
-        return Ok(DeclarationsResult { ok: false, declarations: Vec::new(), tool_error: Some("El archivo es demasiado grande.".into()) });
+        return Ok(declarations_failure("El archivo es demasiado grande.".into()));
     }
 
-    let project_dir = project_path(&app_handle, &project_name);
-    let file = project_dir.join(&file_path);
-
-    let mut command = compiler_command(&app_handle);
-    command
-        .current_dir(&project_dir)
-        .arg("--stdin")
-        .arg("--stdin-filepath")
-        .arg(&file)
-        .arg("--emit")
-        .arg("ast");
+    let (mut command, _) = stdin_command(&app_handle, &project_name, &file_path);
+    command.arg("--emit").arg("ast");
 
     tauri::async_runtime::spawn_blocking(move || {
         Ok(match run_process(command, Some(source), CHECK_TIMEOUT) {
             Ok(output) => parse_declarations(&output),
-            Err(message) => DeclarationsResult { ok: false, declarations: Vec::new(), tool_error: Some(message) },
+            Err(message) => declarations_failure(message),
         })
     })
     .await
@@ -289,13 +294,18 @@ fn stamp(app_handle: &tauri::AppHandle) -> BinaryStamp {
     }
 }
 
+/// The cache holds plain data, so a poisoned lock is still safe to use.
+fn corelib_cache() -> std::sync::MutexGuard<'static, Option<(BinaryStamp, serde_json::Value)>> {
+    CORELIB_CACHE.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
 static CORELIB_CACHE: Mutex<Option<(BinaryStamp, serde_json::Value)>> = Mutex::new(None);
 
 #[tauri::command]
 pub async fn compiler_corelib(app_handle: tauri::AppHandle) -> Result<serde_json::Value, String> {
     let current = stamp(&app_handle);
 
-    if let Some((cached_stamp, value)) = CORELIB_CACHE.lock().unwrap().as_ref() {
+    if let Some((cached_stamp, value)) = corelib_cache().as_ref() {
         if *cached_stamp == current {
             return Ok(value.clone());
         }
@@ -319,7 +329,7 @@ pub async fn compiler_corelib(app_handle: tauri::AppHandle) -> Result<serde_json
         warn!("El vocabulario del compilador no declara 'schema'");
     }
 
-    *CORELIB_CACHE.lock().unwrap() = Some((current, value.clone()));
+    *corelib_cache() = Some((current, value.clone()));
     Ok(value)
 }
 
