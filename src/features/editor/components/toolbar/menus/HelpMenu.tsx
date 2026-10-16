@@ -2,8 +2,7 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { ToolbarButton } from "../ToolbarButton";
 import { MenuOption } from "./MenuOption";
 import { showError } from "../../../../../utils/Dialogs";
-
-const supportServerUrl = "https://discord.gg/mG5CaDvKsk";
+import { supportServerUrl, websiteUrl } from "../../../../../utils/Links";
 
 interface HelpMenuProps {
     isOpen: boolean;
@@ -14,12 +13,12 @@ interface HelpMenuProps {
 }
 
 export const HelpMenu = ({ isOpen, onToggle, onHover, onClose, onOpenShortcuts }: HelpMenuProps) => {
-    const openSupportServer = async () => {
+    const openLink = async (url: string, what: string) => {
         onClose();
         try {
-            await openUrl(supportServerUrl);
+            await openUrl(url);
         } catch (error) {
-            showError("No se pudo abrir el servidor de soporte: " + error);
+            showError(`No se pudo abrir ${what}: ${error}`);
         }
     };
 
@@ -32,8 +31,16 @@ export const HelpMenu = ({ isOpen, onToggle, onHover, onClose, onOpenShortcuts }
                     <MenuOption
                         icon="bi bi-discord"
                         label="Servidor de soporte"
-                        onClick={openSupportServer}
+                        onClick={() => openLink(supportServerUrl, "el servidor de soporte")}
                     />
+                    <MenuOption
+                        icon="bi bi-globe2"
+                        label="Sitio web"
+                        onClick={() => openLink(websiteUrl, "el sitio web")}
+                    />
+
+                    <div className="h-[1px] bg-menu-border my-1 mx-2" />
+
                     <MenuOption
                         icon="bi bi-keyboard"
                         label="Atajos de teclado"
