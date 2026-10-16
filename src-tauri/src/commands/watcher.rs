@@ -19,6 +19,7 @@ use notify_debouncer_full::{new_debouncer, DebounceEventResult, DebouncedEvent, 
 use tauri::Emitter;
 
 use crate::commands::file::build_gitignore_matcher;
+use crate::log_err::LogErr;
 use crate::paths::project_path;
 
 type Watcher = Debouncer<RecommendedWatcher, RecommendedCache>;
@@ -30,6 +31,12 @@ struct ActiveWatch {
 
 #[derive(Default)]
 pub struct WatcherState(Mutex<Option<ActiveWatch>>);
+
+const DEBOUNCE_MS: u64 = 250;
+
+fn lock<T>(mutex: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
 
 const ALWAYS_IGNORED: [&str; 2] = [".git", "node_modules"];
 
@@ -51,12 +58,6 @@ fn collect_dirs(root: &Path) -> Vec<PathBuf> {
         .collect()
 }
 
-/// Paths in a batch that are a real change (created, modified, renamed, removed) and not
-/// ignored. Two traps here, both of which used to make the watcher fire forever:
-///  - reading a file or listing a folder raises access events, so those never count;
-///  - building the .gitignore matcher *reads the .gitignore*, i.e. raises access events itself,
-///    so it is only built when there is a real candidate to check. A batch made only of access
-///    events must end here without touching the disk.
 fn relevant_changes(root: &Path, events: &[DebouncedEvent]) -> Vec<PathBuf> {
     let candidates: Vec<PathBuf> = events
         .iter()
@@ -77,10 +78,10 @@ fn relevant_changes(root: &Path, events: &[DebouncedEvent]) -> Vec<PathBuf> {
 }
 
 fn watch_dir(debouncer: &Arc<Mutex<Watcher>>, watched: &Arc<Mutex<HashSet<PathBuf>>>, dir: PathBuf) {
-    if !watched.lock().unwrap().insert(dir.clone()) {
+    if !lock(watched).insert(dir.clone()) {
         return;
     }
-    if let Err(e) = debouncer.lock().unwrap().watch(&dir, RecursiveMode::NonRecursive) {
+    if let Err(e) = lock(debouncer).watch(&dir, RecursiveMode::NonRecursive) {
         warn!("No se pudo vigilar {:?}: {}", dir, e);
     }
 }
@@ -113,9 +114,9 @@ pub fn watch_project(app_handle: tauri::AppHandle, state: tauri::State<'_, Watch
             for path in &changes {
                 if !path.exists() {
                     // A removed folder loses its OS watch; forget it so it's re-watched if it comes back.
-                    watched.lock().unwrap().retain(|dir| !dir.starts_with(path));
+                    lock(&watched).retain(|dir| !dir.starts_with(path));
                 } else if path.is_dir() {
-                    if let Some(debouncer) = debouncer_slot.lock().unwrap().as_ref() {
+                    if let Some(debouncer) = lock(&debouncer_slot).as_ref() {
                         for dir in collect_dirs(path) {
                             watch_dir(debouncer, &watched, dir);
                         }
@@ -128,9 +129,9 @@ pub fn watch_project(app_handle: tauri::AppHandle, state: tauri::State<'_, Watch
     };
 
     let debouncer = Arc::new(Mutex::new(
-        new_debouncer(Duration::from_millis(250), None, handler).map_err(|e| e.to_string())?,
+        new_debouncer(Duration::from_millis(DEBOUNCE_MS), None, handler).log_err("No se pudo crear el vigilante de ficheros")?,
     ));
-    *debouncer_slot.lock().unwrap() = Some(debouncer.clone());
+    *lock(&debouncer_slot) = Some(debouncer.clone());
 
     for dir in collect_dirs(&root) {
         watch_dir(&debouncer, &watched, dir);
@@ -138,13 +139,13 @@ pub fn watch_project(app_handle: tauri::AppHandle, state: tauri::State<'_, Watch
 
     info!("Vigilando cambios en el proyecto '{}'", project_name);
     // Replacing the previous watch drops (and so stops) it.
-    *state.0.lock().unwrap() = Some(ActiveWatch { _debouncer: debouncer });
+    *lock(&state.0) = Some(ActiveWatch { _debouncer: debouncer });
     Ok(())
 }
 
 #[tauri::command]
 pub fn unwatch_project(state: tauri::State<'_, WatcherState>) {
-    *state.0.lock().unwrap() = None;
+    *lock(&state.0) = None;
 }
 
 #[cfg(test)]
@@ -195,8 +196,6 @@ mod tests {
 
     #[test]
     fn reading_files_does_not_produce_change_events() {
-        // Regression: refreshing the tree reads the folder and its .gitignore. Those reads used
-        // to be reported as changes, which triggered another refresh, endlessly.
         let root = temp_project("reads");
         std::fs::write(root.join(".gitignore"), "node_modules\n").unwrap();
 
@@ -225,8 +224,6 @@ mod tests {
 
     #[test]
     fn processing_batches_does_not_feed_back_into_the_watcher() {
-        // Regression: the handler read the .gitignore on every batch, which raised access events,
-        // which produced another batch, and so on without end (seen with `nano .gitignore`).
         let root = temp_project("feedback");
         std::fs::write(root.join(".gitignore"), "node_modules\n").unwrap();
 
@@ -237,7 +234,6 @@ mod tests {
         .unwrap();
         debouncer.watch(&root, RecursiveMode::NonRecursive).unwrap();
 
-        // One real change to start things off.
         std::fs::write(root.join("index.chord"), "hola").unwrap();
 
         let mut batches = 0;

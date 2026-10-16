@@ -2,6 +2,8 @@ use serde::Serialize;
 use std::sync::Mutex;
 use sysinfo::System;
 
+const BYTES_PER_MB: f64 = 1024.0 * 1024.0;
+
 #[derive(Serialize)]
 pub struct SystemStats {
     cpu_percent: f32,
@@ -12,13 +14,13 @@ pub struct SystemStats {
 
 #[tauri::command]
 pub fn get_system_stats(state: tauri::State<Mutex<System>>) -> SystemStats {
-    let mut sys = state.lock().unwrap();
+    let mut sys = state.lock().unwrap_or_else(|poisoned| poisoned.into_inner());
     sys.refresh_cpu_usage();
     sys.refresh_memory();
 
     let cpu_percent = sys.global_cpu_usage();
-    let ram_used_mb = sys.used_memory() as f64 / 1024.0 / 1024.0;
-    let ram_total_mb = sys.total_memory() as f64 / 1024.0 / 1024.0;
+    let ram_used_mb = sys.used_memory() as f64 / BYTES_PER_MB;
+    let ram_total_mb = sys.total_memory() as f64 / BYTES_PER_MB;
     let ram_percent = if ram_total_mb > 0.0 {
         (ram_used_mb / ram_total_mb * 100.0) as f32
     } else {

@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use ignore::gitignore::{Gitignore, GitignoreBuilder};
@@ -53,13 +53,78 @@ fn to_relative(file: &Path, root: &str) -> String {
 pub(crate) fn build_gitignore_matcher(root_path: &Path) -> Result<Gitignore, String> {
     let mut builder = GitignoreBuilder::new(root_path);
 
-    if let Ok(contents) = fs::read_to_string(root_path.join(".gitignore")) {
+    if let Ok(contents) = fs::read_to_string(root_path.join(GITIGNORE_FILE)) {
         for line in contents.lines() {
             let _ = builder.add_line(None, &anchor_to_root(line));
         }
     }
 
     builder.build().log_err("Error al construir el matcher de gitignore")
+}
+
+/// Directories that are never part of the project tree shown to the user.
+const GIT_DIR: &str = ".git";
+const GITIGNORE_FILE: &str = ".gitignore";
+const DEPENDENCIES_DIR: &str = "node_modules";
+
+fn scan_dir(path: &Path, root_str: &str, matcher: &Gitignore) -> Vec<ProjectFile> {
+    let mut files = Vec::new();
+
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            let file_path = entry.path();
+            let file_name = entry.file_name().to_string_lossy().to_string();
+
+            if file_name == GITIGNORE_FILE || file_name == GIT_DIR {
+                continue;
+            }
+
+            let is_dir = file_path.is_dir();
+            if matcher.matched(&file_path, is_dir).is_ignore() {
+                continue;
+            }
+
+            files.push(ProjectFile {
+                name: file_name,
+                is_dir,
+                relative_path: to_relative(&file_path, root_str),
+                children: is_dir.then(|| scan_dir(&file_path, root_str, matcher)),
+            });
+        }
+    }
+
+    files.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
+    files
+}
+
+/// Files that the `.gitignore` hides from the tree, found at any depth (folders are walked, never listed).
+fn collect_hidden(path: &Path, root_str: &str, matcher: &Gitignore, out: &mut Vec<ProjectFile>) {
+    let Ok(entries) = fs::read_dir(path) else { return };
+
+    for entry in entries.flatten() {
+        let file_path = entry.path();
+        let file_name = entry.file_name().to_string_lossy().to_string();
+
+        if file_name == GITIGNORE_FILE || file_name == GIT_DIR || file_name == DEPENDENCIES_DIR {
+            continue;
+        }
+
+        if file_path.is_dir() {
+            collect_hidden(&file_path, root_str, matcher, out);
+        } else if matcher.matched(&file_path, false).is_ignore() {
+            out.push(ProjectFile {
+                name: file_name,
+                is_dir: false,
+                relative_path: to_relative(&file_path, root_str),
+                children: None,
+            });
+        }
+    }
+}
+
+/// Absolute path of `relative` inside the project `project_name`.
+fn item_path(app_handle: &tauri::AppHandle, project_name: &str, relative: impl AsRef<Path>) -> PathBuf {
+    project_path(app_handle, project_name).join(relative)
 }
 
 #[tauri::command]
@@ -69,42 +134,6 @@ pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<
 
     let root_str = root_path.to_string_lossy().to_string();
     let matcher = build_gitignore_matcher(&root_path)?;
-
-    fn scan_dir(path: &Path, root_str: &str, matcher: &Gitignore) -> Vec<ProjectFile> {
-        let mut files = Vec::new();
-
-        if let Ok(entries) = std::fs::read_dir(path) {
-            for entry in entries.flatten() {
-                let file_path = entry.path();
-                let file_name = entry.file_name().to_string_lossy().to_string();
-
-                if file_name == ".gitignore" || file_name == ".git" {
-                    continue;
-                }
-
-                if matcher.matched(&file_path, file_path.is_dir()).is_ignore() {
-                    continue;
-                }
-
-                let is_dir = file_path.is_dir();
-                let relative_path = to_relative(&file_path, root_str);
-
-                files.push(ProjectFile {
-                    name: file_name,
-                    is_dir,
-                    relative_path,
-                    children: if is_dir {
-                        Some(scan_dir(&file_path, root_str, matcher))
-                    } else {
-                        None
-                    },
-                });
-            }
-        }
-
-        files.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
-        files
-    }
 
     let result = scan_dir(&root_path, &root_str, &matcher);
     info!("Escaneo completado con éxito para '{}'", name);
@@ -119,36 +148,6 @@ pub fn read_hidden_files(app_handle: tauri::AppHandle, name: String) -> Result<V
     let root_str = root_path.to_string_lossy().to_string();
     let matcher = build_gitignore_matcher(&root_path)?;
 
-    fn collect_hidden(path: &Path, root_str: &str, matcher: &Gitignore, out: &mut Vec<ProjectFile>) {
-        if let Ok(entries) = std::fs::read_dir(path) {
-            for entry in entries.flatten() {
-                let file_path = entry.path();
-                let file_name = entry.file_name().to_string_lossy().to_string();
-
-                if file_name == ".gitignore" || file_name == ".git" || file_name == "node_modules" {
-                    continue;
-                }
-
-                let is_dir = file_path.is_dir();
-
-                if !is_dir && matcher.matched(&file_path, false).is_ignore() {
-                    let relative_path = to_relative(&file_path, root_str);
-
-                    out.push(ProjectFile {
-                        name: file_name,
-                        is_dir: false,
-                        relative_path,
-                        children: None,
-                    });
-                }
-
-                if is_dir {
-                    collect_hidden(&file_path, root_str, matcher, out);
-                }
-            }
-        }
-    }
-
     let mut hidden = Vec::new();
     collect_hidden(&root_path, &root_str, &matcher, &mut hidden);
     hidden.sort_by(|a, b| a.name.cmp(&b.name));
@@ -158,8 +157,7 @@ pub fn read_hidden_files(app_handle: tauri::AppHandle, name: String) -> Result<V
 
 #[tauri::command]
 pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_, DiscordState>, project_name: String, file_path: String) -> Result<String, String> {
-    let mut path = project_path(&app_handle, &project_name);
-    path.push(&file_path);
+    let path = item_path(&app_handle, &project_name, &file_path);
 
     let file_name = Path::new(&file_path)
         .file_name()
@@ -178,8 +176,7 @@ pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_,
 
 #[tauri::command]
 pub fn save_file_content(app_handle: tauri::AppHandle, project_name: String, file_path: String, content: String) -> Result<String, String> {
-    let mut path = project_path(&app_handle, &project_name);
-    path.push(&file_path);
+    let path = item_path(&app_handle, &project_name, &file_path);
 
     fs::write(&path, content).log_err(&format!("Error al guardar archivo {:?}", path))?;
 
@@ -189,9 +186,7 @@ pub fn save_file_content(app_handle: tauri::AppHandle, project_name: String, fil
 
 #[tauri::command]
 pub fn create_new_file(app_handle: tauri::AppHandle, project_name: String, parent_path: String, name: String) -> Result<String, String> {
-    let mut path = project_path(&app_handle, &project_name);
-    path.push(parent_path);
-    path.push(&name);
+    let path = item_path(&app_handle, &project_name, Path::new(&parent_path).join(&name));
 
     if path.exists() {
         warn!("Intento de crear archivo ya existente: {:?}", path);
@@ -206,9 +201,7 @@ pub fn create_new_file(app_handle: tauri::AppHandle, project_name: String, paren
 
 #[tauri::command]
 pub fn create_new_folder(app_handle: tauri::AppHandle, project_name: String, parent_path: String, name: String) -> Result<String, String> {
-    let mut path = project_path(&app_handle, &project_name);
-    path.push(parent_path);
-    path.push(&name);
+    let path = item_path(&app_handle, &project_name, Path::new(&parent_path).join(&name));
 
     if path.exists() {
         warn!("Intento de crear carpeta ya existente: {:?}", path);
@@ -223,8 +216,7 @@ pub fn create_new_folder(app_handle: tauri::AppHandle, project_name: String, par
 
 #[tauri::command]
 pub fn delete_item(app_handle: tauri::AppHandle, project_name: String, path: String) -> Result<String, String> {
-    let mut full_path = project_path(&app_handle, &project_name);
-    full_path.push(&path);
+    let full_path = item_path(&app_handle, &project_name, &path);
 
     if !full_path.exists() {
         error!("Intento de borrar elemento inexistente: {:?}", full_path);
