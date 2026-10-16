@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Button, Title, Label, Modal, Tooltip, WindowControls, controlsOnLeft } from "../components/ui";
+import { Button, Title, Label, Logo, Modal, Tooltip, WindowControls, controlsOnLeft } from "../components/ui";
 import { ProjectCard, CreatingProjectCard, useDashboard } from "../features/dashboard";
 import { formatRelativeTime } from "../utils/Time";
 import { SystemMonitorRings } from "../features/system-monitor";
@@ -41,7 +41,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
             />
 
             <div data-tauri-drag-region className="flex flex-col flex-1 min-h-0 px-12 pt-12">
-            <Title>DisChord Code Studio</Title>
+            <Title icon={<Logo size={32} />}>DisChord Code Studio</Title>
 
             <div className="flex flex-col flex-1 min-h-0 max-w-2xl w-full">
                 <div className="flex justify-between items-end mb-4 shrink-0">
