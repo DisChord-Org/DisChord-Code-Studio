@@ -4,6 +4,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import App from "./App";
 import { startShortcuts } from "./features/shortcuts";
 import { installMiddleClickGuard } from "./utils/MiddleClick";
+import { forcedPlatform } from "./utils/Platform";
 import './index.css';
 import "bootstrap-icons/font/bootstrap-icons.css";
 
@@ -24,7 +25,7 @@ syncMaximized();
 appWindow.onResized(syncMaximized).catch(() => {});
 
 invoke<string>("get_platform")
-    .then((platform) => document.documentElement.setAttribute("data-platform", platform))
+    .then((platform) => document.documentElement.setAttribute("data-platform", forcedPlatform ?? platform))
     .catch(console.error);
 
 ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(

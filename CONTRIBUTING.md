@@ -81,6 +81,16 @@ Resto de carpetas:
 - Las constantes que son tablas de mapeo o listas de opciones (objetos `Record<K, V>`, arrays de `{ value, label, ... }` usados para renderizar opciones, diccionarios de etiquetas, etc.) no van inline en el componente — se extraen a un fichero hermano `<Componente>.constants.ts` junto al fichero que las usa (p. ej. `EditorSettings.tsx` + `EditorSettings.constants.ts`). Constantes escalares sueltas (un número de tamaño, un intervalo de polling, una regex) se quedan donde están, solo renombradas.
 - Esto no aplica al backend Rust: ahí las constantes van en `SCREAMING_SNAKE_CASE` porque es la convención obligatoria del lenguaje (el compilador avisa si no se sigue).
 
+## Ver la interfaz de otro sistema
+
+Para comprobar desde Linux cómo se ve la interfaz en macOS (controles de ventana a la izquierda, bordes redondeados, atajos con ⌘):
+
+```bash
+VITE_FORCE_PLATFORM=macos pnpm tauri dev
+```
+
+Solo cambia el aspecto (`isMac`, el atributo `data-platform`); lo que depende del sistema real, como el tamaño de las ventanas o las rutas, sigue siendo el de tu máquina, y se ignora en las versiones de producción. No sustituye a probar en un Mac: el Dock, la barra de menús o el comportamiento de WebKit allí no se ven así.
+
 ## Commits
 
 - Mensajes en **inglés**, sin trailer de co-autoría ni crédito a herramientas/IA.
