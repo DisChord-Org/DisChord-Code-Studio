@@ -1,20 +1,26 @@
 use std::fs;
 use std::path::Path;
-use std::process::{ChildStderr, ChildStdout, Command, Stdio};
+use std::process::{Child, ChildStderr, ChildStdout, Command, Stdio};
+use std::sync::{Arc, Mutex, MutexGuard};
 use std::io::{BufRead, BufReader};
 use std::thread::{self, JoinHandle};
+use std::time::Duration;
 
 use tauri::{AppHandle, Manager, State};
 use log::{info, error, warn};
 
 use crate::ChildProcessState;
 use crate::paths::project_path;
-#[cfg(target_os = "windows")]
-use crate::platform::silent_command;
-use crate::platform::{resolve_chord_command, strip_npm_env, bin_dir, pnpm_command, build_path_env};
+use crate::platform::{silent_command, resolve_chord_command, strip_npm_env, bin_dir, pnpm_command, build_path_env};
 use crate::log_err::LogErr;
 use crate::commands::compiler::check_project;
 use crate::output::{emit_line, emit_located_line, emit_run_end, LineKind, Location, RunStatus};
+
+const ENTRY_POINT: &str = "src/index.chord";
+const NODE_OPTIONS: &str = "--experimental-default-type=module";
+const PNPM_INSTALL_ATTEMPTS: u32 = 3;
+const PNPM_RETRY_DELAY: Duration = Duration::from_secs(2);
+const KILL_GRACE_PERIOD: Duration = Duration::from_secs(2);
 
 /// Terminates a project run together with everything it started. `chord` launches the bot through other
 /// processes (a shell, node), so killing only `chord` left those alive and they piled up in memory.
@@ -38,7 +44,7 @@ pub fn kill_run(mut child: std::process::Child) {
         // Politely first, so the bot can close its connections; whatever is still alive soon after is killed.
         unsafe { libc::killpg(group, libc::SIGTERM) };
         thread::spawn(move || {
-            thread::sleep(std::time::Duration::from_secs(2));
+            thread::sleep(KILL_GRACE_PERIOD);
             unsafe { libc::killpg(group, libc::SIGKILL) };
         });
     }
@@ -52,27 +58,18 @@ pub fn kill_run(mut child: std::process::Child) {
 /// Streams a child process' stdout/stderr into the "terminal-output" event, line by line, tagged by stream.
 /// Returns the two reader threads so the caller can `.join()` them before deciding what to do once the process is done.
 fn stream_to_terminal(app_handle: &AppHandle, stdout: ChildStdout, stderr: ChildStderr) -> (JoinHandle<()>, JoinHandle<()>) {
-    let handle_out = app_handle.clone();
-    let stdout_thread = thread::spawn(move || {
-        let reader = BufReader::new(stdout);
-        for line in reader.lines() {
-            if let Ok(l) = line {
-                emit_line(&handle_out, LineKind::Stdout, l);
-            }
-        }
-    });
+    (
+        stream_lines(app_handle.clone(), stdout, LineKind::Stdout),
+        stream_lines(app_handle.clone(), stderr, LineKind::Stderr),
+    )
+}
 
-    let handle_err = app_handle.clone();
-    let stderr_thread = thread::spawn(move || {
-        let reader = BufReader::new(stderr);
-        for line in reader.lines() {
-            if let Ok(l) = line {
-                emit_line(&handle_err, LineKind::Stderr, l);
-            }
+fn stream_lines(app_handle: AppHandle, pipe: impl std::io::Read + Send + 'static, kind: LineKind) -> JoinHandle<()> {
+    thread::spawn(move || {
+        for line in BufReader::new(pipe).lines().flatten() {
+            emit_line(&app_handle, kind, line);
         }
-    });
-
-    (stdout_thread, stderr_thread)
+    })
 }
 
 fn declared_dependency_names(package_json_path: &Path) -> Vec<String> {
@@ -111,8 +108,11 @@ fn run_pnpm_install_once(app_handle: &tauri::AppHandle, project_dir: &Path) -> R
 
     let mut child = command.spawn().log_err("No se pudo ejecutar 'pnpm install'")?;
 
-    let stdout = child.stdout.take().expect("Fallo al capturar stdout de pnpm install");
-    let stderr = child.stderr.take().expect("Fallo al capturar stderr de pnpm install");
+    let (Some(stdout), Some(stderr)) = (child.stdout.take(), child.stderr.take()) else {
+        let _ = child.kill();
+        let _ = child.wait();
+        return Err("Fallo al capturar la salida de 'pnpm install'".into());
+    };
 
     let (stdout_thread, stderr_thread) = stream_to_terminal(app_handle, stdout, stderr);
     let _ = stdout_thread.join();
@@ -125,8 +125,6 @@ fn run_pnpm_install_once(app_handle: &tauri::AppHandle, project_dir: &Path) -> R
 
     Ok(())
 }
-
-const PNPM_INSTALL_ATTEMPTS: u32 = 3;
 
 fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Path) -> Result<(), String> {
     if !project_dir.join("package.json").exists() || dependencies_satisfied(project_dir) {
@@ -151,7 +149,7 @@ fn ensure_dependencies_installed(app_handle: &tauri::AppHandle, project_dir: &Pa
                         LineKind::Warning,
                         format!("'pnpm install' falló, reintentando ({}/{})...", attempt, PNPM_INSTALL_ATTEMPTS),
                     );
-                    thread::sleep(std::time::Duration::from_secs(2));
+                    thread::sleep(PNPM_RETRY_DELAY);
                 }
             }
         }
@@ -207,14 +205,58 @@ fn report_compile_errors(app_handle: &tauri::AppHandle, project_dir: &Path) -> b
     true
 }
 
+fn lock_run(state: &Mutex<Option<Child>>) -> MutexGuard<'_, Option<Child>> {
+    // The slot only holds an optional child, so a poisoned lock is still safe to use.
+    state.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+}
+
+fn chord_run_command(app_handle: &AppHandle, project_dir: &Path) -> Command {
+    let mut command = resolve_chord_command(app_handle);
+    command.current_dir(project_dir);
+    command.env("NODE_OPTIONS", NODE_OPTIONS);
+    strip_npm_env(&mut command);
+
+    if let Some(path) = build_path_env(app_handle) {
+        command.env("PATH", path);
+    }
+
+    command.arg("run").arg(ENTRY_POINT).stdout(Stdio::piped()).stderr(Stdio::piped());
+
+    // Own process group, so `kill_run` can take down everything the run started.
+    #[cfg(unix)]
+    {
+        use std::os::unix::process::CommandExt;
+        command.process_group(0);
+    }
+
+    command
+}
+
+/// Waits for the run's output to end, then reports how it finished unless it was stopped meanwhile.
+fn watch_run(app_handle: AppHandle, run: Arc<Mutex<Option<Child>>>, pid: u32, stdout: ChildStdout, stderr: ChildStderr) {
+    thread::spawn(move || {
+        let (stdout_thread, stderr_thread) = stream_to_terminal(&app_handle, stdout, stderr);
+        let _ = stdout_thread.join();
+        let _ = stderr_thread.join();
+
+        // A stop takes the child out of the slot first, so only a run that ended by itself reports here.
+        if let Some(mut child) = lock_run(&run).take() {
+            let status = match child.wait() {
+                Ok(exit) if exit.success() => RunStatus::Finished,
+                Ok(exit) => RunStatus::Failed { code: exit.code() },
+                Err(_) => RunStatus::Failed { code: None },
+            };
+            info!("El proceso hijo {} ha finalizado", pid);
+            emit_run_end(&app_handle, status);
+        }
+    });
+}
+
 #[tauri::command]
 pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>, project_name: String) -> Result<(), String> {
     let project_dir = project_path(&app_handle, &project_name);
 
-    let mut chord_file = project_dir.clone();
-    chord_file.push("src");
-    chord_file.push("index.chord");
-
+    let chord_file = project_dir.join(ENTRY_POINT);
     if !chord_file.exists() {
         error!("Fallo al ejecutar: No existe index.chord en {:?}", chord_file);
         return Err(format!("No se encontró el archivo: {:?}", chord_file));
@@ -229,67 +271,27 @@ pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPro
         return Ok(());
     }
 
-    let mut command = resolve_chord_command(&app_handle);
-    command.current_dir(&project_dir);
-    command.env("NODE_OPTIONS", "--experimental-default-type=module");
-    strip_npm_env(&mut command);
-
-    if let Some(path) = build_path_env(&app_handle) {
-        command.env("PATH", path);
-    }
-
-    command.arg("run")
-        .arg("src/index.chord")
-        .stdout(Stdio::piped())
-        .stderr(Stdio::piped());
-
-    #[cfg(unix)]
-    {
-        use std::os::unix::process::CommandExt;
-        command.process_group(0);
-    }
-
-    let mut child = command.spawn().log_err("No se pudo spawnear el proceso 'chord'")?;
+    let mut child = chord_run_command(&app_handle, &project_dir)
+        .spawn()
+        .log_err("No se pudo spawnear el proceso 'chord'")?;
 
     let pid = child.id();
     info!("Proceso 'chord' iniciado con PID: {}", pid);
 
-    let stdout = child.stdout.take().expect("Fallo al capturar stdout");
-    let stderr = child.stderr.take().expect("Fallo al capturar stderr");
+    let (Some(stdout), Some(stderr)) = (child.stdout.take(), child.stderr.take()) else {
+        kill_run(child);
+        return Err("Fallo al capturar la salida del proceso 'chord'".into());
+    };
 
-    {
-        let mut lock = state.0.lock().unwrap();
-        *lock = Some(child);
-    }
-
-    let state_arc = state.0.clone();
-    let handle_clone = app_handle.clone();
-
-    thread::spawn(move || {
-        let (stdout_thread, stderr_thread) = stream_to_terminal(&handle_clone, stdout, stderr);
-        let _ = stdout_thread.join();
-        let _ = stderr_thread.join();
-
-        let mut lock = state_arc.lock().unwrap();
-
-        if let Some(mut child) = lock.take() {
-            let status = match child.wait() {
-                Ok(exit) if exit.success() => RunStatus::Finished,
-                Ok(exit) => RunStatus::Failed { code: exit.code() },
-                Err(_) => RunStatus::Failed { code: None },
-            };
-            info!("El proceso hijo {} ha finalizado", pid);
-            emit_run_end(&handle_clone, status);
-        }
-        *lock = None;
-    });
+    *lock_run(&state.0) = Some(child);
+    watch_run(app_handle, state.0.clone(), pid, stdout, stderr);
 
     Ok(())
 }
 
 #[tauri::command]
 pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>) -> Result<String, String> {
-    let mut lock = state.0.lock().unwrap();
+    let mut lock = lock_run(&state.0);
     if let Some(child) = lock.take() {
         let pid = child.id();
         info!("Solicitud de detención para proceso PID: {}", pid);
@@ -307,11 +309,11 @@ pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildPr
 
 fn open_path_in_explorer(path: &Path) -> Result<(), String> {
     let cmd = if cfg!(target_os = "windows") {
-        Command::new("explorer").arg(path).spawn()
+        silent_command("explorer").arg(path).spawn()
     } else if cfg!(target_os = "macos") {
-        Command::new("open").arg(path).spawn()
+        silent_command("open").arg(path).spawn()
     } else {
-        Command::new("xdg-open").arg(path).spawn()
+        silent_command("xdg-open").arg(path).spawn()
     };
 
     cmd.log_err("Fallo al abrir el explorador")?;
