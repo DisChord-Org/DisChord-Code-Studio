@@ -1,5 +1,7 @@
 import { ToolbarButton } from "../ToolbarButton";
 import { MenuOption } from "./MenuOption";
+import { MenuPanel } from "./MenuPanel";
+import { MenuDivider } from "./MenuDivider";
 import { useShortcutLabel } from "../../../../shortcuts";
 
 interface FileMenuProps {
@@ -19,7 +21,7 @@ export const FileMenu = ({ isOpen, onToggle, onHover, onSave, onOpenExplorer, on
             <ToolbarButton label="Archivo" onClick={onToggle} />
 
             {isOpen && (
-                <div className="absolute top-full left-0 mt-1 w-48 bg-border border border-menu-border rounded-lg shadow-2xl py-1 z-[200] animate-in fade-in zoom-in-95 duration-100">
+                <MenuPanel className="top-full left-0 mt-1 w-48 z-[200]">
                     <MenuOption
                         icon="bi bi-save"
                         label="Guardar"
@@ -31,14 +33,14 @@ export const FileMenu = ({ isOpen, onToggle, onHover, onSave, onOpenExplorer, on
                         label="Abrir en explorador"
                         onClick={onOpenExplorer}
                     />
-                    <div className="h-[1px] bg-menu-border my-1 mx-2" />
+                    <MenuDivider />
                     <MenuOption
                         icon="bi bi-box-arrow-right"
                         label="Salir"
                         onClick={onExit}
                         variant="danger"
                     />
-                </div>
+                </MenuPanel>
             )}
         </div>
     );

@@ -9,23 +9,26 @@ import { HelpMenu } from "./menus/HelpMenu";
 import { ProjectSwitcher } from "./menus/ProjectSwitcher";
 import { WindowControls, BackButton, Logo, controlsOnLeft } from "../../../../components/ui";
 import type { ProjectSummary } from "../../../dashboard";
-import type { FileNode } from "../../types";
+import type { FileNode, OpenHiddenFileDetail } from "../../types";
 import { showError } from "../../../../utils/Dialogs";
 
 const appWindow = getCurrentWindow();
 
-type MenuKey = "file" | "edit" | "run" | "help" | "project" | null;
+type BarMenuKey = "file" | "edit" | "run" | "help";
+type MenuKey = BarMenuKey | "project" | null;
 
-export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject, onOpenPackages, onOpenShortcuts, onToggleTerminal }: {
-    projectName: string,
-    onBack: () => void,
-    onRun: () => void,
-    isRunning: boolean,
-    onSwitchProject?: (name: string) => void,
-    onOpenPackages: () => void,
-    onOpenShortcuts: () => void,
-    onToggleTerminal?: () => void
-}) => {
+interface ToolbarProps {
+    projectName: string;
+    onBack: () => void;
+    onRun: () => void;
+    isRunning: boolean;
+    onSwitchProject?: (name: string) => void;
+    onOpenPackages: () => void;
+    onOpenShortcuts: () => void;
+    onToggleTerminal?: () => void;
+}
+
+export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject, onOpenPackages, onOpenShortcuts, onToggleTerminal }: ToolbarProps) => {
     const [openMenu, setOpenMenu] = useState<MenuKey>(null);
     const menuBarRef = useRef<HTMLDivElement>(null);
     const projectMenuRef = useRef<HTMLDivElement>(null);
@@ -48,7 +51,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
         setOpenMenu((current) => (current === key ? null : key));
     };
 
-    const hoverMenu = (key: "file" | "edit" | "run" | "help") => {
+    const hoverMenu = (key: BarMenuKey) => {
         if (openMenu !== null && openMenu !== "project" && openMenu !== key) setOpenMenu(key);
     };
 
@@ -91,7 +94,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
     };
 
     const handleOpenHiddenFile = (node: FileNode) => {
-        window.dispatchEvent(new CustomEvent("open-hidden-file", {
+        window.dispatchEvent(new CustomEvent<OpenHiddenFileDetail>("open-hidden-file", {
             detail: {
                 name: node.name,
                 relative_path: node.relative_path

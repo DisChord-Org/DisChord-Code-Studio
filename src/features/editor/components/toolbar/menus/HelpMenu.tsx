@@ -2,7 +2,9 @@ import { openUrl } from "@tauri-apps/plugin-opener";
 import { ToolbarButton } from "../ToolbarButton";
 import { MenuOption } from "./MenuOption";
 import { showError } from "../../../../../utils/Dialogs";
-import { supportServerUrl, websiteUrl } from "../../../../../utils/Links";
+import { MenuPanel } from "./MenuPanel";
+import { MenuDivider } from "./MenuDivider";
+import { helpLinks } from "./HelpMenu.constants";
 
 interface HelpMenuProps {
     isOpen: boolean;
@@ -27,19 +29,12 @@ export const HelpMenu = ({ isOpen, onToggle, onHover, onClose, onOpenShortcuts }
             <ToolbarButton label="Ayuda" onClick={onToggle} />
 
             {isOpen && (
-                <div className="absolute top-full left-0 mt-1 w-52 bg-border border border-menu-border rounded-lg shadow-2xl py-1 z-[200] animate-in fade-in zoom-in-95 duration-100">
-                    <MenuOption
-                        icon="bi bi-discord"
-                        label="Servidor de soporte"
-                        onClick={() => openLink(supportServerUrl, "el servidor de soporte")}
-                    />
-                    <MenuOption
-                        icon="bi bi-globe2"
-                        label="Sitio web"
-                        onClick={() => openLink(websiteUrl, "el sitio web")}
-                    />
+                <MenuPanel className="top-full left-0 mt-1 w-52 z-[200]">
+                    {helpLinks.map(({ icon, label, url, what }) => (
+                        <MenuOption key={url} icon={icon} label={label} onClick={() => openLink(url, what)} />
+                    ))}
 
-                    <div className="h-[1px] bg-menu-border my-1 mx-2" />
+                    <MenuDivider />
 
                     <MenuOption
                         icon="bi bi-keyboard"
@@ -49,7 +44,7 @@ export const HelpMenu = ({ isOpen, onToggle, onHover, onClose, onOpenShortcuts }
                             onOpenShortcuts();
                         }}
                     />
-                </div>
+                </MenuPanel>
             )}
         </div>
     );

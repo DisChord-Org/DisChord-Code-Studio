@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { MenuPanel } from "./MenuPanel";
+import { MenuDivider } from "./MenuDivider";
 import { FileItem } from "../../sidebar/FileItem";
 import { SidebarContext, type SidebarContextValue } from "../../sidebar/SidebarContext";
 import type { FileNode } from "../../../types";
@@ -72,7 +74,7 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
             </button>
 
             {isOpen && (
-                <div className="absolute top-0 left-full ml-1 w-56 bg-border border border-menu-border rounded-lg shadow-2xl py-1 z-[210] animate-in fade-in zoom-in-95 duration-100">
+                <MenuPanel className="top-0 left-full ml-1 w-56 z-[210]">
                     <button
                         onClick={() => onFileOpen(gitignoreNode)}
                         className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 text-accent font-semibold hover:bg-accent hover:text-white transition-colors"
@@ -81,7 +83,7 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
                         .gitignore
                     </button>
 
-                    <div className="h-[1px] bg-menu-border my-1 mx-2" />
+                    <MenuDivider />
 
                     <div className="custom-scrollbar max-h-56 overflow-y-auto">
                         {loading ? (
@@ -96,7 +98,7 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
                             </SidebarContext.Provider>
                         )}
                     </div>
-                </div>
+                </MenuPanel>
             )}
         </div>
     );

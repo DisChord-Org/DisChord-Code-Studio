@@ -1,4 +1,6 @@
 import { MenuOption } from "./MenuOption";
+import { MenuPanel } from "./MenuPanel";
+import { MenuDivider } from "./MenuDivider";
 import { formatRelativeTime } from "../../../../../utils/Time";
 import { Label } from "../../../../../components/ui";
 import type { ProjectSummary } from "../../../../dashboard";
@@ -37,7 +39,7 @@ export const ProjectSwitcher = ({
         </button>
 
         {isOpen && (
-            <div className="absolute top-full left-1/2 -translate-x-1/2 mt-1 w-64 bg-border border border-menu-border rounded-lg shadow-2xl py-1 z-[200] animate-in fade-in zoom-in-95 duration-100">
+            <MenuPanel className="top-full left-1/2 -translate-x-1/2 mt-1 w-64 z-[200]">
                 <div className="px-3 py-1.5">
                     <Label>Cambiar de proyecto</Label>
                 </div>
@@ -75,13 +77,13 @@ export const ProjectSwitcher = ({
                     )}
                 </div>
 
-                <div className="h-[1px] bg-menu-border my-1 mx-0" />
+                <MenuDivider className="mx-0" />
                 <MenuOption
                     icon="bi bi-grid-3x3-gap-fill"
                     label="Volver al Dashboard"
                     onClick={onBackToDashboard}
                 />
-            </div>
+            </MenuPanel>
         )}
     </>
 );
