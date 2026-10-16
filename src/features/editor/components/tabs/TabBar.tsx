@@ -39,7 +39,12 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                         {tab.kind === "file" && <FileIcon name={tab.name} size={13} />}
                         {tab.kind === "packages" && <i className="bi bi-box-seam-fill text-[11px] shrink-0"></i>}
                         {tab.kind === "shortcuts" && <i className="bi bi-keyboard-fill text-[11px] shrink-0"></i>}
-                        <span className={`truncate flex-1 ${tab.kind === "file" && !tab.isPinned ? "underline decoration-dotted decoration-white/30 underline-offset-4" : ""}`}>{tab.name}</span>
+                        {/* A preview tab (opened, never edited) has a dotted line under its name. It is a border and not a text
+                            decoration: an underline pushed below the text was cut off by the truncation on Windows,
+                            where the fonts leave less room under the baseline. */}
+                        <span className="truncate flex-1 leading-5">
+                            <span className={tab.kind === "file" && !tab.isPinned ? "border-b border-dotted border-white/40" : ""}>{tab.name}</span>
+                        </span>
 
                         <button
                             onClick={(e) => { e.stopPropagation(); onClose(tab.relative_path); }}
