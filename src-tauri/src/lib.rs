@@ -14,6 +14,9 @@ use log::{info, error, warn};
 use sysinfo::System;
 use commands::updater::UpdateProgress;
 
+const DISCORD_APP_ID: &str = "1481205770489167973";
+const MAIN_WINDOW_LABEL: &str = "main";
+
 pub struct ChildProcessState(pub Arc<Mutex<Option<Child>>>);
 
 pub struct DiscordState {
@@ -24,7 +27,7 @@ pub struct UpdateState(pub Arc<Mutex<HashMap<String, UpdateProgress>>>);
 
 fn spawn_discord_rpc(client_arc: Arc<Mutex<Option<DiscordIpcClient>>>) {
     std::thread::spawn(move || {
-        let mut client = DiscordIpcClient::new("1481205770489167973");
+        let mut client = DiscordIpcClient::new(DISCORD_APP_ID);
 
         info!("Intentando conectar con Discord RPC");
 
@@ -70,7 +73,7 @@ pub fn run() {
 
             info!("DisChord IDE iniciado");
 
-            if let Some(window) = app.get_webview_window("main") {
+            if let Some(window) = app.get_webview_window(MAIN_WINDOW_LABEL) {
                 let size = commands::window_size::compute_home_window_size(window.current_monitor().ok().flatten());
                 let _ = window.set_resizable(true);
                 let _ = window.set_size(tauri::Size::Logical(tauri::LogicalSize { width: size.width, height: size.height }));
@@ -99,7 +102,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_shell::init())
         .on_window_event(|window, event| {
-            if window.label() == "main" {
+            if window.label() == MAIN_WINDOW_LABEL {
                 if let tauri::WindowEvent::CloseRequested { .. } = event {
                     info!("Ventana principal cerrada, saliendo de la aplicación");
                     window.app_handle().exit(0);
@@ -178,7 +181,11 @@ pub fn run() {
         .run(|app_handle, event| {
             if let tauri::RunEvent::Exit = event {
                 commands::terminal::close_all(app_handle);
-                if let Some(child) = app_handle.state::<ChildProcessState>().0.lock().unwrap().take() {
+                let child = match app_handle.state::<ChildProcessState>().0.lock() {
+                    Ok(mut guard) => guard.take(),
+                    Err(poisoned) => poisoned.into_inner().take(),
+                };
+                if let Some(child) = child {
                     commands::process::kill_run(child);
                 }
             }
