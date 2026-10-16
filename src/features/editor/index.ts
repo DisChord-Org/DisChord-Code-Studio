@@ -6,6 +6,7 @@ export { EditorScrollbar } from "./components/canvas/EditorScrollbar";
 export { TerminalPanel } from "./components/terminal/TerminalPanel";
 export { StatusBar } from "./components/statusbar/StatusBar";
 export { TabBar } from "./components/tabs/TabBar";
+export { EmptyEditor } from "./components/EmptyEditor";
 export { useEditor } from "./useEditor";
 
 export type { FileNode, MinimapViewport, CodeCanvasHandle, OpenTab } from "./types";

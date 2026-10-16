@@ -8,6 +8,7 @@ import {
     StatusBar,
     EditorScrollbar,
     TabBar,
+    EmptyEditor,
     useEditor,
 } from "../features/editor";
 import { PackageManager } from "../features/packages";
@@ -138,11 +139,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                                 )}
                             </div>
                         ) : (
-                            <div className="h-full w-full bg-[radial-gradient(#1e1f22_1px,transparent_1px)] [background-size:20px_20px] flex flex-col items-center justify-center pointer-events-none">
-                                <p className="text-border font-black text-6xl uppercase tracking-tighter">
-                                    DisChord
-                                </p>
-                            </div>
+                            <EmptyEditor />
                         )}
                     </div>
 
