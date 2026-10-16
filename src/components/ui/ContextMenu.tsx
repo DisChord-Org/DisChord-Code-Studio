@@ -1,3 +1,5 @@
+import { Button } from "./Button";
+
 interface ContextMenuItem {
     label: string;
     icon?: string;
@@ -20,7 +22,7 @@ export const ContextMenu = ({ x, y, items, onClose }: ContextMenuProps) => (
             style={{ top: y, left: x }}
         >
             {items.map((item) => (
-                <button
+                <Button variant="unstyled"
                     key={item.label}
                     className={`w-full text-left px-3 py-1.5 text-xs flex items-center gap-2 transition-colors
                         ${item.variant === "danger" ? "text-red-400 hover:bg-red-500/10" : "text-gray-300 hover:bg-white/5"}
@@ -32,7 +34,7 @@ export const ContextMenu = ({ x, y, items, onClose }: ContextMenuProps) => (
                 >
                     {item.icon && <i className={item.icon}></i>}
                     {item.label}
-                </button>
+                </Button>
             ))}
         </div>
     </>
