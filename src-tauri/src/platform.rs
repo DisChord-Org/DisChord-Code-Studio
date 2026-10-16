@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Child, Command};
+use std::time::Duration;
 
 use tauri::Manager;
 use log::{info, error, debug};
@@ -24,6 +25,8 @@ pub fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
     command.creation_flags(CREATE_NO_WINDOW);
     command
 }
+
+const KILL_GRACE_PERIOD: Duration = Duration::from_secs(2);
 
 pub const NPM_ENV_VARS_TO_STRIP: &[&str] = &[
     "COREPACK_ROOT",
@@ -391,4 +394,54 @@ pub fn register_bin_dir_in_path(bin_dir: &Path) -> Result<(), Box<dyn std::error
     }
 
     Ok(())
+}
+
+#[cfg(target_os = "windows")]
+pub fn default_shell() -> String {
+    "powershell.exe".to_string()
+}
+#[cfg(not(target_os = "windows"))]
+pub fn default_shell() -> String {
+    std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string())
+}
+
+#[cfg(target_os = "windows")]
+pub fn open_in_file_manager(path: &Path) -> std::io::Result<Child> {
+    silent_command("explorer").arg(path).spawn()
+}
+#[cfg(target_os = "macos")]
+pub fn open_in_file_manager(path: &Path) -> std::io::Result<Child> {
+    silent_command("open").arg(path).spawn()
+}
+#[cfg(not(any(target_os = "windows", target_os = "macos")))]
+pub fn open_in_file_manager(path: &Path) -> std::io::Result<Child> {
+    silent_command("xdg-open").arg(path).spawn()
+}
+
+#[cfg(target_os = "windows")]
+pub fn isolate_process_group(_command: &mut Command) {}
+#[cfg(not(target_os = "windows"))]
+pub fn isolate_process_group(command: &mut Command) {
+    use std::os::unix::process::CommandExt;
+    command.process_group(0);
+}
+
+#[cfg(target_os = "windows")]
+pub fn terminate_process_tree(child: &mut Child) {
+    let pid = child.id();
+    let res = silent_command("taskkill").arg("/F").arg("/T").arg("/PID").arg(pid.to_string()).spawn();
+    if res.is_err() {
+        error!("Fallo al ejecutar taskkill para PID {}", pid);
+        let _ = child.kill();
+    }
+}
+
+#[cfg(not(target_os = "windows"))]
+pub fn terminate_process_tree(child: &mut Child) {
+    let group = child.id() as libc::pid_t;
+    unsafe { libc::killpg(group, libc::SIGTERM) };
+    std::thread::spawn(move || {
+        std::thread::sleep(KILL_GRACE_PERIOD);
+        unsafe { libc::killpg(group, libc::SIGKILL) };
+    });
 }

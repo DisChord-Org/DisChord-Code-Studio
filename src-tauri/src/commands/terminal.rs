@@ -14,7 +14,7 @@ use tauri::{Emitter, Manager};
 use crate::commands::config_sections::section_values;
 use crate::log_err::LogErr;
 use crate::paths::project_path;
-use crate::platform::{build_path_env, NPM_ENV_VARS_TO_STRIP};
+use crate::platform::{build_path_env, default_shell, NPM_ENV_VARS_TO_STRIP};
 
 struct TerminalSession {
     master: Box<dyn MasterPty + Send>,
@@ -44,14 +44,6 @@ struct PtyExit {
 impl TerminalState {
     fn sessions(&self) -> MutexGuard<'_, HashMap<String, TerminalSession>> {
         self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
-    }
-}
-
-fn default_shell() -> String {
-    if cfg!(windows) {
-        "powershell.exe".to_string()
-    } else {
-        std::env::var("SHELL").unwrap_or_else(|_| "/bin/sh".to_string())
     }
 }
 
@@ -270,7 +262,6 @@ mod tests {
         let line = single_line(POWERSHELL_PROMPT);
         assert!(!line.contains('\n') && !line.contains('\r'));
         assert!(!line.contains("# "), "comments must be stripped");
-        // Square brackets are not checked: the ANSI color strings contain lone `[`.
         for (open, close) in [('{', '}'), ('(', ')')] {
             assert_eq!(line.matches(open).count(), line.matches(close).count(), "unbalanced {}{}", open, close);
         }
