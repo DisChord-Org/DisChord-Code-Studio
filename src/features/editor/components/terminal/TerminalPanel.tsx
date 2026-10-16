@@ -3,9 +3,15 @@ import { Tooltip } from "../../../../components/ui";
 import { useConfig } from "../../../settings";
 import { useResizablePanel } from "../../useResizablePanel";
 import { InteractiveTerminal } from "./InteractiveTerminal";
-import { useTerminalBackground } from "./useTerminalBackground";
 import { RunOutput } from "./RunOutput";
+import { TerminalBackground } from "./TerminalBackground";
+import { TerminalControls } from "./TerminalControls";
+import { TerminalTabs } from "./TerminalTabs";
+import { panelSize } from "./TerminalPanel.constants";
 import { clearOutput } from "./outputStore";
+import { useControlsArmed } from "./useControlsArmed";
+import { useTerminalBackground } from "./useTerminalBackground";
+import type { OpenLocationHandler, TerminalTab } from "./types";
 
 interface TerminalPanelProps {
     projectName: string;
@@ -14,30 +20,19 @@ interface TerminalPanelProps {
     isRunning: boolean;
     onStop: () => void;
     onRestart: () => void;
-    onOpenLocation: (path: string, line: number, column: number) => void;
+    onOpenLocation: OpenLocationHandler;
     onClose: () => void;
 }
-
-type TerminalTab = "output" | "shell";
 
 export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal = 0, isRunning, onStop, onRestart, onOpenLocation, onClose }: TerminalPanelProps) => {
     const { config } = useConfig();
     const backgroundUrl = useTerminalBackground(config);
     const [tab, setTab] = useState<TerminalTab>(initialTab);
     const showShell = config.advanced_mode && tab === "shell";
+    const controlsArmed = useControlsArmed(isRunning);
+    const { size: height, startDrag } = useResizablePanel({ initialSize: panelSize.initial, min: panelSize.min, max: panelSize.max, axis: "y", invert: true });
 
-    // The two window-style dots become "stop" / "restart" once the program has been running for a moment.
-    const [controlsArmed, setControlsArmed] = useState(false);
-    useEffect(() => {
-        if (!isRunning) {
-            setControlsArmed(false);
-            return;
-        }
-        const timer = setTimeout(() => setControlsArmed(true), 1000);
-        return () => clearTimeout(timer);
-    }, [isRunning]);
-    const { size: height, startDrag } = useResizablePanel({ initialSize: 288, min: 120, max: 640, axis: "y", invert: true });
-
+    // Compare against the last seen value so the initial mount does not force the output tab.
     const lastOutputSignal = useRef(outputSignal);
     useEffect(() => {
         if (outputSignal !== lastOutputSignal.current) {
@@ -45,7 +40,6 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
             setTab("output");
         }
     }, [outputSignal]);
-
 
     return (
         <div className="flex flex-col bg-app-bg border-t border-white/5 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.5)] relative shrink-0" style={{ height }}>
@@ -56,40 +50,12 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
 
             <div className="flex items-center justify-between px-4 py-2 bg-[#0E1117]/50 backdrop-blur-sm border-b border-white/[0.02]">
                 <div className="flex items-center gap-3">
-                    <div className="flex gap-1.5">
-                        {controlsArmed ? (
-                            <>
-                                <Tooltip label="Detener" placement="bottom">
-                                    <button onClick={onStop} className="w-2 h-2 rounded-full bg-red-500 hover:bg-red-400 transition-colors" />
-                                </Tooltip>
-                                <Tooltip label="Reiniciar" placement="bottom">
-                                    <button onClick={onRestart} className="w-2 h-2 rounded-full bg-amber-500 hover:bg-amber-400 transition-colors" />
-                                </Tooltip>
-                            </>
-                        ) : (
-                            <>
-                                <div className="w-2 h-2 rounded-full bg-white/10" />
-                                <div className="w-2 h-2 rounded-full bg-white/10" />
-                            </>
-                        )}
-                    </div>
-                    <div className="flex items-center gap-1">
-                        {(config.advanced_mode ? (["output", "shell"] as const) : (["output"] as const)).map((key) => (
-                            <button
-                                key={key}
-                                onClick={() => setTab(key)}
-                                className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-widest transition-colors ${
-                                    (showShell ? "shell" : "output") === key ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
-                                }`}
-                            >
-                                {key === "output" ? "Salida" : "Terminal"}
-                            </button>
-                        ))}
-                    </div>
+                    <TerminalControls armed={controlsArmed} onStop={onStop} onRestart={onRestart} />
+                    <TerminalTabs advanced={config.advanced_mode} current={showShell ? "shell" : "output"} onSelect={setTab} />
                 </div>
-                
+
                 <div className="flex items-center gap-4">
-                    {!showShell && <button 
+                    {!showShell && <button
                         onClick={clearOutput}
                         className="group flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-accent transition-all"
                     >
@@ -112,16 +78,7 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
 
             <div className="flex-1 p-3 overflow-hidden relative bg-[#0B0E14]">
                 {backgroundUrl && (
-                    <div
-                        className="absolute inset-0 pointer-events-none"
-                        style={{
-                            backgroundImage: `linear-gradient(rgba(11, 14, 20, ${config.terminal_background_dim / 100}), rgba(11, 14, 20, ${config.terminal_background_dim / 100})), url("${backgroundUrl}")`,
-                            backgroundSize: `100% 100%, ${config.terminal_background_fit}`,
-                            backgroundPosition: `0 0, ${config.terminal_background_fit === "contain" ? "right center" : "center"}`,
-                            backgroundRepeat: "no-repeat",
-                            imageRendering: "pixelated",
-                        }}
-                    />
+                    <TerminalBackground url={backgroundUrl} dim={config.terminal_background_dim} fit={config.terminal_background_fit} />
                 )}
                 <RunOutput onOpenLocation={onOpenLocation} className={`relative h-full w-full ${showShell ? "hidden" : ""}`} />
                 {config.advanced_mode && (

@@ -7,17 +7,14 @@ import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import { buildFontFamilyCss } from "../../../settings";
 import { matchesShortcut } from "../../../shortcuts";
+import { terminalFontSize, terminalTheme } from "./InteractiveTerminal.constants";
+import type { PtyData, PtyExit } from "./types";
 
 interface InteractiveTerminalProps {
     projectName: string;
     fontFamily: string;
     active: boolean;
     height: number;
-}
-
-interface PtyData {
-    id: string;
-    data: string;
 }
 
 export const InteractiveTerminal = ({ projectName, fontFamily, active, height }: InteractiveTerminalProps) => {
@@ -30,19 +27,10 @@ export const InteractiveTerminal = ({ projectName, fontFamily, active, height }:
 
         const term = new Terminal({
             cursorBlink: true,
-            fontSize: 12,
+            fontSize: terminalFontSize,
             fontFamily: buildFontFamilyCss(fontFamily),
             allowTransparency: true,
-            theme: {
-                background: "#00000000",
-                foreground: "#abb2bf",
-                cursor: "#5865f2",
-                selectionBackground: "#5865f233",
-                // Same thin scrollbar as the rest of the app, instead of the system's.
-                scrollbarSliderBackground: "#1e1f22",
-                scrollbarSliderHoverBackground: "#5865F2",
-                scrollbarSliderActiveBackground: "#5865F2",
-            },
+            theme: terminalTheme,
         });
         const fit = new FitAddon();
         term.loadAddon(fit);
@@ -91,7 +79,7 @@ export const InteractiveTerminal = ({ projectName, fontFamily, active, height }:
                 if (id === null) pendingData.push(event.payload);
                 else handleData(event.payload);
             }));
-            unlisten.push(await listen<{ id: string }>("pty-exit", (event) => {
+            unlisten.push(await listen<PtyExit>("pty-exit", (event) => {
                 if (event.payload.id !== id) return;
                 term.writeln("\r\n\x1b[90m[el proceso de la terminal ha terminado]\x1b[0m");
                 id = null;

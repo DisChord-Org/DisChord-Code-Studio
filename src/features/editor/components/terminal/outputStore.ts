@@ -1,37 +1,6 @@
 import { useSyncExternalStore } from "react";
 import { listen } from "@tauri-apps/api/event";
-
-export type LineKind = "stdout" | "stderr" | "info" | "success" | "warning" | "error";
-
-export type RunStatus = "running" | "finished" | "failed" | "stopped";
-
-export interface OutputLocation {
-    path: string;
-    line: number;
-    column: number;
-}
-
-export interface OutputLine {
-    id: number;
-    kind: LineKind;
-    text: string;
-    ts: number;
-    location?: OutputLocation;
-}
-
-export interface OutputRun {
-    id: number;
-    startedAt: number;
-    endedAt: number | null;
-    status: RunStatus;
-    exitCode: number | null;
-    currentFile: string;
-    lines: OutputLine[];
-}
-
-type OutputEvent =
-    | { type: "line"; kind: LineKind; text: string; ts: number; location?: OutputLocation }
-    | { type: "run_end"; status: { state: "finished" | "stopped" } | { state: "failed"; code: number | null }; ts: number };
+import type { LineKind, OutputEvent, OutputLocation, OutputRun, RunStatus } from "./types";
 
 const defaultFile = "src/index.chord";
 const compilingLine = /^Compilando: (.+)$/;
