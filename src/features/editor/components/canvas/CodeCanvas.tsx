@@ -2,20 +2,21 @@ import { useRef, useEffect, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 import { EditorView, basicSetup } from "codemirror";
-import { EditorState, Compartment, StateEffect, StateField } from "@codemirror/state";
+import { EditorState } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
-import { Decoration, keymap, scrollPastEnd } from "@codemirror/view";
+import { keymap, scrollPastEnd } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
-import { autocompletion } from "@codemirror/autocomplete";
-import { indentUnit } from "@codemirror/language";
-import { chordCompletionSource } from "../../../../languages/chord-completions";
 import type { MinimapViewport, CodeCanvasHandle, GotoTarget } from "../../types";
 
-import { chord } from "../../../../languages/chord-language";
 import { languageFor, loadedLanguageFor } from "../../../../languages/language-for-file";
 import { loadLibraryExports } from "../../../../languages/chord-libraries";
 import { dischordEditorTheme } from "../../../../languages/editor-theme";
 import { completionTheme } from "../../../../languages/completion-theme";
+import {
+    languageConf, wrapConf, indentConf, diagnosticsConf, indentExtension, isChordFile,
+    languageExtensionFor, completionExtensionFor, addFlash, clearFlash, flashField,
+} from "./codeMirrorExtensions";
+import { copyFlashMs } from "./CodeCanvas.constants";
 import { useConfig } from "../../../settings";
 import { useShortcut } from "../../../shortcuts";
 import { middleClickJustHappened } from "../../../../utils/MiddleClick";
@@ -31,16 +32,6 @@ interface CodeCanvasProps {
     onViewportChange?: (viewport: MinimapViewport) => void;
     goto?: GotoTarget | null;
 }
-
-const languageConf = new Compartment();
-const wrapConf = new Compartment();
-const indentConf = new Compartment();
-const diagnosticsConf = new Compartment();
-
-const indentExtension = (size: number, useTabs: boolean) => [
-    EditorState.tabSize.of(size),
-    indentUnit.of(useTabs ? "\t" : " ".repeat(size)),
-];
 
 export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange, goto
@@ -61,7 +52,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     const useTabsRef = useRef(config.editor_use_tabs);
     useTabsRef.current = config.editor_use_tabs;
 
-    const diagnosticsOn = config.editor_live_diagnostics && fileName.toLowerCase().endsWith(".chord");
+    const diagnosticsOn = config.editor_live_diagnostics && isChordFile(fileName);
     const diagnosticsOnRef = useRef(diagnosticsOn);
     diagnosticsOnRef.current = diagnosticsOn;
 
@@ -83,43 +74,6 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             if (scroller) scroller.scrollTop = scrollTop;
         }
     }), []);
-
-    const addFlash = StateEffect.define<{from: number, to: number}>();
-    const clearFlash = StateEffect.define<null>();
-    const flashField = StateField.define({
-        create() { return Decoration.none },
-        update(underlines, tr) {
-            underlines = underlines.map(tr.changes);
-            for (let e of tr.effects) {
-                if (e.is(addFlash)) {
-                    underlines = underlines.update({
-                        add: [
-                            Decoration.mark({
-                                attributes: { class: "bg-red-500/40 transition-colors duration-300 rounded-sm" }
-                            }).range(e.value.from, e.value.to)
-                        ]
-                    });
-                }
-
-                if (e.is(clearFlash)) {
-                    return Decoration.none;
-                }
-            }
-            return underlines;
-        },
-        provide: f => EditorView.decorations.from(f)
-    });
-
-    const isChord = (fname: string) => fname.toLowerCase().endsWith(".chord");
-    const getLanguage = (fname: string) => (isChord(fname) ? chord() : (loadedLanguageFor(fname) ?? []));
-
-    const getCompletionExtension = (fname: string) => {
-        const ext = fname.split('.').pop()?.toLowerCase();
-        
-        if (ext === 'chord') return autocompletion({ override: [chordCompletionSource] });
-
-        return autocompletion();
-    };
 
     const handleSave = async (view: EditorView) => {
         const doc = view.state.doc;
@@ -152,15 +106,13 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     oneDark,
                     scrollPastEnd(),
                     flashField,
-                    languageConf.of(getLanguage(fileName)),
+                    languageConf.of(languageExtensionFor(fileName)),
                     wrapConf.of(wordWrapRef.current ? EditorView.lineWrapping : []),
                     indentConf.of(indentExtension(tabSizeRef.current, useTabsRef.current)),
-                    ...(fileName.toLowerCase().endsWith(".chord") ? [languageIntelligence(projectName, relative_path)] : []),
+                    ...(isChordFile(fileName) ? [languageIntelligence(projectName, relative_path)] : []),
                     diagnosticsConf.of(diagnosticsOnRef.current ? liveDiagnostics(projectName, relative_path) : []),
-                    getCompletionExtension(fileName),
-                    keymap.of([
-                        indentWithTab,
-                    ]),
+                    completionExtensionFor(fileName),
+                    keymap.of([indentWithTab]),
                     EditorView.updateListener.of((update) => {
                         if (update.docChanged) {
                             setIsDirty(true);
@@ -170,22 +122,12 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     }),
                     EditorView.domEventHandlers({
                         paste: () => middleClickJustHappened(),
-                        copy: (_event, view) => {
-                            const { from, to } = view.state.selection.main;
-                    
-                            if (from !== to) {
-                                view.dispatch({
-                                    effects: addFlash.of({ from, to })
-                                });
-                                
-                                setTimeout(() => {
-                                    if (view && view.state) {
-                                        view.dispatch({
-                                            effects: clearFlash.of(null)
-                                        });
-                                    }
-                                }, 300);
-                            }
+                        copy: (_event, copyView) => {
+                            const { from, to } = copyView.state.selection.main;
+                            if (from === to) return;
+
+                            copyView.dispatch({ effects: addFlash.of({ from, to }) });
+                            setTimeout(() => copyView.dispatch({ effects: clearFlash.of(null) }), copyFlashMs);
                         }
                     }),
                     dischordEditorTheme,
@@ -197,7 +139,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
         viewRef.current = view;
 
-        if (!isChord(fileName) && !loadedLanguageFor(fileName)) {
+        if (!isChordFile(fileName) && !loadedLanguageFor(fileName)) {
             languageFor(fileName)
                 .then((support) => {
                     if (support && viewRef.current === view) view.dispatch({ effects: languageConf.reconfigure(support) });
@@ -217,6 +159,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             });
         };
 
+        // Two frames: the first lays the document out, the second has the final scroll metrics.
         requestAnimationFrame(() => requestAnimationFrame(reportViewport));
 
         scroller.addEventListener("scroll", reportViewport, { passive: true });
@@ -230,6 +173,8 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             viewRef.current = null;
             forgetDiagnostics(relative_path);
         }
+        // Rebuilding the editor on every prop change would lose undo history; only a file switch recreates it.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [relative_path]);
 
     useEffect(() => {
@@ -247,6 +192,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             }
         });
         setIsDirty(false);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [content]);
 
     useEffect(() => {
@@ -260,6 +206,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             effects: diagnosticsConf.reconfigure(diagnosticsOn ? liveDiagnostics(projectName, relative_path) : []),
         });
         if (!diagnosticsOn) forgetDiagnostics(relative_path);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [diagnosticsOn]);
 
     useEffect(() => {
@@ -276,6 +223,8 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         const pos = line.from + Math.min(Math.max(goto.column - 1, 0), line.length);
         view.dispatch({ selection: { anchor: pos }, effects: EditorView.scrollIntoView(pos, { y: "center" }) });
         view.focus();
+        // The nonce, not the target, signals a new request, so jumping twice to the same spot works.
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [goto?.nonce]);
 
     useEffect(() => {
@@ -287,6 +236,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
         window.addEventListener("dischord-save", triggerSave);
         return () => window.removeEventListener("dischord-save", triggerSave);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [relative_path, projectName]);
 
     return (

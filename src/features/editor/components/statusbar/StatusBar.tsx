@@ -3,6 +3,8 @@ import { ModifiedBadge, Tooltip } from "../../../../components/ui";
 import { useShortcutLabel } from "../../../shortcuts";
 import { useFileDiagnostics } from "../../../compiler";
 
+const monitorRingSize = 16;
+
 interface StatusBarProps {
     fileName?: string;
     filePath?: string;
@@ -65,7 +67,7 @@ export const StatusBar = ({ fileName, filePath, isDirty, contentLength, wordWrap
                         <i className="bi bi-text-wrap text-[11px]"></i>
                     </button>
                 </Tooltip>
-                <SystemMonitorRings size={16} showNumbers={false} />
+                <SystemMonitorRings size={monitorRingSize} showNumbers={false} />
             </div>
         </div>
     );

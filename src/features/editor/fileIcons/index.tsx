@@ -60,6 +60,9 @@ export const iconNameForFolder = (folderName: string, open: boolean, mapping: Ic
     return mapping.folderNames[lower] ?? mapping.folder;
 };
 
+const drawingViewBox = 16;
+const defaultIconSize = 14;
+
 interface DrawingProps {
     drawing: string;
     size: number;
@@ -68,7 +71,7 @@ interface DrawingProps {
 /** The drawings are 16x16 and trusted: they come from the package, not from the user. */
 const Drawing = ({ drawing, size }: DrawingProps) => (
     <svg
-        viewBox="0 0 16 16"
+        viewBox={`0 0 ${drawingViewBox} ${drawingViewBox}`}
         width={size}
         height={size}
         className="shrink-0"
@@ -83,7 +86,7 @@ interface FileTypeIconProps {
     fallback: React.ReactNode;
 }
 
-export const FileTypeIcon = ({ fileName, size = 14, fallback }: FileTypeIconProps) => {
+export const FileTypeIcon = ({ fileName, size = defaultIconSize, fallback }: FileTypeIconProps) => {
     const icons = useIconData();
     if (!icons) return <>{fallback}</>;
 
@@ -98,7 +101,7 @@ interface FolderTypeIconProps {
     fallback: React.ReactNode;
 }
 
-export const FolderTypeIcon = ({ folderName, open, size = 14, fallback }: FolderTypeIconProps) => {
+export const FolderTypeIcon = ({ folderName, open, size = defaultIconSize, fallback }: FolderTypeIconProps) => {
     const icons = useIconData();
     if (!icons) return <>{fallback}</>;
 

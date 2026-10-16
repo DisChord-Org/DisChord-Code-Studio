@@ -1,6 +1,9 @@
 import type { OpenTab } from "../../types";
 import { FileIcon } from "../FileIcon";
 
+const tabIconSize = 13;
+const middleMouseButton = 1;
+
 interface TabBarProps {
     tabs: OpenTab[];
     activePath: string | null;
@@ -21,7 +24,7 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                         key={tab.relative_path}
                         onClick={() => onSelect(tab.relative_path)}
                         onMouseDown={(e) => {
-                            if (e.button === 1) {
+                            if (e.button === middleMouseButton) {
                                 e.preventDefault();
                                 onClose(tab.relative_path);
                             }
@@ -36,7 +39,7 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                             <span className="absolute top-1.5 left-1/2 -translate-x-1/2 w-5 h-[2px] rounded-full bg-accent" />
                         )}
 
-                        {tab.kind === "file" && <FileIcon name={tab.name} size={13} />}
+                        {tab.kind === "file" && <FileIcon name={tab.name} size={tabIconSize} />}
                         {tab.kind === "packages" && <i className="bi bi-box-seam-fill text-[11px] shrink-0"></i>}
                         {tab.kind === "shortcuts" && <i className="bi bi-keyboard-fill text-[11px] shrink-0"></i>}
                         <span className="truncate flex-1 leading-5">
