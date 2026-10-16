@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import { useSyncExternalStore } from "react";
+import { declarationKindMap } from "./declarations.constants";
 import { collectDeclarations } from "../../languages/chord-symbols";
 
 export interface SourcePosition {
@@ -48,8 +49,6 @@ const positionOf = (lineStarts: number[], offset: number): SourcePosition => {
     return { line: low + 1, column: offset - lineStarts[low] + 1 };
 };
 
-const kindMap: Record<string, string> = { import: "import", module: "import", used: "used" };
-
 export const localDeclarations = (text: string): Declaration[] => {
     const lineStarts = [0];
     for (let i = 0; i < text.length; i++) if (text[i] === "\n") lineStarts.push(i + 1);
@@ -57,7 +56,7 @@ export const localDeclarations = (text: string): Declaration[] => {
     return collectDeclarations(text)
         .filter((d) => d.kind !== "used")
         .map((d) => ({
-            kind: kindMap[d.kind] ?? d.kind,
+            kind: declarationKindMap[d.kind] ?? d.kind,
             name: d.name,
             container: d.container ?? null,
             start: positionOf(lineStarts, d.from),

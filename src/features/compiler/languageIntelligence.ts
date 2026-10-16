@@ -1,7 +1,8 @@
 import { EditorSelection, type Extension, type Text } from "@codemirror/state";
 import { EditorView, ViewPlugin, hoverTooltip, type Tooltip, type ViewUpdate } from "@codemirror/view";
-import { getCorelib } from "../../languages/chord-corelib";
+import { getCorelib, type CorelibData } from "../../languages/chord-corelib";
 import { memberSuggestion, receiverClasses } from "../../languages/completion/sources/members";
+import { intelTheme, kindLabels } from "./languageIntelligence.constants";
 import {
     clearFileDeclarations,
     fetchDeclarations,
@@ -10,6 +11,10 @@ import {
     setFileDeclarations,
     type Declaration,
 } from "./declarations";
+
+/** Local parsing is cheap so it follows typing closely; the compiler is asked only once typing settles. */
+const localRefreshDelayMs = 150;
+const compilerRefreshDelayMs = 700;
 
 const offsetOf = (doc: Text, position: { line: number; column: number }) => {
     const line = doc.line(Math.min(Math.max(position.line, 1), doc.lines));
@@ -26,7 +31,7 @@ const declarationsPlugin = (projectName: string, filePath: string) =>
         }
 
         update(update: ViewUpdate) {
-            if (update.docChanged) this.refresh(update.view, 150);
+            if (update.docChanged) this.refresh(update.view, localRefreshDelayMs);
         }
 
         refresh(view: EditorView, delay: number) {
@@ -42,7 +47,7 @@ const declarationsPlugin = (projectName: string, filePath: string) =>
                 const items = await fetchDeclarations(projectName, filePath, text);
 
                 if (items && view.state.doc.toString() === text) setFileDeclarations(filePath, { items, source: "compiler" });
-            }, Math.max(delay, 700));
+            }, Math.max(delay, compilerRefreshDelayMs));
         }
 
         destroy() {
@@ -91,21 +96,6 @@ export const goToDefinition = (view: EditorView, filePath: string, pos = view.st
     return true;
 };
 
-const kindLabels: Record<string, string> = {
-    variable: "variable",
-    function: "función",
-    method: "método",
-    constructor: "constructor",
-    class: "clase",
-    property: "propiedad",
-    parameter: "parámetro",
-    import: "importado",
-    command: "comando",
-    event: "evento",
-    button: "botón",
-    embed: "embed",
-};
-
 const card = (build: (root: HTMLElement) => void): { dom: HTMLElement } => {
     const dom = document.createElement("div");
     dom.className = "cm-intel";
@@ -120,7 +110,7 @@ const line = (root: HTMLElement, className: string, text: string) => {
     root.appendChild(element);
 };
 
-const describeDeclaration = (view: EditorView, filePath: string, declaration: Declaration) => card((root) => {
+const describeDeclaration = (view: EditorView, declaration: Declaration) => card((root) => {
     line(root, "cm-intel-title", `${kindLabels[declaration.kind] ?? declaration.kind} ${declaration.name}`);
 
     const where = [`línea ${declaration.start.line}`, declaration.container ? `en ${declaration.container}` : ""].filter(Boolean);
@@ -128,9 +118,47 @@ const describeDeclaration = (view: EditorView, filePath: string, declaration: De
 
     const source = view.state.doc.line(Math.min(declaration.start.line, view.state.doc.lines)).text.trim();
     if (source) line(root, "cm-intel-code", source);
-
-    void filePath;
 });
+
+type Word = { from: number; to: number; text: string };
+
+const hoverAbove = (word: Word, create: () => { dom: HTMLElement }): Tooltip => ({ pos: word.from, end: word.to, above: true, create });
+
+/** Hover over `receiver.member`: the member's signature and documentation. */
+const memberHover = (text: string, word: Word, corelib: CorelibData): Tooltip | null => {
+    for (const klass of receiverClasses(text, word.from - 1, corelib) ?? []) {
+        const method = klass.methods.find((m) => m.name === word.text);
+        const property = klass.properties.find((p) => p.name === word.text);
+        const member = method ?? property;
+        if (!member) continue;
+
+        const suggestion = memberSuggestion(member, klass.name, !!method);
+        return hoverAbove(word, () => card((root) => {
+            line(root, "cm-intel-title", `${klass.name}.${member.name}`);
+            line(root, "cm-intel-code", `${suggestion.detail ?? ""}`);
+            if (member.doc) line(root, "cm-intel-doc", member.doc);
+        }));
+    }
+    return null;
+};
+
+const declarationHover = (view: EditorView, filePath: string, word: Word): Tooltip | null => {
+    const items = getFileDeclarations(filePath)?.items ?? [];
+    const here = items.find((d) => d.name === word.text && offsetOf(view.state.doc, d.start) === word.from);
+    const declaration = here ?? definitionOf(view, filePath, word);
+
+    return declaration ? hoverAbove(word, () => describeDeclaration(view, declaration)) : null;
+};
+
+const classHover = (word: Word, corelib: CorelibData | null): Tooltip | null => {
+    const klass = corelib?.classes.find((c) => c.name === word.text);
+    if (!klass) return null;
+
+    return hoverAbove(word, () => card((root) => {
+        line(root, "cm-intel-title", `clase ${klass.name}`);
+        line(root, "cm-intel-meta", `${klass.methods.length} métodos · ${klass.properties.length} propiedades`);
+    }));
+};
 
 const hover = (filePath: string) => hoverTooltip((view, pos): Tooltip | null => {
     const word = wordAt(view, pos);
@@ -139,98 +167,9 @@ const hover = (filePath: string) => hoverTooltip((view, pos): Tooltip | null => 
     const text = view.state.doc.toString();
     const corelib = getCorelib();
 
-    if (text[word.from - 1] === "." && corelib) {
-        const classes = receiverClasses(text, word.from - 1, corelib);
-        for (const klass of classes ?? []) {
-            const method = klass.methods.find((m) => m.name === word.text);
-            const property = klass.properties.find((p) => p.name === word.text);
-            const member = method ?? property;
-            if (!member) continue;
-
-            const suggestion = memberSuggestion(member, klass.name, !!method);
-            return {
-                pos: word.from,
-                end: word.to,
-                above: true,
-                create: () => card((root) => {
-                    line(root, "cm-intel-title", `${klass.name}.${member.name}`);
-                    line(root, "cm-intel-code", `${suggestion.detail ?? ""}`);
-                    if (member.doc) line(root, "cm-intel-doc", member.doc);
-                }),
-            };
-        }
-    }
-
-    const items = getFileDeclarations(filePath)?.items ?? [];
-    const here = items.find((d) => d.name === word.text && offsetOf(view.state.doc, d.start) === word.from);
-    const declaration = here ?? definitionOf(view, filePath, word);
-    if (declaration) {
-        return {
-            pos: word.from,
-            end: word.to,
-            above: true,
-            create: () => describeDeclaration(view, filePath, declaration)
-        };
-    }
-
-    const klass = corelib?.classes.find((c) => c.name === word.text);
-
-    if (klass) {
-        return {
-            pos: word.from,
-            end: word.to,
-            above: true,
-            create: () => card((root) => {
-                line(root, "cm-intel-title", `clase ${klass.name}`);
-                line(root, "cm-intel-meta", `${klass.methods.length} métodos · ${klass.properties.length} propiedades`);
-            }),
-        };
-    }
-
-    return null;
+    const member = text[word.from - 1] === "." && corelib ? memberHover(text, word, corelib) : null;
+    return member ?? declarationHover(view, filePath, word) ?? classHover(word, corelib);
 });
-
-const intelTheme = EditorView.theme({
-    ".cm-tooltip:has(> .cm-intel)": {
-        backgroundColor: "#12151c !important",
-        border: "1px solid rgba(255, 255, 255, 0.08) !important",
-        borderRadius: "10px",
-        boxShadow: "0 10px 30px -8px rgba(0, 0, 0, 0.65)",
-        overflow: "hidden",
-        maxWidth: "440px",
-    },
-    ".cm-intel": {
-        padding: "9px 13px",
-        fontFamily: "system-ui, -apple-system, 'Segoe UI', sans-serif",
-        fontSize: "12px",
-        lineHeight: "1.5",
-        color: "#e5e7eb",
-    },
-    ".cm-intel-title": {
-        fontWeight: "600",
-        color: "#f3f4f6"
-    },
-    ".cm-intel-meta": {
-        fontSize: "10px",
-        letterSpacing: "0.04em",
-        color: "#6b7280",
-        marginTop: "1px"
-    },
-    ".cm-intel-code": {
-        marginTop: "6px",
-        padding: "4px 8px",
-        borderRadius: "5px",
-        backgroundColor: "rgba(255, 255, 255, 0.05)",
-        fontFamily: "var(--editor-font-family, monospace)",
-        fontSize: "11px",
-        whiteSpace: "pre-wrap",
-        overflowWrap: "anywhere",
-    },
-    ".cm-intel-doc": {
-        marginTop: "6px",
-        color: "#9ca3af"
-    },
-}, { dark: true });
 
 export const languageIntelligence = (projectName: string, filePath: string): Extension => [
     declarationsPlugin(projectName, filePath),

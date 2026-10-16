@@ -1,18 +1,8 @@
-import { collectSymbols, type ChordSymbol, type SymbolKind } from "../../chord-symbols";
+import { collectSymbols, type ChordSymbol } from "../../chord-symbols";
+import { kindInfo } from "./names.constants";
 import type { AdditiveSource, Suggestion } from "../types";
 
-const kindInfo: Record<SymbolKind, { type: string; detail: string; boost: number }> = {
-    variable: { type: "variable", detail: "variable", boost: 10 },
-    function: { type: "function", detail: "función", boost: 10 },
-    class: { type: "class", detail: "clase", boost: 10 },
-    property: { type: "property", detail: "propiedad", boost: 8 },
-    parameter: { type: "variable", detail: "parámetro", boost: 9 },
-    import: { type: "variable", detail: "importado", boost: 10 },
-    module: { type: "namespace", detail: "módulo", boost: 10 },
-    command: { type: "function", detail: "comando", boost: 6 },
-    event: { type: "function", detail: "evento", boost: 6 },
-    used: { type: "text", detail: "usado", boost: -5 },
-};
+const libraryBoostPenalty = 3;
 
 export const symbolSuggestions = (symbols: ChordSymbol[]): Suggestion[] =>
     symbols.map((s) => {
@@ -21,7 +11,7 @@ export const symbolSuggestions = (symbols: ChordSymbol[]): Suggestion[] =>
             label: s.name,
             type: info.type,
             detail: s.from ? `lib:${s.from}` : info.detail,
-            boost: s.from ? info.boost - 3 : info.boost,
+            boost: s.from ? info.boost - libraryBoostPenalty : info.boost,
         };
     });
 
