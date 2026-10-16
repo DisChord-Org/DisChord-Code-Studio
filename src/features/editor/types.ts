@@ -24,10 +24,10 @@ export interface CodeCanvasHandle {
 }
 
 /** Sentinel id for the "Dependencias" pseudo-tab, reusing `relative_path` as the generic tab id. */
-export const PACKAGES_TAB_ID = "__packages__";
+export const packagesTabId = "__packages__";
 
 /** Sentinel id for the "Atajos de teclado" pseudo-tab. */
-export const SHORTCUTS_TAB_ID = "__shortcuts__";
+export const shortcutsTabId = "__shortcuts__";
 
 export interface OpenTab {
     kind: "file" | "packages" | "shortcuts";
@@ -37,4 +37,15 @@ export interface OpenTab {
     isDirty: boolean;
     /** False for a "preview" tab: opening another file replaces it. Becomes true once it is edited. */
     isPinned: boolean;
+}
+
+export interface OpenHiddenFileDetail {
+    name: string;
+    relative_path: string;
+}
+
+declare global {
+    interface WindowEventMap {
+        "open-hidden-file": CustomEvent<OpenHiddenFileDetail>;
+    }
 }
