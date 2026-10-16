@@ -3,7 +3,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
-import { Button, ListGroup, ListRow, Title, WindowControls } from "../components/ui";
+import { Button, ListGroup, ListRow, Title, WindowControls, controlsOnLeft } from "../components/ui";
 import { SystemMonitorRings } from "../features/system-monitor";
 import { targetMeta, statusText } from "./Update.constants";
 import { formatBytes } from "../utils/Bytes";
@@ -256,7 +256,7 @@ function Update() {
             data-tauri-drag-region
             className="relative h-screen bg-app-bg p-10 overflow-hidden select-none flex flex-col"
         >
-            <div className="absolute top-0 right-0 flex items-center h-10 z-50">
+            <div className={`absolute top-0 ${controlsOnLeft ? "left-0" : "right-0"} flex items-center h-10 z-50`}>
                 <WindowControls
                     closeDisabled={ideInstalling}
                     closeTitle={ideInstalling ? "Espera a que termine la instalación del IDE" : "Cerrar"}

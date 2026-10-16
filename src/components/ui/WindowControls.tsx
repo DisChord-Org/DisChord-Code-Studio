@@ -1,5 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import { Tooltip } from "./Tooltip";
+import { isMac } from "../../utils/Platform";
 
 const appWindow = getCurrentWindow();
 
@@ -10,6 +11,33 @@ interface WindowControlsProps {
     className?: string;
 }
 
+/** macOS puts the window controls on the left; everywhere else they are on the right. */
+export const controlsOnLeft = isMac;
+
+interface TrafficLightProps {
+    label: string;
+    color: string;
+    glyph: string;
+    disabled?: boolean;
+    onClick: () => void;
+}
+
+/** One of the three round macOS buttons; its symbol only shows while the pointer is over the group. */
+const TrafficLight = ({ label, color, glyph, disabled = false, onClick }: TrafficLightProps) => (
+    <button
+        onClick={onClick}
+        disabled={disabled}
+        aria-label={label}
+        title={disabled ? undefined : label}
+        className={`w-3 h-3 rounded-full flex items-center justify-center border border-black/[0.12] transition-colors ${
+            disabled ? "bg-[#4d4d52] cursor-default" : "hover:brightness-90 active:brightness-75"
+        }`}
+        style={disabled ? undefined : { backgroundColor: color }}
+    >
+        {!disabled && <i className={`bi ${glyph} text-[8px] leading-none text-black/60 opacity-0 group-hover/traffic:opacity-100`}></i>}
+    </button>
+);
+
 export const WindowControls = ({
     showMaximize = false,
     closeDisabled = false,
@@ -19,6 +47,16 @@ export const WindowControls = ({
     const handleMinimize = () => appWindow.minimize();
     const handleToggleMaximize = () => appWindow.toggleMaximize();
     const handleClose = () => appWindow.close();
+
+    if (isMac) {
+        return (
+            <div className={`group/traffic flex items-center gap-2 h-full px-4 ${className}`} title={closeDisabled ? closeTitle : undefined}>
+                <TrafficLight label="Cerrar" color="#ff5f57" glyph="bi-x-lg" disabled={closeDisabled} onClick={handleClose} />
+                <TrafficLight label="Minimizar" color="#febc2e" glyph="bi-dash-lg" onClick={handleMinimize} />
+                <TrafficLight label="Maximizar" color="#28c840" glyph="bi-plus-lg" disabled={!showMaximize} onClick={handleToggleMaximize} />
+            </div>
+        );
+    }
 
     return (
         <div className={`flex items-center h-full ${className}`}>

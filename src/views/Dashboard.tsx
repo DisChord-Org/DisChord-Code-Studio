@@ -1,6 +1,6 @@
 import { useState } from "react";
 
-import { Button, Title, Label, Modal, Tooltip, WindowControls } from "../components/ui";
+import { Button, Title, Label, Modal, Tooltip, WindowControls, controlsOnLeft } from "../components/ui";
 import { ProjectCard, CreatingProjectCard, useDashboard } from "../features/dashboard";
 import { formatRelativeTime } from "../utils/Time";
 import { SystemMonitorRings } from "../features/system-monitor";
@@ -27,8 +27,8 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
 
     return (
         <div data-tauri-drag-region className="relative flex flex-col h-screen bg-app-bg overflow-hidden select-none">
-            <div className="absolute top-0 right-0 flex items-center h-10 z-50">
-                <WindowControls className="ml-2" />
+            <div className={`absolute top-0 ${controlsOnLeft ? "left-0" : "right-0"} flex items-center h-10 z-50`}>
+                <WindowControls className={controlsOnLeft ? "" : "ml-2"} />
             </div>
             
             <Modal 

@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { WindowControls, BackButton, Title } from "../components/ui";
+import { WindowControls, BackButton, Title, controlsOnLeft } from "../components/ui";
 import {
     SettingsSidebar,
     DashboardSettings,
@@ -33,7 +33,6 @@ function Settings({ onBack }: SettingsProps) {
         ? sections.find((s) => sectionNavKey(s.schema.id) === section)
         : undefined;
 
-    // A gated section disappears when its flag is turned off; don't leave the screen on it.
     useEffect(() => {
         if (section.startsWith(SECTION_PREFIX) && sections.length > 0 && !loadedSection) setSection("advanced");
     }, [section, sections, loadedSection]);
@@ -41,9 +40,17 @@ function Settings({ onBack }: SettingsProps) {
     return (
         <div data-tauri-drag-region className="h-screen bg-app-bg flex flex-col text-white overflow-hidden select-none">
             <div data-tauri-drag-region className="h-10 bg-panel-alt shadow-[0_1px_3px_0_rgba(0,0,0,0.35)] flex items-center justify-between shrink-0 relative z-20">
-                <BackButton onClick={onBack} className="ml-4" />
-
-                <WindowControls className="ml-2" />
+                {controlsOnLeft ? (
+                    <>
+                        <WindowControls />
+                        <BackButton onClick={onBack} className="mr-4" />
+                    </>
+                ) : (
+                    <>
+                        <BackButton onClick={onBack} className="ml-4" />
+                        <WindowControls className="ml-2" />
+                    </>
+                )}
             </div>
 
             {editingJson ? (

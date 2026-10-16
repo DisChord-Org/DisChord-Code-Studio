@@ -11,4 +11,4 @@ export { Tooltip } from "./Tooltip";
 export type { TooltipPlacement, TooltipAlign } from "./Tooltip";
 export { TabPage } from "./TabPage";
 export { Title, Label } from "./Typography";
-export { WindowControls } from "./WindowControls";
+export { WindowControls, controlsOnLeft } from "./WindowControls";

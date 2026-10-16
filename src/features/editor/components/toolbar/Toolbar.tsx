@@ -7,7 +7,7 @@ import { EditMenu } from "./menus/EditMenu";
 import { RunMenu } from "./menus/RunMenu";
 import { HelpMenu } from "./menus/HelpMenu";
 import { ProjectSwitcher } from "./menus/ProjectSwitcher";
-import { WindowControls, BackButton } from "../../../../components/ui";
+import { WindowControls, BackButton, controlsOnLeft } from "../../../../components/ui";
 import type { ProjectSummary } from "../../../dashboard";
 import type { FileNode } from "../../types";
 import { showError } from "../../../../utils/Dialogs";
@@ -111,6 +111,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
             className="h-10 bg-panel-alt shadow-[0_1px_3px_0_rgba(0,0,0,0.35)] flex items-center justify-between shrink-0 select-none relative z-20"
         >
             <div data-tauri-drag-region className="flex items-center gap-1 flex-1">
+                {controlsOnLeft && <WindowControls showMaximize />}
                 <span className="text-accent font-black text-xl px-2">D</span>
                 <div className="flex items-center gap-0.5" ref={menuBarRef}>
                     <FileMenu
@@ -165,7 +166,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
             <div data-tauri-drag-region className="flex items-center justify-end flex-1 h-full">
                 <BackButton onClick={onBack} className="mr-4" />
 
-                <WindowControls showMaximize className="ml-2" />
+                {!controlsOnLeft && <WindowControls showMaximize className="ml-2" />}
             </div>
         </header>
     );
