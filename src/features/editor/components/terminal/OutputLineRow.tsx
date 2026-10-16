@@ -1,3 +1,4 @@
+import { Button } from "../../../../components/ui";
 import { memo } from "react";
 import { parseAnsi } from "./ansi";
 import { HighlightedText } from "./HighlightedText";
@@ -31,20 +32,20 @@ export const OutputLineRow = memo(({ line, query, onOpenLocation }: OutputLineRo
                 ))}
             </span>
             {location && (
-                <button
+                <Button variant="unstyled"
                     onClick={() => onOpenLocation(location.path, location.line, location.column)}
                     className="shrink-0 select-none text-[10px] text-sky-300 underline decoration-dotted underline-offset-2 hover:text-sky-200"
                 >
                     {location.path}:{location.line}:{location.column} <i className="bi bi-box-arrow-up-right" />
-                </button>
+                </Button>
             )}
-            <button
+            <Button variant="unstyled"
                 onClick={() => copyText(stripAnsi(line.text))}
                 title="Copiar línea"
                 className="shrink-0 select-none opacity-0 group-hover/line:opacity-100 text-gray-500 hover:text-white transition-opacity"
             >
                 <i className="bi bi-copy text-[10px]" />
-            </button>
+            </Button>
         </div>
     );
 });

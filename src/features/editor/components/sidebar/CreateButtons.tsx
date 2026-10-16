@@ -1,9 +1,8 @@
-import { Tooltip } from "../../../../components/ui";
+import { Tooltip, Button } from "../../../../components/ui";
 
 interface CreateButtonsProps {
     onCreateFile: () => void;
     onCreateFolder: () => void;
-    /** Icon size class, since the header and the tree rows use different sizes. */
     iconSize: string;
     buttonClassName: string;
 }
@@ -12,14 +11,14 @@ interface CreateButtonsProps {
 export const CreateButtons = ({ onCreateFile, onCreateFolder, iconSize, buttonClassName }: CreateButtonsProps) => (
     <>
         <Tooltip label="Nuevo archivo">
-            <button onClick={(e) => { e.stopPropagation(); onCreateFile(); }} className={buttonClassName}>
+            <Button variant="unstyled" onClick={(e) => { e.stopPropagation(); onCreateFile(); }} className={buttonClassName}>
                 <i className={`bi bi-file-earmark-plus ${iconSize}`}></i>
-            </button>
+            </Button>
         </Tooltip>
         <Tooltip label="Nueva carpeta">
-            <button onClick={(e) => { e.stopPropagation(); onCreateFolder(); }} className={buttonClassName}>
+            <Button variant="unstyled" onClick={(e) => { e.stopPropagation(); onCreateFolder(); }} className={buttonClassName}>
                 <i className={`bi bi-folder-plus ${iconSize}`}></i>
-            </button>
+            </Button>
         </Tooltip>
     </>
 );

@@ -1,5 +1,5 @@
 import { SystemMonitorRings } from "../../../system-monitor";
-import { ModifiedBadge, Tooltip } from "../../../../components/ui";
+import { ModifiedBadge, Tooltip, Button } from "../../../../components/ui";
 import { useShortcutLabel } from "../../../shortcuts";
 import { useFileDiagnostics } from "../../../compiler";
 
@@ -60,12 +60,12 @@ export const StatusBar = ({ fileName, filePath, isDirty, contentLength, wordWrap
             <div className="flex items-center gap-4">
                 {fileName && <span>{contentLength} caracteres</span>}
                 <Tooltip label={wrapShortcut ? `Ajuste de línea (${wrapShortcut})` : "Ajuste de línea"} placement="top" align="end">
-                    <button
+                    <Button variant="unstyled"
                         onClick={onToggleWordWrap}
                         className={`flex items-center gap-1 transition-colors ${wordWrap ? "text-accent" : "hover:text-gray-300"}`}
                     >
                         <i className="bi bi-text-wrap text-[11px]"></i>
-                    </button>
+                    </Button>
                 </Tooltip>
                 <SystemMonitorRings size={monitorRingSize} showNumbers={false} />
             </div>

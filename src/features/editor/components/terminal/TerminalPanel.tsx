@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Tooltip } from "../../../../components/ui";
+import { Tooltip, Button } from "../../../../components/ui";
 import { useConfig } from "../../../settings";
 import { useResizablePanel } from "../../useResizablePanel";
 import { InteractiveTerminal } from "./InteractiveTerminal";
@@ -55,23 +55,23 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
                 </div>
 
                 <div className="flex items-center gap-4">
-                    {!showShell && <button
+                    {!showShell && <Button variant="unstyled"
                         onClick={clearOutput}
                         className="group flex items-center gap-1.5 text-[10px] font-medium text-gray-500 hover:text-accent transition-all"
                     >
                         <i className="bi bi-trash3 text-xs opacity-50 group-hover:opacity-100"></i>
                         <span>LIMPIAR</span>
-                    </button>}
+                    </Button>}
 
                     {!showShell && <div className="w-[1px] h-3 bg-white/10" />}
 
                     <Tooltip label="Cerrar panel" placement="bottom">
-                        <button
+                        <Button variant="unstyled"
                             onClick={onClose}
                             className="text-gray-500 hover:text-white transition-colors flex items-center justify-center"
                         >
                             <i className="bi bi-x-lg text-sm"></i>
-                        </button>
+                        </Button>
                     </Tooltip>
                 </div>
             </div>

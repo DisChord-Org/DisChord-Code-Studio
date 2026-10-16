@@ -1,4 +1,4 @@
-import { Tooltip } from "../../../../components/ui";
+import { Tooltip, Button } from "../../../../components/ui";
 import { CreateButtons } from "./CreateButtons";
 
 interface SidebarHeaderProps {
@@ -22,9 +22,9 @@ export const SidebarHeader = ({ projectName, onCreate, onRefresh }: SidebarHeade
                 buttonClassName={buttonClassName}
             />
             <Tooltip label="Actualizar">
-                <button onClick={onRefresh} className={buttonClassName}>
+                <Button variant="unstyled" onClick={onRefresh} className={buttonClassName}>
                     <i className="bi bi-arrow-clockwise text-[13px]"></i>
-                </button>
+                </Button>
             </Tooltip>
         </div>
     </div>

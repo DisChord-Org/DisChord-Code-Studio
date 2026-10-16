@@ -1,3 +1,4 @@
+import { Button } from "../../../../components/ui";
 import { memo } from "react";
 import { OutputDetails } from "./OutputDetails";
 import { OutputLineRow } from "./OutputLineRow";
@@ -39,7 +40,7 @@ export const RunBlock = memo(({ run, expanded, problemsOnly, query, onToggle, on
     return (
         <section className="mb-2 last:mb-0">
             <div className="flex items-center gap-1">
-                <button
+                <Button variant="unstyled"
                     onClick={onToggle}
                     className="flex-1 min-w-0 flex items-center gap-2 px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.07] transition-colors text-left"
                 >
@@ -55,14 +56,14 @@ export const RunBlock = memo(({ run, expanded, problemsOnly, query, onToggle, on
                     <span className="flex-1" />
                     <span className={`text-[10px] ${style.text}`}>{statusLabel(run)}</span>
                     <span className="text-[10px] text-gray-500 tabular-nums">· {duration}</span>
-                </button>
-                <button
+                </Button>
+                <Button variant="unstyled"
                     onClick={copyRun}
                     title="Copiar esta ejecución"
                     className="shrink-0 px-2 py-1 rounded text-gray-500 hover:text-white hover:bg-white/[0.07] transition-colors"
                 >
                     <i className="bi bi-copy text-[11px]" />
-                </button>
+                </Button>
             </div>
 
             {expanded && (

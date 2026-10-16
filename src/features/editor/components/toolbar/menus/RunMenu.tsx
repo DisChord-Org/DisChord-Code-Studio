@@ -1,3 +1,4 @@
+import { Button } from "../../../../../components/ui";
 import { ToolbarButton } from "../ToolbarButton";
 import { MenuOption } from "./MenuOption";
 import { MenuPanel } from "./MenuPanel";
@@ -28,13 +29,13 @@ export const RunMenu = ({ isOpen, onToggle, onHover, isRunning, onRun, onToggleT
 
             {onToggleTerminal && (
                 <>
-                    <button
+                    <Button variant="unstyled"
                         onClick={onToggle}
                         title="Más opciones"
                         className={`ml-0.5 px-1.5 rounded transition-colors flex items-center ${tint}`}
                     >
                         <i className={`bi bi-chevron-down text-[9px] transition-transform ${isOpen ? "rotate-180" : ""}`}></i>
-                    </button>
+                    </Button>
 
                     {isOpen && (
                         <MenuPanel className="top-full left-0 mt-1 w-52 z-[200]">

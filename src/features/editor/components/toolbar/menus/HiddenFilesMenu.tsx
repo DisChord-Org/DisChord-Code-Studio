@@ -1,3 +1,4 @@
+import { Button } from "../../../../../components/ui";
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { MenuPanel } from "./MenuPanel";
@@ -62,7 +63,7 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
 
     return (
         <div className="relative" onMouseEnter={onHover}>
-            <button
+            <Button variant="unstyled"
                 onClick={onToggle}
                 className="w-full px-3 py-1.5 text-[11px] flex items-center justify-between gap-3 text-gray-300 hover:bg-accent hover:text-white transition-colors"
             >
@@ -71,17 +72,17 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
                     Ficheros ocultos
                 </span>
                 <i className="bi bi-chevron-right text-[9px] opacity-50"></i>
-            </button>
+            </Button>
 
             {isOpen && (
                 <MenuPanel className="top-0 left-full ml-1 w-56 z-[210]">
-                    <button
+                    <Button variant="unstyled"
                         onClick={() => onFileOpen(gitignoreNode)}
                         className="w-full text-left px-3 py-1.5 text-[11px] flex items-center gap-2 text-accent font-semibold hover:bg-accent hover:text-white transition-colors"
                     >
                         <i className="bi bi-eye-slash text-sm"></i>
                         .gitignore
-                    </button>
+                    </Button>
 
                     <MenuDivider />
 

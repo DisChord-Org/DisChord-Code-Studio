@@ -1,3 +1,4 @@
+import { Button } from "../../../../components/ui";
 import type { OpenTab } from "../../types";
 import { FileIcon } from "../FileIcon";
 
@@ -46,13 +47,13 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                             <span className={tab.kind === "file" && !tab.isPinned ? "border-b border-dotted border-white/40" : ""}>{tab.name}</span>
                         </span>
 
-                        <button
+                        <Button variant="unstyled"
                             onClick={(e) => { e.stopPropagation(); onClose(tab.relative_path); }}
                             className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-white/10 hover:text-white transition-colors"
                         >
                             <span className={`w-1.5 h-1.5 bg-accent rounded-full ${tab.isDirty ? "block group-hover:hidden" : "hidden"}`} />
                             <i className="bi bi-x text-[13px] hidden group-hover:inline"></i>
-                        </button>
+                        </Button>
                     </div>
                 );
             })}

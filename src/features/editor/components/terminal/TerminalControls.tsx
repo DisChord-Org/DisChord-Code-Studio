@@ -1,4 +1,4 @@
-import { Tooltip } from "../../../../components/ui";
+import { Tooltip, Button } from "../../../../components/ui";
 
 interface TerminalControlsProps {
     armed: boolean;
@@ -12,10 +12,10 @@ export const TerminalControls = ({ armed, onStop, onRestart }: TerminalControlsP
         {armed ? (
             <>
                 <Tooltip label="Detener" placement="bottom">
-                    <button onClick={onStop} className="w-2 h-2 rounded-full bg-red-500 hover:bg-red-400 transition-colors" />
+                    <Button variant="unstyled" onClick={onStop} className="w-2 h-2 rounded-full bg-red-500 hover:bg-red-400 transition-colors" />
                 </Tooltip>
                 <Tooltip label="Reiniciar" placement="bottom">
-                    <button onClick={onRestart} className="w-2 h-2 rounded-full bg-amber-500 hover:bg-amber-400 transition-colors" />
+                    <Button variant="unstyled" onClick={onRestart} className="w-2 h-2 rounded-full bg-amber-500 hover:bg-amber-400 transition-colors" />
                 </Tooltip>
             </>
         ) : (

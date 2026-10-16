@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { Label } from "../../../../components/ui";
+import { Label, Button } from "../../../../components/ui";
 import { outlineContainerKinds, outlineIcons } from "./Outline.constants";
 import { useFileDeclarations, type Declaration } from "../../../compiler";
 
@@ -50,7 +50,7 @@ export const Outline = ({ path, onJump }: OutlineProps) => {
 
     return (
         <section className="relative flex flex-col min-h-0 max-h-[40%] shadow-[0_-1px_3px_0_rgba(0,0,0,0.35)]">
-            <button
+            <Button variant="unstyled"
                 onClick={toggle}
                 className="h-6 shrink-0 flex items-center gap-1.5 px-3 text-left hover:bg-white/[0.03] transition-colors"
             >
@@ -58,7 +58,7 @@ export const Outline = ({ path, onJump }: OutlineProps) => {
                 <Label>Esquema</Label>
                 <span className="flex-1" />
                 {rows.length > 0 && <span className="text-[10px] text-gray-600 tabular-nums">{rows.length}</span>}
-            </button>
+            </Button>
 
             {!collapsed && (
                 <div className="custom-scrollbar overflow-y-auto pb-2">
@@ -66,7 +66,7 @@ export const Outline = ({ path, onJump }: OutlineProps) => {
                         <p className="px-4 py-2 text-[11px] text-gray-600 italic">Sin símbolos todavía.</p>
                     ) : (
                         rows.map(({ item, depth }) => (
-                            <button
+                            <Button variant="unstyled"
                                 key={`${item.kind}:${item.name}:${item.start.line}:${item.start.column}`}
                                 onClick={() => onJump(item.start.line, item.start.column)}
                                 className="w-full flex items-center gap-1.5 pr-3 py-0.5 text-[12px] text-gray-400 hover:bg-white/5 hover:text-gray-200 transition-colors text-left"
@@ -76,7 +76,7 @@ export const Outline = ({ path, onJump }: OutlineProps) => {
                                 <i className={`bi ${outlineIcons[item.kind] ?? "bi-dot"} text-[11px] text-gray-500 shrink-0`} />
                                 <span className="truncate flex-1">{item.name}</span>
                                 <span className="text-[10px] text-gray-700 tabular-nums">{item.start.line}</span>
-                            </button>
+                            </Button>
                         ))
                     )}
                 </div>

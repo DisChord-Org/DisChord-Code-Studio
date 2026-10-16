@@ -1,3 +1,4 @@
+import { Button } from "../../../../components/ui";
 import { useState } from "react";
 import { stripAnsi } from "./outputText";
 import type { OutputLine } from "./types";
@@ -11,13 +12,13 @@ export const OutputDetails = ({ lines }: OutputDetailsProps) => {
 
     return (
         <div>
-            <button
+            <Button variant="unstyled"
                 onClick={() => setOpen((v) => !v)}
                 className="flex items-center gap-2 px-2 py-0.5 text-[10px] text-gray-500 hover:text-gray-300 transition-colors"
             >
                 <i className={`bi bi-chevron-right text-[8px] transition-transform ${open ? "rotate-90" : ""}`} />
                 Detalles técnicos ({lines.length} líneas)
-            </button>
+            </Button>
             {open && (
                 <div className="pl-5 text-gray-500 opacity-80">
                     {lines.map((line) => (

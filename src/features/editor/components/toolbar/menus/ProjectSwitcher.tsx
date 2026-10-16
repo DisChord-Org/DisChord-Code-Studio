@@ -2,7 +2,7 @@ import { MenuOption } from "./MenuOption";
 import { MenuPanel } from "./MenuPanel";
 import { MenuDivider } from "./MenuDivider";
 import { formatRelativeTime } from "../../../../../utils/Time";
-import { Label } from "../../../../../components/ui";
+import { Label, Button } from "../../../../../components/ui";
 import type { ProjectSummary } from "../../../../dashboard";
 
 interface ProjectSwitcherProps {
@@ -25,7 +25,7 @@ export const ProjectSwitcher = ({
     onBackToDashboard,
 }: ProjectSwitcherProps) => (
     <>
-        <button
+        <Button variant="unstyled"
             onClick={onToggle}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border transition-colors
                 ${isOpen
@@ -36,7 +36,7 @@ export const ProjectSwitcher = ({
             <i className="bi bi-folder-fill text-accent text-[11px]"></i>
             <span className="text-[12px] font-medium truncate max-w-[220px]">{projectName}</span>
             <i className={`bi bi-chevron-down text-[9px] transition-transform duration-150 ${isOpen ? "rotate-180" : ""}`}></i>
-        </button>
+        </Button>
 
         {isOpen && (
             <MenuPanel className="top-full left-1/2 -translate-x-1/2 mt-1 w-64 z-[200]">
@@ -53,7 +53,7 @@ export const ProjectSwitcher = ({
                         projects.map((project) => {
                             const isCurrent = project.name === projectName;
                             return (
-                                <button
+                                <Button variant="unstyled"
                                     key={project.name}
                                     onClick={() => onSwitchProject(project.name)}
                                     disabled={isCurrent}
@@ -71,7 +71,7 @@ export const ProjectSwitcher = ({
                                         </div>
                                     </div>
                                     {isCurrent && <i className="bi bi-check2 text-accent text-[13px]"></i>}
-                                </button>
+                                </Button>
                             );
                         })
                     )}
