@@ -7,7 +7,7 @@ import { EditMenu } from "./menus/EditMenu";
 import { RunMenu } from "./menus/RunMenu";
 import { HelpMenu } from "./menus/HelpMenu";
 import { ProjectSwitcher } from "./menus/ProjectSwitcher";
-import { WindowControls, BackButton, controlsOnLeft } from "../../../../components/ui";
+import { WindowControls, BackButton, Logo, controlsOnLeft } from "../../../../components/ui";
 import type { ProjectSummary } from "../../../dashboard";
 import type { FileNode } from "../../types";
 import { showError } from "../../../../utils/Dialogs";
@@ -111,7 +111,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
             className="h-10 bg-panel-alt shadow-[0_1px_3px_0_rgba(0,0,0,0.35)] flex items-center justify-between shrink-0 select-none relative z-20"
         >
             <div data-tauri-drag-region className="flex items-center gap-1 flex-1">
-                {controlsOnLeft ? <WindowControls showMaximize /> : <span className="text-accent font-black text-xl px-2">D</span>}
+                {controlsOnLeft ? <WindowControls showMaximize /> : <span className="px-3 flex items-center"><Logo size={24} /></span>}
                 <div className="flex items-center gap-0.5" ref={menuBarRef}>
                     <FileMenu
                         isOpen={openMenu === "file"}
@@ -167,7 +167,7 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
 
                 {/* On macOS the controls sit on the left, and the logo takes their place on the right. */}
                 {controlsOnLeft
-                    ? <span className="text-accent font-black text-xl px-4">D</span>
+                    ? <span className="px-4 flex items-center"><Logo size={24} /></span>
                     : <WindowControls showMaximize className="ml-2" />}
             </div>
         </header>

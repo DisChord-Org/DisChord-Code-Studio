@@ -1,0 +1,19 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1024 1024" fill="none">
+  <rect width="1024" height="1024" rx="224" fill="#0b1120"/>
+  <g transform="translate(512 512) scale(0.62) translate(-634 -621)">
+    <g stroke="#d9d9d9" stroke-width="44">
+      <path d="M497 163 V676"/>
+      <path d="M836 163 L288 993"/>
+      <path d="M980 250 L418 1080"/>
+      <path d="M722 631 V1080"/>
+    </g>
+    <g fill="#d9d9d9">
+      <circle cx="496" cy="163" r="62"/>
+      <circle cx="836" cy="163" r="62"/>
+      <circle cx="980" cy="250" r="62"/>
+      <circle cx="288" cy="993" r="62"/>
+      <circle cx="418" cy="1080" r="62"/>
+      <circle cx="722" cy="1080" r="62"/>
+    </g>
+  </g>
+</svg>

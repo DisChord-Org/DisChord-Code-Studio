@@ -5,6 +5,7 @@ export { ContextMenu } from "./ContextMenu";
 export { EmptyState } from "./EmptyState";
 export { ListGroup, ListRow } from "./ListRow";
 export { DialogHost } from "./DialogHost";
+export { Logo } from "./Logo";
 export { Modal } from "./Modal";
 export { ModifiedBadge } from "./ModifiedBadge";
 export { Tooltip } from "./Tooltip";
