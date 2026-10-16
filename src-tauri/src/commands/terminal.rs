@@ -3,7 +3,7 @@ use std::fs;
 use std::path::Path;
 use std::io::{Read, Write};
 use std::sync::atomic::{AtomicU32, Ordering};
-use std::sync::Mutex;
+use std::sync::{Mutex, MutexGuard};
 use std::thread;
 
 use log::{error, info};
@@ -12,6 +12,7 @@ use serde::Serialize;
 use tauri::{Emitter, Manager};
 
 use crate::commands::config_sections::section_values;
+use crate::log_err::LogErr;
 use crate::paths::project_path;
 use crate::platform::{build_path_env, NPM_ENV_VARS_TO_STRIP};
 
@@ -24,6 +25,9 @@ struct TerminalSession {
 #[derive(Default)]
 pub struct TerminalState(Mutex<HashMap<String, TerminalSession>>);
 
+const READ_BUFFER_BYTES: usize = 4096;
+const MISSING_TERMINAL: &str = "La terminal ya no existe";
+
 static NEXT_ID: AtomicU32 = AtomicU32::new(1);
 
 #[derive(Serialize, Clone)]
@@ -35,6 +39,12 @@ struct PtyData {
 #[derive(Serialize, Clone)]
 struct PtyExit {
     id: String,
+}
+
+impl TerminalState {
+    fn sessions(&self) -> MutexGuard<'_, HashMap<String, TerminalSession>> {
+        self.0.lock().unwrap_or_else(|poisoned| poisoned.into_inner())
+    }
 }
 
 fn default_shell() -> String {
@@ -121,7 +131,7 @@ fn drain_utf8(pending: &mut Vec<u8>) -> Option<String> {
 pub fn terminal_open(app_handle: tauri::AppHandle, project_name: String, cols: u16, rows: u16, rounded: bool) -> Result<String, String> {
     let cwd = project_path(&app_handle, &project_name);
 
-    let pair = native_pty_system().openpty(pty_size(cols, rows)).map_err(|e| e.to_string())?;
+    let pair = native_pty_system().openpty(pty_size(cols, rows)).log_err("No se pudo abrir el pseudoterminal")?;
 
     let shell = default_shell();
     let mut cmd = CommandBuilder::new(&shell);
@@ -144,19 +154,17 @@ pub fn terminal_open(app_handle: tauri::AppHandle, project_name: String, cols: u
         apply_prompt_style(&app_handle, &mut cmd, &shell, &workflows_dir);
     }
 
-    let child = pair.slave.spawn_command(cmd).map_err(|e| e.to_string())?;
+    let child = pair.slave.spawn_command(cmd).log_err("No se pudo lanzar la shell de la terminal")?;
     drop(pair.slave);
 
-    let mut reader = pair.master.try_clone_reader().map_err(|e| e.to_string())?;
-    let writer = pair.master.take_writer().map_err(|e| e.to_string())?;
+    let mut reader = pair.master.try_clone_reader().log_err("No se pudo leer del pseudoterminal")?;
+    let writer = pair.master.take_writer().log_err("No se pudo escribir en el pseudoterminal")?;
 
     let id = NEXT_ID.fetch_add(1, Ordering::SeqCst).to_string();
 
     app_handle
         .state::<TerminalState>()
-        .0
-        .lock()
-        .unwrap()
+        .sessions()
         .insert(id.clone(), TerminalSession { master: pair.master, writer, child });
 
     info!("Terminal interactiva {} abierta en {:?}", id, cwd);
@@ -164,7 +172,7 @@ pub fn terminal_open(app_handle: tauri::AppHandle, project_name: String, cols: u
     let reader_handle = app_handle.clone();
     let reader_id = id.clone();
     thread::spawn(move || {
-        let mut buf = [0u8; 4096];
+        let mut buf = [0u8; READ_BUFFER_BYTES];
         let mut pending: Vec<u8> = Vec::new();
 
         loop {
@@ -179,7 +187,7 @@ pub fn terminal_open(app_handle: tauri::AppHandle, project_name: String, cols: u
             }
         }
 
-        if let Some(mut session) = reader_handle.state::<TerminalState>().0.lock().unwrap().remove(&reader_id) {
+        if let Some(mut session) = reader_handle.state::<TerminalState>().sessions().remove(&reader_id) {
             let _ = session.child.kill();
         }
         let _ = reader_handle.emit("pty-exit", PtyExit { id: reader_id });
@@ -190,22 +198,22 @@ pub fn terminal_open(app_handle: tauri::AppHandle, project_name: String, cols: u
 
 #[tauri::command]
 pub fn terminal_write(state: tauri::State<'_, TerminalState>, id: String, data: String) -> Result<(), String> {
-    let mut sessions = state.0.lock().unwrap();
-    let session = sessions.get_mut(&id).ok_or("La terminal ya no existe")?;
+    let mut sessions = state.sessions();
+    let session = sessions.get_mut(&id).ok_or(MISSING_TERMINAL)?;
     session.writer.write_all(data.as_bytes()).map_err(|e| e.to_string())?;
     session.writer.flush().map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn terminal_resize(state: tauri::State<'_, TerminalState>, id: String, cols: u16, rows: u16) -> Result<(), String> {
-    let sessions = state.0.lock().unwrap();
-    let session = sessions.get(&id).ok_or("La terminal ya no existe")?;
+    let sessions = state.sessions();
+    let session = sessions.get(&id).ok_or(MISSING_TERMINAL)?;
     session.master.resize(pty_size(cols, rows)).map_err(|e| e.to_string())
 }
 
 #[tauri::command]
 pub fn terminal_close(state: tauri::State<'_, TerminalState>, id: String) {
-    if let Some(mut session) = state.0.lock().unwrap().remove(&id) {
+    if let Some(mut session) = state.sessions().remove(&id) {
         if let Err(e) = session.child.kill() {
             error!("No se pudo cerrar la terminal {}: {}", id, e);
         }
@@ -215,7 +223,7 @@ pub fn terminal_close(state: tauri::State<'_, TerminalState>, id: String) {
 
 pub fn close_all(app_handle: &tauri::AppHandle) {
     let state = app_handle.state::<TerminalState>();
-    let mut sessions = state.0.lock().unwrap();
+    let mut sessions = state.sessions();
     for (_, mut session) in sessions.drain() {
         let _ = session.child.kill();
     }
