@@ -26,7 +26,7 @@ export const HelpMenu = ({ isOpen, onToggle, onHover, onClose, onOpenShortcuts }
 
     return (
         <div className="relative" onMouseEnter={onHover}>
-            <ToolbarButton label="Ayuda" onClick={onToggle} />
+            <ToolbarButton label="Ayuda" onClick={onToggle} expanded={isOpen} />
 
             {isOpen && (
                 <MenuPanel className="top-full left-0 mt-1 w-52 z-[200]">

@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
+import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { FileNode, GotoTarget, OpenTab } from "./types";
 import { packagesTabId, shortcutsTabId } from "./types";
 import { baseName, isSameOrInside, remapPath } from "./pathUtils";
@@ -48,6 +49,30 @@ export const useOpenTabs = (projectName: string) => {
         // Compared by name so a render right after a project switch never files the old tabs under the new project.
         if (restoredProject === projectName) saveTabsSession(projectName, openTabs, activeTabPath);
     }, [restoredProject, openTabs, activeTabPath, projectName]);
+
+    // Closing the window with unsaved files asks first; the Rust side exits once the window is really gone.
+    useEffect(() => {
+        let closing = false;
+        const unlisten = getCurrentWindow().onCloseRequested(async (event) => {
+            if (closing) return;
+            const dirty = openTabsRef.current.filter(t => t.isDirty);
+            if (dirty.length === 0) return;
+
+            event.preventDefault();
+            const confirmed = await confirmAction(
+                `Tienes cambios sin guardar en ${dirty.map(t => `"${t.name}"`).join(", ")}. ¿Quieres cerrar la aplicación de todos modos? Se perderán.`,
+                "Cerrar"
+            );
+            if (!confirmed) return;
+
+            closing = true;
+            await getCurrentWindow().close();
+        });
+
+        return () => {
+            unlisten.then(fn => fn());
+        };
+    }, []);
 
     useEffect(() => {
         setGotoTarget(null);

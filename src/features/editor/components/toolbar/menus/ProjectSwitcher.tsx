@@ -27,6 +27,8 @@ export const ProjectSwitcher = ({
     <>
         <Button variant="unstyled"
             onClick={onToggle}
+            aria-haspopup="true"
+            aria-expanded={isOpen}
             className={`flex items-center gap-1.5 px-2.5 py-1 rounded-md border transition-colors
                 ${isOpen
                     ? "bg-white/[0.06] border-white/[0.08] text-gray-200"

@@ -28,6 +28,6 @@ export const languageFor = async (fileName: string): Promise<LanguageSupport | n
 /** Loads the syntaxes of the most common file kinds ahead of time, so opening one never shows plain text first. */
 export const preloadCommonLanguages = () => {
     for (const sample of ["a.js", "a.ts", "a.tsx", "a.json", "a.html", "a.css", "a.md"]) {
-        languageFor(sample).catch(() => {});
+        languageFor(sample).catch(() => {}); // Warm-up only: a real failure surfaces when that language is actually needed.
     }
 };

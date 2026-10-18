@@ -871,6 +871,7 @@ dependencies = [
  "notify",
  "notify-debouncer-full",
  "portable-pty",
+ "regex",
  "reqwest",
  "serde",
  "serde_json",

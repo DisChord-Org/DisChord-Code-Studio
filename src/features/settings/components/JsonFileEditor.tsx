@@ -10,6 +10,7 @@ import { dischordEditorTheme } from "../../../languages/editor-theme";
 import { languageFor, loadedLanguageFor } from "../../../languages/language-for-file";
 import { ModifiedBadge } from "../../../components/ui";
 import { useShortcut } from "../../shortcuts";
+import { notify } from "../../../utils/Toasts";
 
 const language = new Compartment();
 
@@ -33,8 +34,9 @@ export const JsonFileEditor = () => {
 
         try {
             JSON.parse(content);
-        } catch {
+        } catch (error) {
             triggerShake();
+            notify("error", "El JSON no es válido, no se guardó.", [String(error)]);
             return;
         }
 
@@ -43,7 +45,7 @@ export const JsonFileEditor = () => {
             setIsDirty(false);
         } catch (error) {
             triggerShake();
-            console.error("No se pudo guardar config.json:", error);
+            notify("error", "No se pudo guardar config.json.", [String(error)]);
         }
     };
 
@@ -80,7 +82,7 @@ export const JsonFileEditor = () => {
 
                 languageFor("config.json")
                     .then((support) => support && !cancelled && view.dispatch({ effects: language.reconfigure(support) }))
-                    .catch(() => {});
+                    .catch(() => {}); // Highlighting is optional; the JSON stays editable as plain text.
             })
             .catch((error) => setError(String(error)));
 

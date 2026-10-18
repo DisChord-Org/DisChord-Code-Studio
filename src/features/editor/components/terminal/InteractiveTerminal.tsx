@@ -6,6 +6,7 @@ import { FitAddon } from "@xterm/addon-fit";
 import { WebglAddon } from "@xterm/addon-webgl";
 import "@xterm/xterm/css/xterm.css";
 import { buildFontFamilyCss } from "../../../settings";
+import { notify } from "../../../../utils/Toasts";
 import { matchesShortcut } from "../../../shortcuts";
 import { terminalFontSize, terminalTheme } from "./InteractiveTerminal.constants";
 import type { PtyData, PtyExit } from "./types";
@@ -54,11 +55,11 @@ export const InteractiveTerminal = ({ projectName, fontFamily, active, height }:
         term.attachCustomKeyEventHandler((e) => {
             if (e.type !== "keydown") return true;
             if (matchesShortcut(e, "terminal.copy") && term.hasSelection()) {
-                navigator.clipboard.writeText(term.getSelection()).catch(() => {});
+                navigator.clipboard.writeText(term.getSelection()).catch((error) => notify("error", "No se pudo copiar al portapapeles.", [String(error)]));
                 return false;
             }
             if (matchesShortcut(e, "terminal.paste")) {
-                navigator.clipboard.readText().then((text) => term.paste(text)).catch(() => {});
+                navigator.clipboard.readText().then((text) => term.paste(text)).catch((error) => notify("error", "No se pudo leer el portapapeles.", [String(error)]));
                 return false;
             }
             return true;
@@ -88,7 +89,7 @@ export const InteractiveTerminal = ({ projectName, fontFamily, active, height }:
             try {
                 const opened = await invoke<string>("terminal_open", { projectName, cols: term.cols, rows: term.rows, rounded });
                 if (disposed) {
-                    invoke("terminal_close", { id: opened }).catch(() => {});
+                    invoke("terminal_close", { id: opened }).catch(() => {}); // Already unmounted: nobody to tell.
                     return;
                 }
                 id = opened;
@@ -100,10 +101,10 @@ export const InteractiveTerminal = ({ projectName, fontFamily, active, height }:
         })();
 
         term.onData((data) => {
-            if (id) invoke("terminal_write", { id, data }).catch(() => {});
+            if (id) invoke("terminal_write", { id, data }).catch(() => {}); // Process already exited; typing into it is moot.
         });
         term.onResize(({ cols, rows }) => {
-            if (id) invoke("terminal_resize", { id, cols, rows }).catch(() => {});
+            if (id) invoke("terminal_resize", { id, cols, rows }).catch(() => {}); // Cosmetic; the next resize retries.
         });
 
         const handleWindowResize = () => fit.fit();
@@ -113,7 +114,7 @@ export const InteractiveTerminal = ({ projectName, fontFamily, active, height }:
             disposed = true;
             window.removeEventListener("resize", handleWindowResize);
             unlisten.forEach((cleanup) => cleanup());
-            if (id) invoke("terminal_close", { id }).catch(() => {});
+            if (id) invoke("terminal_close", { id }).catch(() => {}); // Unmounting: the session is gone either way.
             term.dispose();
             termRef.current = null;
             fitRef.current = null;

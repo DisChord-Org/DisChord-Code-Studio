@@ -103,7 +103,7 @@ pub fn run() {
         .plugin(tauri_plugin_shell::init())
         .on_window_event(|window, event| {
             if window.label() == MAIN_WINDOW_LABEL {
-                if let tauri::WindowEvent::CloseRequested { .. } = event {
+                if let tauri::WindowEvent::Destroyed = event {
                     info!("Ventana principal cerrada, saliendo de la aplicación");
                     window.app_handle().exit(0);
                 }
@@ -165,6 +165,10 @@ pub fn run() {
 
             commands::config_sections::get_config_sections,
             commands::config_sections::save_config_section,
+
+            commands::search::list_project_paths,
+            commands::search::search_project,
+            commands::search::replace_in_project,
 
             commands::watcher::watch_project,
             commands::watcher::unwatch_project,

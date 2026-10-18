@@ -29,6 +29,7 @@ export const PackageManager = ({ onClose, projectName }: PackageManagerProps) =>
         handleInstall,
         handleUse,
         handleUnuse,
+        handleUpdate,
         handleUninstall,
         handleSync,
     } = usePackageManager({ projectName });
@@ -82,6 +83,7 @@ export const PackageManager = ({ onClose, projectName }: PackageManagerProps) =>
                 onInstall={handleInstall}
                 onUse={handleUse}
                 onUnuse={handleUnuse}
+                onUpdate={handleUpdate}
                 onUninstall={handleUninstall}
             />
         </TabPage>

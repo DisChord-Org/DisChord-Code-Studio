@@ -1,3 +1,4 @@
+import type { EditorView } from "codemirror";
 import { invoke } from "@tauri-apps/api/core";
 import { baseName, toPosix } from "./pathUtils";
 import { packagesTabId, shortcutsTabId, type OpenTab } from "./types";
@@ -83,4 +84,48 @@ export const restoreTabsSession = async (projectName: string): Promise<{ tabs: O
     const active = activeTab ? activeTab.relative_path : (tabs[tabs.length - 1]?.relative_path ?? null);
 
     return { tabs, active };
+};
+
+interface SavedView {
+    anchor: number;
+    scrollTop: number;
+}
+
+const viewsKey = (projectName: string) => `dischord:editor-views:${projectName}`;
+
+const readViews = (projectName: string): Record<string, SavedView> => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(viewsKey(projectName)) ?? "{}");
+        return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+        return {};
+    }
+};
+
+let pendingWrite: ReturnType<typeof setTimeout> | undefined;
+
+/** Remembers the cursor and scroll of a file's editor (debounced: it is called on every cursor move and scroll). */
+export const rememberTabView = (projectName: string, path: string, view: EditorView) => {
+    const entry: SavedView = { anchor: view.state.selection.main.anchor, scrollTop: view.scrollDOM.scrollTop };
+
+    clearTimeout(pendingWrite);
+    pendingWrite = setTimeout(() => {
+        try {
+            localStorage.setItem(viewsKey(projectName), JSON.stringify({ ...readViews(projectName), [path]: entry }));
+        } catch {
+            // Best-effort persistence, like the tabs themselves.
+        }
+    }, 300);
+};
+
+/** Puts a freshly created editor back where the file was left (cursor and scroll). */
+export const restoreTabView = (projectName: string, path: string, view: EditorView) => {
+    const saved = readViews(projectName)[path];
+    if (!saved || typeof saved.anchor !== "number") return;
+
+    view.dispatch({ selection: { anchor: Math.min(saved.anchor, view.state.doc.length) } });
+    // After layout, or the scroll height is still unknown and the position is clamped to zero.
+    requestAnimationFrame(() => {
+        if (typeof saved.scrollTop === "number") view.scrollDOM.scrollTop = saved.scrollTop;
+    });
 };

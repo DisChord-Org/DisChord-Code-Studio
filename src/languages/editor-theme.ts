@@ -9,9 +9,12 @@ export const dischordEditorTheme = EditorView.theme({
         overflow: "auto",
         backgroundColor: "var(--color-app-bg)",
         paddingTop: "10px",
-        scrollbarWidth: "none",
-        msOverflowStyle: "none"
+        scrollbarWidth: "auto"
     },
+    ".cm-scroller::-webkit-scrollbar": { width: "4px", height: "4px", background: "transparent" },
+    ".cm-scroller::-webkit-scrollbar-corner": { background: "transparent" },
+    ".cm-scroller::-webkit-scrollbar-thumb": { background: "#1e1f22", borderRadius: "10px" },
+    ".cm-scroller::-webkit-scrollbar-thumb:hover, .cm-scroller::-webkit-scrollbar-thumb:active": { background: "#5865F2" },
     ".cm-content": {
         fontFamily: "var(--editor-font-family, 'Monocraft', monospace)",
         fontSize: "var(--editor-font-size, 14px)",
@@ -37,8 +40,5 @@ export const dischordEditorTheme = EditorView.theme({
     ".cm-activeLineGutter": {
         backgroundColor: "var(--color-border)",
         color: "var(--color-accent)"
-    },
-    ".cm-scroller::-webkit-scrollbar": {
-        display: "none"
     }
 }, { dark: true });

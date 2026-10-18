@@ -88,6 +88,8 @@ export const Sidebar = ({ files, onFileClick, projectName, onRefresh, onPathMove
                 )}
 
                 <div
+                    role="tree"
+                    aria-label="Explorador de archivos"
                     tabIndex={0}
                     onKeyDown={(e) => {
                         if (matchesShortcut(e.nativeEvent, "explorer.rename") && selectedPath && !renamingPath) {

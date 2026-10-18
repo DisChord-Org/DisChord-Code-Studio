@@ -16,6 +16,7 @@ import {
     languageConf, wrapConf, indentConf, diagnosticsConf, indentExtension, isChordFile,
     languageExtensionFor, completionExtensionFor, addFlash, clearFlash, flashField,
 } from "./codeMirrorExtensions";
+import { rememberTabView, restoreTabView } from "../../tabsSession";
 import { copyFlashMs } from "./CodeCanvas.constants";
 import { useConfig } from "../../../settings";
 import { useShortcut } from "../../../shortcuts";
@@ -114,6 +115,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     completionExtensionFor(fileName),
                     keymap.of([indentWithTab]),
                     EditorView.updateListener.of((update) => {
+                        if (update.selectionSet) rememberTabView(projectName, relative_path, update.view);
                         if (update.docChanged) {
                             setIsDirty(true);
                             onChange(update.state.doc.toString());
@@ -147,6 +149,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                 .catch((error) => console.error(`No se pudo cargar la sintaxis de ${fileName}:`, error));
         }
 
+        restoreTabView(projectName, relative_path, view);
         setIsDirty(false);
         view.focus();
 
@@ -162,11 +165,14 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         // Two frames: the first lays the document out, the second has the final scroll metrics.
         requestAnimationFrame(() => requestAnimationFrame(reportViewport));
 
+        const rememberScroll = () => rememberTabView(projectName, relative_path, view);
+        scroller.addEventListener("scroll", rememberScroll, { passive: true });
         scroller.addEventListener("scroll", reportViewport, { passive: true });
         const resizeObserver = new ResizeObserver(reportViewport);
         resizeObserver.observe(scroller);
 
         return () => {
+            scroller.removeEventListener("scroll", rememberScroll);
             scroller.removeEventListener("scroll", reportViewport);
             resizeObserver.disconnect();
             view.destroy();

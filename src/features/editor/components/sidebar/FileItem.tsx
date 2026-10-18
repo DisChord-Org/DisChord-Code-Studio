@@ -38,8 +38,12 @@ export const FileItem = ({ node, level }: FileItemProps) => {
     const iconName = isRenaming ? draftName.trim() : node.name;
 
     return (
-        <div>
+        <div role="none">
             <div
+                role="treeitem"
+                aria-level={level + 1}
+                aria-selected={isSelected}
+                aria-expanded={node.is_dir ? isOpen : undefined}
                 draggable={!isRenaming}
                 onDragStart={(e) => {
                     e.dataTransfer.effectAllowed = "move";
@@ -98,7 +102,7 @@ export const FileItem = ({ node, level }: FileItemProps) => {
             </div>
 
             {node.is_dir && isOpen && (creatingHere || (node.children && node.children.length > 0)) && (
-                <div className="ml-[13px] border-l border-white/[0.06]">
+                <div role="group" className="ml-[13px] border-l border-white/[0.06]">
                     {creatingHere && <CreateRow level={level + 1} />}
                     {node.children?.map((child) => (
                         <FileItem key={child.relative_path} node={child} level={level + 1} />

@@ -19,10 +19,10 @@ const syncMaximized = () =>
     appWindow
         .isMaximized()
         .then((maximized) => document.documentElement.toggleAttribute("data-maximized", maximized))
-        .catch(() => {});
+        .catch(() => {}); // Only a cosmetic attribute for window corners.
 
 syncMaximized();
-appWindow.onResized(syncMaximized).catch(() => {});
+appWindow.onResized(syncMaximized).catch(() => {}); // Same: cosmetic only.
 
 invoke<string>("get_platform")
     .then((platform) => document.documentElement.setAttribute("data-platform", forcedPlatform ?? platform))

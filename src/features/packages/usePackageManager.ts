@@ -132,6 +132,18 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
             invoke<PkgOpOutcome>("pkg_use", { projectName, name: pkg.name, version }), refreshInstalledAndLibs);
     };
 
+    /** Moves a library in use to the registry's latest version: installs it if needed, then points the project at it. */
+    const handleUpdate = (pkg: PackageEntry) => {
+        const version = pkg.latest_version;
+        runOp("use", pkg.name, opKey("use", pkg.name, version), async () => {
+            if (!installedVersions.get(pkg.name)?.has(version)) {
+                const installed = await invoke<PkgOpOutcome>("pkg_install", { name: pkg.name, version });
+                if (!installed.success) return installed;
+            }
+            return invoke<PkgOpOutcome>("pkg_use", { projectName, name: pkg.name, version });
+        }, refreshInstalledAndLibs);
+    };
+
     const handleUnuse = (name: string) => {
         runOp("unuse", name, opKey("unuse", name), () =>
             invoke<PkgOpOutcome>("pkg_unuse", { projectName, name }), refreshInstalledAndLibs);
@@ -194,6 +206,7 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
         handleInstall,
         handleUse,
         handleUnuse,
+        handleUpdate,
         handleUninstall,
         handleSync,
     };

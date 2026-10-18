@@ -13,3 +13,4 @@ pub mod watcher;
 pub mod compiler;
 pub mod library_sources;
 pub mod terminal_background;
+pub mod search;

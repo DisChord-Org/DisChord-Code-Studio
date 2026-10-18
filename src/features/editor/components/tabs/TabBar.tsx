@@ -16,13 +16,15 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
     if (tabs.length === 0) return null;
 
     return (
-        <div className="custom-scrollbar flex items-stretch gap-1 bg-panel-alt px-2 pt-1.5 shadow-[0_1px_3px_0_rgba(0,0,0,0.3)] overflow-x-auto shrink-0 select-none relative z-[5]">
+        <div role="tablist" aria-label="Pestañas abiertas" className="custom-scrollbar flex items-stretch gap-1 bg-panel-alt px-2 pt-1.5 shadow-[0_1px_3px_0_rgba(0,0,0,0.3)] overflow-x-auto shrink-0 select-none relative z-[5]">
             {tabs.map((tab) => {
                 const isActive = tab.relative_path === activePath;
 
                 return (
                     <div
                         key={tab.relative_path}
+                        role="tab"
+                        aria-selected={isActive}
                         onClick={() => onSelect(tab.relative_path)}
                         onMouseDown={(e) => {
                             if (e.button === middleMouseButton) {
@@ -48,6 +50,8 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                         </span>
 
                         <Button variant="unstyled"
+                            aria-label={`Cerrar ${tab.name}`}
+                            title={`Cerrar ${tab.name}`}
                             onClick={(e) => { e.stopPropagation(); onClose(tab.relative_path); }}
                             className="shrink-0 w-4 h-4 flex items-center justify-center rounded hover:bg-white/10 hover:text-white transition-colors"
                         >

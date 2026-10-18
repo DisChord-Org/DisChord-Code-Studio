@@ -32,6 +32,9 @@ export const RunMenu = ({ isOpen, onToggle, onHover, isRunning, onRun, onToggleT
                     <Button variant="unstyled"
                         onClick={onToggle}
                         title="Más opciones"
+                        aria-label="Más opciones"
+                        aria-haspopup="true"
+                        aria-expanded={isOpen}
                         className={`ml-0.5 px-1.5 rounded transition-colors flex items-center ${tint}`}
                     >
                         <i className={`bi bi-chevron-down text-[9px] transition-transform ${isOpen ? "rotate-180" : ""}`}></i>

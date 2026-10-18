@@ -65,6 +65,8 @@ export const HiddenFilesMenu = ({ isOpen, onHover, onToggle, projectName, onFile
         <div className="relative" onMouseEnter={onHover}>
             <Button variant="unstyled"
                 onClick={onToggle}
+                aria-haspopup="true"
+                aria-expanded={isOpen}
                 className="w-full px-3 py-1.5 text-[11px] flex items-center justify-between gap-3 text-gray-300 hover:bg-accent hover:text-white transition-colors"
             >
                 <span className="flex items-center gap-3">

@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import {
     Toolbar,
     Sidebar,
@@ -13,6 +13,7 @@ import {
 } from "../features/editor";
 import { PackageManager } from "../features/packages";
 import { ShortcutsReference, useShortcut } from "../features/shortcuts";
+import { QuickOpen, ProjectSearch } from "../features/search";
 import { useConfig } from "../features/settings";
 import { loadCorelib } from "../features/compiler";
 import { preloadCommonLanguages } from "../languages/language-for-file";
@@ -64,6 +65,10 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         preloadCommonLanguages();
     }, []);
 
+    const [overlay, setOverlay] = useState<"quickOpen" | "search" | null>(null);
+    useShortcut("file.quickOpen", () => setOverlay("quickOpen"));
+    useShortcut("search.project", () => setOverlay("search"));
+
     useShortcut("terminal.toggle", toggleShellTerminal, config.advanced_mode);
 
     return (
@@ -78,6 +83,21 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                 onOpenShortcuts={openShortcutsTab}
                 onToggleTerminal={config.advanced_mode ? toggleShellTerminal : undefined}
             />
+
+            {overlay === "quickOpen" && (
+                <QuickOpen
+                    projectName={projectName}
+                    onOpen={(path) => handleFileSelect({ name: path.split("/").pop() ?? path, relative_path: path, is_dir: false })}
+                    onClose={() => setOverlay(null)}
+                />
+            )}
+            {overlay === "search" && (
+                <ProjectSearch
+                    projectName={projectName}
+                    onOpenAt={openFileAt}
+                    onClose={() => setOverlay(null)}
+                />
+            )}
 
             <div className="flex flex-1 overflow-hidden relative">
                 <Sidebar

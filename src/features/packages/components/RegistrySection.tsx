@@ -5,6 +5,7 @@ import { opKey, phaseLabel } from "./PackageManager.utils";
 import { ProgressRow } from "./ProgressRow";
 import { TrustBadge } from "./TrustBadge";
 import { formatBytes } from "../../../utils/Bytes";
+import { notify } from "../../../utils/Toasts";
 
 const formatRelativeDate = (createdAt: number) => {
     if (!createdAt) return null;
@@ -34,6 +35,7 @@ interface RegistrySectionProps {
     onInstall: (pkg: PackageEntry) => void;
     onUse: (pkg: PackageEntry) => void;
     onUnuse: (name: string) => void;
+    onUpdate: (pkg: PackageEntry) => void;
     onUninstall: (name: string, version: string) => void;
 }
 
@@ -52,10 +54,11 @@ export const RegistrySection = ({
     onInstall,
     onUse,
     onUnuse,
+    onUpdate,
     onUninstall,
 }: RegistrySectionProps) => {
     const openRepo = (repository: string) => {
-        openUrl(`https://github.com/${repository}`).catch(() => {});
+        openUrl(`https://github.com/${repository}`).catch((error) => notify("error", "No se pudo abrir el repositorio en el navegador.", [String(error)]));
     };
 
     return (
@@ -85,7 +88,12 @@ export const RegistrySection = ({
                         const useKey = opKey("use", pkg.name, version);
                         const uninstallKey = opKey("uninstall", pkg.name, version);
                         const unuseKey = opKey("unuse", pkg.name);
-                        const activeKey = [installKey, useKey, uninstallKey, unuseKey].find((key) => busy === key) ?? null;
+                        const usedTag = usedVersion(pkg.name);
+                        const usedInfo = pkg.versions.find((v) => v.tag === usedTag);
+                        const latestInfo = pkg.versions.find((v) => v.tag === pkg.latest_version);
+                        const hasUpdate = !!usedInfo && !!latestInfo && usedInfo.tag !== latestInfo.tag && usedInfo.created_at < latestInfo.created_at;
+                        const updateKey = opKey("use", pkg.name, pkg.latest_version);
+                        const activeKey = [installKey, useKey, uninstallKey, unuseKey, updateKey].find((key) => busy === key) ?? null;
                         const rowProgress = activeKey ? progress[pkg.name] : undefined;
                         const selectedVersionInfo = pkg.versions.find((v) => v.tag === version);
                         const relativeDate = selectedVersionInfo ? formatRelativeDate(selectedVersionInfo.created_at) : null;
@@ -103,6 +111,11 @@ export const RegistrySection = ({
                                                 </span>
                                             )}
                                         </div>
+                                        {hasUpdate && (
+                                            <p className="text-[10px] text-amber-400 font-mono mt-1">
+                                                Instalada {usedTag} · última {pkg.latest_version}
+                                            </p>
+                                        )}
                                         {pkg.description && (
                                             <p className="text-[11px] text-gray-500 mt-1">{pkg.description}</p>
                                         )}
@@ -128,6 +141,16 @@ export const RegistrySection = ({
                                                 </span>
                                             ) : (
                                                 relativeDate && <span className="text-[10px] text-gray-600 shrink-0">{relativeDate}</span>
+                                            )}
+
+                                            {hasUpdate && (
+                                                <button
+                                                    onClick={() => onUpdate(pkg)}
+                                                    disabled={busy !== null}
+                                                    className="text-[11px] font-medium text-accent-light hover:text-accent transition-colors disabled:opacity-40"
+                                                >
+                                                    {busy === updateKey ? "Actualizando..." : "Actualizar"}
+                                                </button>
                                             )}
 
                                             {isUsed ? (

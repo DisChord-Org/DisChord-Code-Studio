@@ -18,7 +18,7 @@ export const FileMenu = ({ isOpen, onToggle, onHover, onSave, onOpenExplorer, on
 
     return (
         <div className="relative" onMouseEnter={onHover}>
-            <ToolbarButton label="Archivo" onClick={onToggle} />
+            <ToolbarButton label="Archivo" onClick={onToggle} expanded={isOpen} />
 
             {isOpen && (
                 <MenuPanel className="top-full left-0 mt-1 w-48 z-[200]">

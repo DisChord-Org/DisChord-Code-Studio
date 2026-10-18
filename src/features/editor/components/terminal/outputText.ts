@@ -1,3 +1,5 @@
+import { notify } from "../../../../utils/Toasts";
+
 const pad = (n: number) => String(n).padStart(2, "0");
 
 const msPerSecond = 1000;
@@ -20,4 +22,5 @@ export const formatDuration = (ms: number) => {
 // eslint-disable-next-line no-control-regex
 export const stripAnsi = (text: string) => text.replace(/\x1b\[[0-9;?]*[A-Za-z]/g, "");
 
-export const copyText = (text: string) => navigator.clipboard.writeText(text).catch(() => {});
+export const copyText = (text: string) =>
+    navigator.clipboard.writeText(text).catch((error) => notify("error", "No se pudo copiar al portapapeles.", [String(error)]));

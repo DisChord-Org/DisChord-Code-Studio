@@ -24,7 +24,7 @@ export const EditMenu = ({ isOpen, onToggle, onHover, projectName, onOpenHiddenF
 
     return (
         <div className="relative" onMouseEnter={onHover}>
-            <ToolbarButton label="Editar" onClick={onToggle} />
+            <ToolbarButton label="Editar" onClick={onToggle} expanded={isOpen} />
 
             {isOpen && (
                 <MenuPanel className="top-full left-0 mt-1 w-52 z-[200]">

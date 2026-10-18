@@ -27,7 +27,7 @@ export const useStillFrame = (url: string | null, needed: boolean): string | nul
                     else setStill(created);
                 });
             })
-            .catch(() => {});
+            .catch(() => {}); // Decorative frame: without it the terminal just shows no still image.
 
         return () => {
             cancelled = true;
