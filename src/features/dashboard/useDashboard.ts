@@ -81,7 +81,10 @@ export const useDashboard = () => {
     };
 
     const handleDeleteProject = async (name: string) => {
-        const confirmed = await confirmAction(`¿Estás seguro de que quieres borrar el proyecto "${name}"? Esta acción es irreversible.`, "Borrar");
+        const confirmed = await confirmAction(`¿Borrar el proyecto "${name}"?`, "Borrar", {
+            title: "Borrar proyecto",
+            detail: "Se borrarán todos sus archivos. Esta acción no se puede deshacer.",
+        });
 
         if (confirmed) {
             try {

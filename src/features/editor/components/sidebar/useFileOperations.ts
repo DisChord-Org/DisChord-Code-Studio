@@ -90,7 +90,10 @@ export const useFileOperations = ({
     };
 
     const deleteItem = async (path: string) => {
-        if (await confirmAction(`¿Seguro que quieres borrar ${path}?`, "Borrar")) {
+        if (await confirmAction(`¿Borrar "${path}"?`, "Borrar", {
+            title: "Borrar del proyecto",
+            detail: "Si es una carpeta se borrará todo su contenido. Esta acción no se puede deshacer.",
+        })) {
             try {
                 await invoke("delete_item", { projectName, path });
                 setSelectedPath(prev => (prev !== null && isSameOrInside(prev, path) ? null : prev));

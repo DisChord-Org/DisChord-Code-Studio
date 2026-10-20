@@ -8,11 +8,12 @@ interface ButtonProps {
     type?: 'button' | 'submit' | 'reset';
     title?: string;
     style?: React.CSSProperties;
+    autoFocus?: boolean;
 }
 
 const baseStyles = "rounded-md font-medium transition-all active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100";
 
-export const Button = ({ children, variant = 'primary', size = 'md', onClick, className = "", disabled, type = 'button', title, style }: ButtonProps) => {
+export const Button = ({ children, variant = 'primary', size = 'md', onClick, className = "", disabled, type = 'button', title, style, autoFocus }: ButtonProps) => {
     const styles = {
         primary: "bg-accent hover:bg-accent-hover text-white",
         secondary: "bg-[#35393F] hover:bg-[#4F545C] text-gray-200",
@@ -34,6 +35,7 @@ export const Button = ({ children, variant = 'primary', size = 'md', onClick, cl
             type={type}
             title={title}
             style={style}
+            autoFocus={autoFocus}
             onClick={onClick}
             disabled={disabled}
             className={classes.trim()}

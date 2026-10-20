@@ -2,6 +2,9 @@ export interface DialogRequest {
     id: number;
     kind: "confirm" | "error";
     message: string;
+    title?: string;
+    /** Secondary line, e.g. a warning that the action cannot be undone. */
+    detail?: string;
     confirmLabel: string;
     resolve: (accepted: boolean) => void;
 }
@@ -19,8 +22,8 @@ const enqueue = (request: Omit<DialogRequest, "id" | "resolve">) =>
     });
 
 /** Asks a yes/no question with the app's own dialog. Never use `window.confirm`: the dialog plugin makes it async. */
-export const confirmAction = (message: string, confirmLabel = "Aceptar") =>
-    enqueue({ kind: "confirm", message, confirmLabel });
+export const confirmAction = (message: string, confirmLabel = "Aceptar", options: { title?: string; detail?: string } = {}) =>
+    enqueue({ kind: "confirm", message, confirmLabel, ...options });
 
 /** Shows an error with the app's own dialog; fire and forget. */
 export const showError = (error: unknown) => {

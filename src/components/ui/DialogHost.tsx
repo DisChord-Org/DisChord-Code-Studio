@@ -13,8 +13,9 @@ export const DialogHost = () => {
         <Modal
             key={request.id}
             isOpen
-            title={isError ? "Algo ha fallado" : "¿Seguro?"}
+            title={request.title ?? (isError ? "Algo ha fallado" : "¿Seguro?")}
             message={request.message}
+            detail={request.detail}
             confirmLabel={request.confirmLabel}
             danger={!isError}
             hideCancel={isError}

@@ -7,6 +7,8 @@ interface ModalProps {
     /** With a placeholder the modal asks for a text; without it, it shows `message` and only asks to accept. */
     placeholder?: string;
     message?: string;
+    /** Smaller line under the message, for consequences the user should read before confirming. */
+    detail?: string;
     confirmLabel?: string;
     /** Paints the confirm button as a destructive action. */
     danger?: boolean;
@@ -16,7 +18,7 @@ interface ModalProps {
     onSubmit: (name: string) => void;
 }
 
-export const Modal = ({ isOpen, title, placeholder, message, onClose, onSubmit, confirmLabel, danger = false, hideCancel = false }: ModalProps) => {
+export const Modal = ({ isOpen, title, placeholder, message, detail, onClose, onSubmit, confirmLabel, danger = false, hideCancel = false }: ModalProps) => {
     const [value, setValue] = useState("");
     const asksForText = placeholder !== undefined;
 
@@ -36,7 +38,7 @@ export const Modal = ({ isOpen, title, placeholder, message, onClose, onSubmit, 
                 e.preventDefault();
                 e.stopPropagation();
                 onClose();
-            } else if (e.key === "Enter" && !asksForText) {
+            } else if (e.key === "Enter" && !asksForText && !danger) {
                 e.preventDefault();
                 e.stopPropagation();
                 handleConfirm();
@@ -52,11 +54,15 @@ export const Modal = ({ isOpen, title, placeholder, message, onClose, onSubmit, 
     return (
         <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center p-4 z-[100]" onMouseDown={onClose}>
             <div
+                role={asksForText ? "dialog" : "alertdialog"}
+                aria-modal="true"
+                aria-label={title}
                 className="bg-panel border border-border p-6 rounded-xl w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200"
                 onMouseDown={(e) => e.stopPropagation()}
             >
                 <h2 className={`text-white font-bold ${asksForText ? "mb-4" : "mb-2"}`}>{title}</h2>
-                {message && <p className="text-sm text-gray-400 mb-5 break-words">{message}</p>}
+                {message && <p className={`text-sm text-gray-400 break-words ${detail ? "mb-2" : "mb-5"}`}>{message}</p>}
+                {detail && <p className="text-xs text-red-400/90 mb-5 break-words">{detail}</p>}
                 {asksForText && (
                     <input
                         autoFocus
@@ -68,7 +74,7 @@ export const Modal = ({ isOpen, title, placeholder, message, onClose, onSubmit, 
                     />
                 )}
                 <div className="flex justify-end gap-2">
-                    {!hideCancel && <Button variant="ghost" className="" onClick={onClose}>Cancelar</Button>}
+                    {!hideCancel && <Button variant="ghost" className="" autoFocus={danger && !asksForText} onClick={onClose}>Cancelar</Button>}
                     <Button variant={danger ? "danger" : "primary"} className="" onClick={handleConfirm}>{confirmLabel ? confirmLabel : 'Confirmar'}</Button>
                 </div>
             </div>
