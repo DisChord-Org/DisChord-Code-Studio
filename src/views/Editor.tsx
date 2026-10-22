@@ -29,6 +29,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
     const {
         fileTree,
         openTabs,
+        reloadCleanTabs,
         activeTabPath,
         activeTab,
         isRunning,
@@ -96,6 +97,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                     projectName={projectName}
                     onOpenAt={openFileAt}
                     onClose={() => setOverlay(null)}
+                    onReplaced={() => void reloadCleanTabs()}
+                    dirtyPaths={openTabs.filter(t => t.kind === "file" && t.isDirty).map(t => t.relative_path)}
                 />
             )}
 

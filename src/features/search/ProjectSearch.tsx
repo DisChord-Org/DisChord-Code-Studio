@@ -11,6 +11,8 @@ interface ProjectSearchProps {
     onClose: () => void;
     /** Files changed on disk by a replace, so open tabs can be refreshed. */
     onReplaced?: () => void;
+    /** Open files with unsaved edits: a replace on them would be lost or clash with the editor. */
+    dirtyPaths?: string[];
 }
 
 const baseName = (path: string) => path.slice(path.lastIndexOf("/") + 1);
@@ -19,7 +21,7 @@ const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one :
 const toggleClass = (on: boolean) =>
     `px-1.5 py-0.5 rounded text-[11px] font-mono border transition-colors ${on ? "bg-accent/30 border-accent/60 text-white" : "border-white/10 text-gray-400 hover:text-white"}`;
 
-export const ProjectSearch = ({ projectName, onOpenAt, onClose, onReplaced }: ProjectSearchProps) => {
+export const ProjectSearch = ({ projectName, onOpenAt, onClose, onReplaced, dirtyPaths = [] }: ProjectSearchProps) => {
     const [query, setQuery] = useState("");
     const [replacement, setReplacement] = useState("");
     const [caseSensitive, setCaseSensitive] = useState(false);
@@ -72,12 +74,19 @@ export const ProjectSearch = ({ projectName, onOpenAt, onClose, onReplaced }: Pr
         if (!results || results.total_matches === 0) return;
 
         const target = filePath ? results.files.find((f) => f.path === filePath) : null;
+        const blocked = dirtyPaths.filter((p) => (target ? p === target.path : results.truncated || results.files.some((f) => f.path === p)));
+        if (blocked.length > 0) {
+            showError(`Hay cambios sin guardar en ${blocked.map((p) => `"${p}"`).join(", ")}. Guárdalos o ciérralos antes de reemplazar.`);
+            return;
+        }
+
         const count = target ? target.matches.length : results.total_matches;
         const where = target ? `en ${target.path}` : `en ${plural(results.files.length, "archivo", "archivos")}`;
         const note = !filePath && results.truncated ? " Hay más coincidencias que las mostradas; también se reemplazarán." : "";
         const ok = await confirmAction(
-            `¿Reemplazar ${plural(count, "coincidencia", "coincidencias")} ${where} por "${replacement}"? Los cambios se guardan directamente en disco; las pestañas abiertas de esos archivos no se recargan, ciérralas antes.${note}`,
+            `¿Reemplazar ${plural(count, "coincidencia", "coincidencias")} ${where} por "${replacement}"? Los cambios se guardan directamente en disco.${note}`,
             "Reemplazar",
+            { title: "Reemplazar en el proyecto", detail: "Esta acción modifica archivos en disco y no se puede deshacer." },
         );
         if (!ok) return;
 

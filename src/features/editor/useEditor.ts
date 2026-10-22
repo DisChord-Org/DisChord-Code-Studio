@@ -92,6 +92,7 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         setMinimapViewport,
         handleFileSelect,
         openFileAt: tabs.openFileAt,
+        reloadCleanTabs: tabs.reloadCleanTabs,
         handlePathMoved: tabs.handlePathMoved,
         handlePathDeleted: tabs.handlePathDeleted,
         gotoTarget: tabs.gotoTarget,
