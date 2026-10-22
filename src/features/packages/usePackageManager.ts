@@ -152,7 +152,7 @@ export const usePackageManager = ({ projectName }: UsePackageManagerArgs) => {
     const handleUninstall = async (name: string, version: string) => {
         if (busyRef.current) return;
 
-        const confirmed = await confirmAction(`¿Desinstalar ${name}@${version} de tu sistema? Esto afecta a todos tus proyectos, no solo a este.`, "Desinstalar");
+        const confirmed = await confirmAction(`¿Desinstalar ${name}@${version} de tu sistema? Esto afecta a todos tus proyectos, no solo a este.`, "Desinstalar", { title: "Desinstalar paquete", detail: "Se desinstalará de todo el sistema." });
         // Something else may have started while the question was open; runOp checks that again.
         if (!confirmed) return;
 

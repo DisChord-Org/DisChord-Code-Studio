@@ -54,7 +54,8 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
             dirtyTabs.length === 1
                 ? `Tienes cambios sin guardar en "${dirtyTabs[0].name}". ¿Quieres salir de todos modos? Se perderán.`
                 : `Tienes cambios sin guardar en ${dirtyTabs.length} ficheros. ¿Quieres salir de todos modos? Se perderán.`,
-            "Salir"
+            "Salir",
+            { title: "Cambios sin guardar", detail: "Los cambios sin guardar se perderán." }
         );
     };
 

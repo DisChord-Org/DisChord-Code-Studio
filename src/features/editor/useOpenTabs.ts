@@ -61,7 +61,8 @@ export const useOpenTabs = (projectName: string) => {
             event.preventDefault();
             const confirmed = await confirmAction(
                 `Tienes cambios sin guardar en ${dirty.map(t => `"${t.name}"`).join(", ")}. ¿Quieres cerrar la aplicación de todos modos? Se perderán.`,
-                "Cerrar"
+                "Cerrar",
+                { title: "Cambios sin guardar", detail: "Los cambios sin guardar se perderán." }
             );
             if (!confirmed) return;
 
@@ -175,7 +176,8 @@ export const useOpenTabs = (projectName: string) => {
         if (tab?.isDirty) {
             const confirmed = await confirmAction(
                 `Tienes cambios sin guardar en "${tab.name}". ¿Quieres cerrarlo de todos modos? Se perderán.`,
-                "Cerrar"
+                "Cerrar",
+                { title: "Cambios sin guardar", detail: "Los cambios sin guardar se perderán." }
             );
             if (!confirmed) return;
         }
