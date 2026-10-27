@@ -10,6 +10,7 @@ import {
     TabBar,
     EmptyEditor,
     useEditor,
+    useSplitView,
 } from "../features/editor";
 import { PackageManager } from "../features/packages";
 import { ShortcutsReference, useShortcut } from "../features/shortcuts";
@@ -52,6 +53,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         closeTab,
         updateActiveTabContent,
         setActiveTabDirty,
+        updateTabContent,
+        setTabDirty,
         refreshFiles,
         handleToggleRun,
         handleStopRun,
@@ -64,6 +67,9 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         loadCorelib();
         preloadCommonLanguages();
     }, []);
+
+    const { leftTabs, rightTabs, rightActiveTab, setRightActive, isSplit, movePane, toggleSplit } = useSplitView(openTabs, activeTabPath, setActiveTabPath);
+    useShortcut("editor.splitView", toggleSplit);
 
     const [overlay, setOverlay] = useState<"quickOpen" | null>(null);
     useShortcut("file.quickOpen", () => setOverlay("quickOpen"));
@@ -103,54 +109,86 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                 />
 
                 <main className="flex-1 flex flex-col bg-app-bg overflow-hidden">
-                    <TabBar
-                        tabs={openTabs}
-                        activePath={activeTabPath}
-                        onSelect={setActiveTabPath}
-                        onClose={closeTab}
-                    />
-
-                    <div className="flex-1 min-h-0 relative overflow-hidden">
-                        {activeTab?.kind === "packages" ? (
-                            <PackageManager
-                                key={`${projectName}:${activeTab.relative_path}`}
-                                projectName={projectName}
-                                onClose={() => closeTab(activeTab.relative_path)}
+                    <div className="flex-1 min-h-0 flex overflow-hidden">
+                        <div className="flex-1 min-w-0 flex flex-col">
+                            <TabBar
+                                tabs={leftTabs}
+                                activePath={activeTabPath}
+                                onSelect={setActiveTabPath}
+                                onClose={closeTab}
+                                onOpenInSplit={movePane}
+                                onToggleSplit={toggleSplit}
+                                splitOpen={isSplit}
                             />
-                        ) : activeTab?.kind === "shortcuts" ? (
-                            <ShortcutsReference onClose={() => closeTab(activeTab.relative_path)} />
-                        ) : activeTab ? (
-                            <div className="flex h-full">
-                                <div className="flex-1 overflow-hidden">
+
+                        <div className="flex-1 min-h-0 relative overflow-hidden">
+                            {activeTab?.kind === "packages" ? (
+                                <PackageManager
+                                    key={`${projectName}:${activeTab.relative_path}`}
+                                    projectName={projectName}
+                                    onClose={() => closeTab(activeTab.relative_path)}
+                                />
+                            ) : activeTab?.kind === "shortcuts" ? (
+                                <ShortcutsReference onClose={() => closeTab(activeTab.relative_path)} />
+                            ) : activeTab ? (
+                                <div className="flex h-full">
+                                    <div className="flex-1 min-w-0 overflow-hidden">
+                                        <CodeCanvas
+                                            ref={codeCanvasRef}
+                                            key={`${projectName}:${activeTab.relative_path}`}
+                                            projectName={projectName}
+                                            relative_path={activeTab.relative_path}
+                                            fileName={activeTab.name}
+                                            content={activeTab.content}
+                                            setIsDirty={setActiveTabDirty}
+                                            onChange={updateActiveTabContent}
+                                            onViewportChange={setMinimapViewport}
+                                            goto={gotoTarget}
+                                            requireFocus={isSplit}
+                                        />
+                                    </div>
+                                    {!isSplit && (isMaximized || config.editor_keep_minimap) && (
+                                        <>
+                                            <CodeMinimap
+                                                text={activeTab.content}
+                                                viewport={minimapViewport}
+                                                onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
+                                            />
+                                            <EditorScrollbar
+                                                viewport={minimapViewport}
+                                                onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
+                                            />
+                                        </>
+                                    )}
+                                </div>
+                            ) : (
+                                <EmptyEditor />
+                            )}
+                        </div>
+                        </div>
+
+                        {rightActiveTab && (
+                            <div className="flex-1 min-w-0 flex flex-col border-l border-border-strong">
+                                <TabBar
+                                    tabs={rightTabs}
+                                    activePath={rightActiveTab.relative_path}
+                                    onSelect={setRightActive}
+                                    onClose={closeTab}
+                                    onOpenInSplit={movePane}
+                                />
+                                <div className="flex-1 min-h-0 overflow-hidden">
                                     <CodeCanvas
-                                        ref={codeCanvasRef}
-                                        key={`${projectName}:${activeTab.relative_path}`}
+                                        key={`${projectName}:split:${rightActiveTab.relative_path}`}
                                         projectName={projectName}
-                                        relative_path={activeTab.relative_path}
-                                        fileName={activeTab.name}
-                                        content={activeTab.content}
-                                        setIsDirty={setActiveTabDirty}
-                                        onChange={updateActiveTabContent}
-                                        onViewportChange={setMinimapViewport}
-                                        goto={gotoTarget}
+                                        relative_path={rightActiveTab.relative_path}
+                                        fileName={rightActiveTab.name}
+                                        content={rightActiveTab.content}
+                                        setIsDirty={(value) => setTabDirty(rightActiveTab.relative_path, value)}
+                                        onChange={(value) => updateTabContent(rightActiveTab.relative_path, value)}
+                                        requireFocus
                                     />
                                 </div>
-                                {(isMaximized || config.editor_keep_minimap) && (
-                                    <>
-                                        <CodeMinimap
-                                            text={activeTab.content}
-                                            viewport={minimapViewport}
-                                            onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
-                                        />
-                                        <EditorScrollbar
-                                            viewport={minimapViewport}
-                                            onScrollTo={(scrollTop) => codeCanvasRef.current?.scrollTo(scrollTop)}
-                                        />
-                                    </>
-                                )}
                             </div>
-                        ) : (
-                            <EmptyEditor />
                         )}
                     </div>
 

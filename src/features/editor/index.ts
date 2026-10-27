@@ -8,5 +8,6 @@ export { StatusBar } from "./components/statusbar/StatusBar";
 export { TabBar } from "./components/tabs/TabBar";
 export { EmptyEditor } from "./components/EmptyEditor";
 export { useEditor } from "./useEditor";
+export { useSplitView } from "./useSplitView";
 
 export type { FileNode, MinimapViewport, CodeCanvasHandle, OpenTab } from "./types";

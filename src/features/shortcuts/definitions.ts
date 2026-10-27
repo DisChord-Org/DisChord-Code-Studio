@@ -88,6 +88,14 @@ export const shortcutDefinitions: ShortcutDefinition[] = [
         defaultAccelerator: "Mod+F2",
     },
     {
+        id: "editor.splitView",
+        label: "Dividir el editor",
+        description: "Envía la pestaña activa a un segundo panel con sus propias pestañas; otra vez lo cierra. También Ctrl o Cmd + clic en una pestaña.",
+        group: "editor",
+        scope: "app",
+        defaultAccelerator: "Mod+Alt+D",
+    },
+    {
         id: "editor.toggleWordWrap",
         label: "Ajuste de línea",
         group: "editor",

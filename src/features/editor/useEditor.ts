@@ -101,6 +101,8 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         closeTab: tabs.closeTab,
         updateActiveTabContent: tabs.updateActiveTabContent,
         setActiveTabDirty: tabs.setActiveTabDirty,
+        updateTabContent: tabs.updateTabContent,
+        setTabDirty: tabs.setTabDirty,
         refreshFiles,
         handleToggleRun: run.toggleRun,
         handleStopRun: run.stopRun,

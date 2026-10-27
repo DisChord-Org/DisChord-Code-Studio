@@ -10,9 +10,12 @@ interface TabBarProps {
     activePath: string | null;
     onSelect: (path: string) => void;
     onClose: (path: string) => void;
+    onOpenInSplit?: (path: string) => void;
+    onToggleSplit?: () => void;
+    splitOpen?: boolean;
 }
 
-export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => {
+export const TabBar = ({ tabs, activePath, onSelect, onClose, onOpenInSplit, onToggleSplit, splitOpen = false }: TabBarProps) => {
     if (tabs.length === 0) return null;
 
     return (
@@ -25,7 +28,10 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                         key={tab.relative_path}
                         role="tab"
                         aria-selected={isActive}
-                        onClick={() => onSelect(tab.relative_path)}
+                        onClick={(e) => {
+                            if ((e.ctrlKey || e.metaKey) && tab.kind === "file" && onOpenInSplit) onOpenInSplit(tab.relative_path);
+                            else onSelect(tab.relative_path);
+                        }}
                         onMouseDown={(e) => {
                             if (e.button === middleMouseButton) {
                                 e.preventDefault();
@@ -61,6 +67,17 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose }: TabBarProps) => 
                     </div>
                 );
             })}
+            {onToggleSplit && (
+                <Button variant="unstyled"
+                    aria-label={splitOpen ? "Cerrar la división" : "Dividir el editor"}
+                    title={splitOpen ? "Cerrar la división" : "Dividir el editor"}
+                    aria-pressed={splitOpen}
+                    onClick={onToggleSplit}
+                    className={`sticky right-0 ml-auto self-center shrink-0 w-6 h-6 flex items-center justify-center rounded transition-colors ${splitOpen ? "text-white bg-accent/30" : "text-gray-500 hover:text-white hover:bg-white/10"}`}
+                >
+                    <i className="bi bi-layout-split text-sm" aria-hidden="true" />
+                </Button>
+            )}
         </div>
     );
 };

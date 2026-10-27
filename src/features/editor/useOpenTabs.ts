@@ -217,6 +217,19 @@ export const useOpenTabs = (projectName: string) => {
         ));
     };
 
+    /** Same as the active-tab updaters, for a tab shown in the split pane. */
+    const updateTabContent = (path: string, value: string) => {
+        setOpenTabs(prev => prev.map(t =>
+            t.relative_path === path ? { ...t, content: value, isDirty: true, isPinned: true } : t
+        ));
+    };
+
+    const setTabDirty = (path: string, value: boolean) => {
+        setOpenTabs(prev => prev.map(t =>
+            t.relative_path === path ? { ...t, isDirty: value } : t
+        ));
+    };
+
     const activeTab = openTabs.find(t => t.relative_path === activeTabPath) ?? null;
 
     return {
@@ -236,5 +249,7 @@ export const useOpenTabs = (projectName: string) => {
         activateTabAt,
         updateActiveTabContent,
         setActiveTabDirty,
+        updateTabContent,
+        setTabDirty,
     };
 };

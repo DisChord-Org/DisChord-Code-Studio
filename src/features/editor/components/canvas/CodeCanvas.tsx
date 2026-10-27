@@ -35,10 +35,11 @@ interface CodeCanvasProps {
     onChange: (value: string) => void;
     onViewportChange?: (viewport: MinimapViewport) => void;
     goto?: GotoTarget | null;
+    requireFocus?: boolean;
 }
 
 export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
-    projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange, goto
+    projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange, goto, requireFocus = false
 }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
@@ -67,14 +68,15 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     updateConfigRef.current = updateConfig;
 
     useShortcut("editor.goToDefinition", () => {
-        if (viewRef.current) goToDefinition(viewRef.current, relative_path);
+        const view = viewRef.current;
+        if (view && (view.hasFocus || !requireFocus)) goToDefinition(view, relative_path);
     });
 
     const [renaming, setRenaming] = useState<{ name: string; ranges: { from: number; to: number }[] } | null>(null);
 
     useShortcut("editor.renameSymbol", () => {
         const view = viewRef.current;
-        if (!view) return;
+        if (!view || (requireFocus && !view.hasFocus)) return;
         const targets = renameTargets(view, relative_path);
         if (targets) setRenaming(targets);
     });
