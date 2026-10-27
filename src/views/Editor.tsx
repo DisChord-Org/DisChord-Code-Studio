@@ -13,7 +13,7 @@ import {
 } from "../features/editor";
 import { PackageManager } from "../features/packages";
 import { ShortcutsReference, useShortcut } from "../features/shortcuts";
-import { QuickOpen, ProjectSearch } from "../features/search";
+import { QuickOpen } from "../features/search";
 import { useConfig } from "../features/settings";
 import { loadCorelib } from "../features/compiler";
 import { preloadCommonLanguages } from "../languages/language-for-file";
@@ -29,7 +29,6 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
     const {
         fileTree,
         openTabs,
-        reloadCleanTabs,
         activeTabPath,
         activeTab,
         isRunning,
@@ -66,9 +65,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         preloadCommonLanguages();
     }, []);
 
-    const [overlay, setOverlay] = useState<"quickOpen" | "search" | null>(null);
+    const [overlay, setOverlay] = useState<"quickOpen" | null>(null);
     useShortcut("file.quickOpen", () => setOverlay("quickOpen"));
-    useShortcut("search.project", () => setOverlay("search"));
 
     useShortcut("terminal.toggle", toggleShellTerminal, config.advanced_mode);
 
@@ -92,16 +90,6 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                     onClose={() => setOverlay(null)}
                 />
             )}
-            {overlay === "search" && (
-                <ProjectSearch
-                    projectName={projectName}
-                    onOpenAt={openFileAt}
-                    onClose={() => setOverlay(null)}
-                    onReplaced={() => void reloadCleanTabs()}
-                    dirtyPaths={openTabs.filter(t => t.kind === "file" && t.isDirty).map(t => t.relative_path)}
-                />
-            )}
-
             <div className="flex flex-1 overflow-hidden relative">
                 <Sidebar
                     files={fileTree}

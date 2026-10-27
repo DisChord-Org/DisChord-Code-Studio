@@ -39,14 +39,6 @@ export const shortcutDefinitions: ShortcutDefinition[] = [
         defaultAccelerator: "Mod+P",
     },
     {
-        id: "search.project",
-        label: "Buscar en el proyecto",
-        description: "Busca y reemplaza texto en todos los archivos.",
-        group: "file",
-        scope: "app",
-        defaultAccelerator: "Mod+Shift+F",
-    },
-    {
         id: "run.toggle",
         label: "Ejecutar / detener",
         group: "run",

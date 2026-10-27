@@ -39,7 +39,6 @@ portable-pty = "0.9"
 notify = "8"
 notify-debouncer-full = "0.6"
 ignore = "0.4.25"
-regex = "1"
 reqwest = { version = "0.13.2", features = ["blocking"] }
 discord-rich-presence = "1.1.0"
 log = "0.4"

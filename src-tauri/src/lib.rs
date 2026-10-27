@@ -167,8 +167,6 @@ pub fn run() {
             commands::config_sections::save_config_section,
 
             commands::search::list_project_paths,
-            commands::search::search_project,
-            commands::search::replace_in_project,
 
             commands::watcher::watch_project,
             commands::watcher::unwatch_project,
