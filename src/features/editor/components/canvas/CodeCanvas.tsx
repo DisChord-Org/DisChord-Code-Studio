@@ -1,4 +1,4 @@
-import { useRef, useEffect, forwardRef, useImperativeHandle } from "react";
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "react";
 import { invoke } from "@tauri-apps/api/core";
 
 import { EditorView, basicSetup } from "codemirror";
@@ -22,7 +22,9 @@ import { copyFlashMs } from "./CodeCanvas.constants";
 import { useConfig } from "../../../settings";
 import { useShortcut } from "../../../shortcuts";
 import { middleClickJustHappened } from "../../../../utils/MiddleClick";
-import { forgetDiagnostics, goToDefinition, languageIntelligence, liveDiagnostics } from "../../../compiler";
+import { forgetDiagnostics, applyRename, goToDefinition, isValidIdentifier, languageIntelligence, liveDiagnostics, renameTargets } from "../../../compiler";
+import { Modal } from "../../../../components/ui";
+import { showError } from "../../../../utils/Dialogs";
 
 interface CodeCanvasProps {
     projectName: string;
@@ -67,6 +69,26 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     useShortcut("editor.goToDefinition", () => {
         if (viewRef.current) goToDefinition(viewRef.current, relative_path);
     });
+
+    const [renaming, setRenaming] = useState<{ name: string; ranges: { from: number; to: number }[] } | null>(null);
+
+    useShortcut("editor.renameSymbol", () => {
+        const view = viewRef.current;
+        if (!view) return;
+        const targets = renameTargets(view, relative_path);
+        if (targets) setRenaming(targets);
+    });
+
+    const submitRename = (newName: string) => {
+        const view = viewRef.current;
+        const name = newName.trim();
+        if (!view || !renaming || name === renaming.name) return;
+        if (!isValidIdentifier(name)) {
+            showError(`"${name}" no es un nombre válido.`);
+            return;
+        }
+        applyRename(view, renaming.ranges, name);
+    };
 
     useShortcut("editor.toggleWordWrap", () => updateConfigRef.current({ editor_word_wrap: !wordWrapRef.current }));
 
@@ -250,6 +272,15 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     return (
         <div className="h-full w-full overflow-hidden">
             <div className="editor-zoom-wrapper selection:bg-accent/30" ref={editorRef} />
+            <Modal
+                isOpen={renaming !== null}
+                title={renaming ? `Renombrar "${renaming.name}"` : "Renombrar"}
+                placeholder={renaming?.name ?? "Nuevo nombre"}
+                detail={renaming ? `Se cambiarán ${renaming.ranges.length} apariciones en este archivo.` : undefined}
+                confirmLabel="Renombrar"
+                onClose={() => setRenaming(null)}
+                onSubmit={submitRename}
+            />
         </div>
     );
 });

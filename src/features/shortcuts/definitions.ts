@@ -88,6 +88,14 @@ export const shortcutDefinitions: ShortcutDefinition[] = [
         defaultAccelerator: "F12",
     },
     {
+        id: "editor.renameSymbol",
+        label: "Renombrar símbolo",
+        description: "Cambia el nombre declarado bajo el cursor en todo el archivo.",
+        group: "editor",
+        scope: "app",
+        defaultAccelerator: "Mod+F2",
+    },
+    {
         id: "editor.toggleWordWrap",
         label: "Ajuste de línea",
         group: "editor",

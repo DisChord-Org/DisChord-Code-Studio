@@ -96,6 +96,31 @@ export const goToDefinition = (view: EditorView, filePath: string, pos = view.st
     return true;
 };
 
+const identifier = /^[A-Za-z_À-ɏ][\w]*$/;
+
+export const isValidIdentifier = (name: string) => identifier.test(name);
+
+export const renameTargets = (view: EditorView, filePath: string, pos = view.state.selection.main.head): { name: string; ranges: { from: number; to: number }[] } | null => {
+    const word = wordAt(view, pos);
+    if (!word) return null;
+
+    const items = getFileDeclarations(filePath)?.items ?? [];
+    const declared = items.some((d) => d.name === word.text);
+    if (!declared) return null;
+
+    const doc = view.state.doc.toString();
+    const ranges: { from: number; to: number }[] = [];
+    const pattern = new RegExp(`(?<![\\w@À-ɏ])${word.text.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}(?![\\w@À-ɏ])`, "g");
+    for (const match of doc.matchAll(pattern)) ranges.push({ from: match.index, to: match.index + word.text.length });
+
+    return { name: word.text, ranges };
+};
+
+export const applyRename = (view: EditorView, ranges: { from: number; to: number }[], newName: string) => {
+    view.dispatch({ changes: ranges.map((r) => ({ from: r.from, to: r.to, insert: newName })), userEvent: "input.rename" });
+    view.focus();
+};
+
 const card = (build: (root: HTMLElement) => void): { dom: HTMLElement } => {
     const dom = document.createElement("div");
     dom.className = "cm-intel";
