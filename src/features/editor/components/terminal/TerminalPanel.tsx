@@ -28,6 +28,9 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
     const { config } = useConfig();
     const backgroundUrl = useTerminalBackground(config);
     const [tab, setTab] = useState<TerminalTab>(initialTab);
+    const [shells, setShells] = useState<number[]>([1]);
+    const [activeShell, setActiveShell] = useState(1);
+    const nextShellKey = useRef(2);
     const showShell = config.advanced_mode && tab === "shell";
     const controlsArmed = useControlsArmed(isRunning);
     const { size: height, startDrag } = useResizablePanel({ initialSize: panelSize.initial, min: panelSize.min, max: panelSize.max, axis: "y", invert: true });
@@ -41,6 +44,21 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
         }
     }, [outputSignal]);
 
+    const addShell = () => {
+        const key = nextShellKey.current++;
+        setShells((prev) => [...prev, key]);
+        setActiveShell(key);
+        setTab("shell");
+    };
+
+    const closeShell = (key: number) => {
+        if (shells.length <= 1) return;
+        const index = shells.indexOf(key);
+        const remaining = shells.filter((k) => k !== key);
+        setShells(remaining);
+        if (key === activeShell) setActiveShell(remaining[Math.min(index, remaining.length - 1)]);
+    };
+
     return (
         <div className="flex flex-col bg-app-bg border-t border-white/5 shadow-[0_-10px_30px_-15px_rgba(0,0,0,0.5)] relative shrink-0" style={{ height }}>
             <div
@@ -51,7 +69,13 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
             <div className="flex items-center justify-between px-4 py-2 bg-[#0E1117]/50 backdrop-blur-sm border-b border-white/[0.02]">
                 <div className="flex items-center gap-3">
                     <TerminalControls armed={controlsArmed} onStop={onStop} onRestart={onRestart} />
-                    <TerminalTabs advanced={config.advanced_mode} current={showShell ? "shell" : "output"} onSelect={setTab} />
+                    <TerminalTabs advanced={config.advanced_mode} current={showShell ? "shell" : "output"} onSelect={setTab}
+                        shells={shells}
+                        activeShell={activeShell}
+                        onSelectShell={(key) => { setActiveShell(key); setTab("shell"); }}
+                        onAddShell={addShell}
+                        onCloseShell={closeShell}
+                    />
                 </div>
 
                 <div className="flex items-center gap-4">
@@ -81,16 +105,19 @@ export const TerminalPanel = ({ projectName, initialTab = "shell", outputSignal 
                     <TerminalBackground url={backgroundUrl} dim={config.terminal_background_dim} fit={config.terminal_background_fit} />
                 )}
                 <RunOutput onOpenLocation={onOpenLocation} className={`relative h-full w-full ${showShell ? "hidden" : ""}`} />
-                {config.advanced_mode && (
-                    <div className={`h-full w-full ${showShell ? "" : "hidden"}`}>
-                        <InteractiveTerminal
-                            projectName={projectName}
-                            fontFamily={config.editor_font_family}
-                            active={showShell}
-                            height={height}
-                        />
-                    </div>
-                )}
+                {config.advanced_mode && shells.map((key) => {
+                    const visible = showShell && key === activeShell;
+                    return (
+                        <div key={key} className={`h-full w-full ${visible ? "" : "hidden"}`}>
+                            <InteractiveTerminal
+                                projectName={projectName}
+                                fontFamily={config.editor_font_family}
+                                active={visible}
+                                height={height}
+                            />
+                        </div>
+                    );
+                })}
             </div>
         </div>
     );
