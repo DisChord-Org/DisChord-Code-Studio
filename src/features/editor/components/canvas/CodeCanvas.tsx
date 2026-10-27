@@ -12,6 +12,7 @@ import { languageFor, loadedLanguageFor } from "../../../../languages/language-f
 import { loadLibraryExports } from "../../../../languages/chord-libraries";
 import { dischordEditorTheme } from "../../../../languages/editor-theme";
 import { completionTheme } from "../../../../languages/completion-theme";
+import { searchTheme } from "../../../../languages/search-theme";
 import {
     languageConf, wrapConf, indentConf, diagnosticsConf, indentExtension, isChordFile,
     languageExtensionFor, completionExtensionFor, addFlash, clearFlash, flashField,
@@ -133,7 +134,8 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                         }
                     }),
                     dischordEditorTheme,
-                    completionTheme
+                    completionTheme,
+                    searchTheme
                 ]
             }),
             parent: editorRef.current
