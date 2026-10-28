@@ -123,7 +123,7 @@ pub fn looks_like_valid_binary(path: &Path) -> bool {
         if file.read_exact(&mut header).is_err() {
             return false;
         }
-        return &header == b"\x7FELF";
+        &header == b"\x7FELF"
     }
 }
 

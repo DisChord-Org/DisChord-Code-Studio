@@ -85,6 +85,7 @@ pub fn list_downloaded_fonts(app_handle: tauri::AppHandle) -> Vec<LocalFont> {
 
     DOWNLOADABLE_FONTS
         .iter()
-        .filter_map(|(name, _)| dir.join(format!("{}.ttf", name)).exists().then(|| LocalFont { name: name.to_string() }))
+        .filter(|(name, _)| dir.join(format!("{}.ttf", name)).exists())
+        .map(|(name, _)| LocalFont { name: name.to_string() })
         .collect()
 }

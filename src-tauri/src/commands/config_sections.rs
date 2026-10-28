@@ -5,6 +5,7 @@
 //! list of typed fields). Schemas come from two places, and both go through the same loader:
 //!   1. built in the binary (`config_schemas/*.json`, listed in `BUILTIN_SCHEMAS`), and
 //!   2. `<app config dir>/schemas/*.json`, so a theme or extension can ship its own.
+//!
 //! Values are stored per section in `<app config dir>/config.d/<id>.json`. Anything missing or
 //! of the wrong type falls back to the field's default, so a schema can grow new fields without
 //! breaking values saved by an older version.

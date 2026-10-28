@@ -308,7 +308,7 @@ fn summarize(op: &str, root: Option<&str>, events: &[PkgLine], exit_ok: bool) ->
     };
 
     let any_error = results.iter().any(|r| r.severity == Severity::Error);
-    let root_done = root.map_or(true, reached_outcome);
+    let root_done = root.is_none_or(reached_outcome);
     let success = exit_ok && !any_error && root_done;
 
     let changed = results.iter().any(|r| r.severity == Severity::Success);

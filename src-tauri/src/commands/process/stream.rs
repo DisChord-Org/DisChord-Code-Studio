@@ -15,7 +15,7 @@ pub(super) fn stream_to_terminal(app_handle: &AppHandle, stdout: ChildStdout, st
 
 fn stream_lines(app_handle: AppHandle, pipe: impl std::io::Read + Send + 'static, kind: LineKind) -> JoinHandle<()> {
     thread::spawn(move || {
-        for line in BufReader::new(pipe).lines().flatten() {
+        for line in BufReader::new(pipe).lines().map_while(Result::ok) {
             emit_line(&app_handle, kind, line);
         }
     })

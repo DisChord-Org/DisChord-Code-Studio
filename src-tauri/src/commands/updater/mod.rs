@@ -29,6 +29,7 @@ pub struct UpdateProgress {
     pub message: Option<String>,
 }
 
+#[allow(clippy::too_many_arguments)]
 fn emit_progress(
     app_handle: &tauri::AppHandle,
     target: &str,
