@@ -4,16 +4,16 @@ use std::path::{Path, PathBuf};
 use log::{info, error, warn};
 
 use crate::{DiscordState, update_presence};
-use crate::paths::project_path;
+use crate::paths::resolve_in_project;
 use crate::log_err::LogErr;
 
-fn item_path(app_handle: &tauri::AppHandle, project_name: &str, relative: impl AsRef<Path>) -> PathBuf {
-    project_path(app_handle, project_name).join(relative)
+fn item_path(app_handle: &tauri::AppHandle, project_name: &str, relative: impl AsRef<Path>) -> Result<PathBuf, String> {
+    resolve_in_project(app_handle, project_name, &relative.as_ref().to_string_lossy())
 }
 
 #[tauri::command]
 pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_, DiscordState>, project_name: String, file_path: String) -> Result<String, String> {
-    let path = item_path(&app_handle, &project_name, &file_path);
+    let path = item_path(&app_handle, &project_name, &file_path)?;
 
     let file_name = Path::new(&file_path)
         .file_name()
@@ -32,7 +32,7 @@ pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_,
 
 #[tauri::command]
 pub fn save_file_content(app_handle: tauri::AppHandle, project_name: String, file_path: String, content: String) -> Result<String, String> {
-    let path = item_path(&app_handle, &project_name, &file_path);
+    let path = item_path(&app_handle, &project_name, &file_path)?;
 
     fs::write(&path, content).log_err(&format!("Error al guardar archivo {:?}", path))?;
 
@@ -42,7 +42,7 @@ pub fn save_file_content(app_handle: tauri::AppHandle, project_name: String, fil
 
 #[tauri::command]
 pub fn create_new_file(app_handle: tauri::AppHandle, project_name: String, parent_path: String, name: String) -> Result<String, String> {
-    let path = item_path(&app_handle, &project_name, Path::new(&parent_path).join(&name));
+    let path = item_path(&app_handle, &project_name, Path::new(&parent_path).join(&name))?;
 
     if path.exists() {
         warn!("Intento de crear archivo ya existente: {:?}", path);
@@ -57,7 +57,7 @@ pub fn create_new_file(app_handle: tauri::AppHandle, project_name: String, paren
 
 #[tauri::command]
 pub fn create_new_folder(app_handle: tauri::AppHandle, project_name: String, parent_path: String, name: String) -> Result<String, String> {
-    let path = item_path(&app_handle, &project_name, Path::new(&parent_path).join(&name));
+    let path = item_path(&app_handle, &project_name, Path::new(&parent_path).join(&name))?;
 
     if path.exists() {
         warn!("Intento de crear carpeta ya existente: {:?}", path);
@@ -72,7 +72,7 @@ pub fn create_new_folder(app_handle: tauri::AppHandle, project_name: String, par
 
 #[tauri::command]
 pub fn delete_item(app_handle: tauri::AppHandle, project_name: String, path: String) -> Result<String, String> {
-    let full_path = item_path(&app_handle, &project_name, &path);
+    let full_path = item_path(&app_handle, &project_name, &path)?;
 
     if !full_path.exists() {
         error!("Intento de borrar elemento inexistente: {:?}", full_path);

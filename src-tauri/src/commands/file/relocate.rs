@@ -3,7 +3,7 @@ use std::path::Path;
 
 use log::info;
 
-use crate::paths::project_path;
+use crate::paths::{is_inside_project, resolve_in_project};
 use crate::log_err::LogErr;
 
 const INVALID_NAME_CHARS: &[char] = &['/', '\\', '<', '>', ':', '"', '|', '?', '*', '\0'];
@@ -19,12 +19,6 @@ fn validate_item_name(name: &str) -> Result<&str, String> {
     }
 
     Ok(name)
-}
-
-fn is_inside_project(relative: &str) -> bool {
-    Path::new(relative)
-        .components()
-        .all(|c| matches!(c, std::path::Component::Normal(_) | std::path::Component::CurDir))
 }
 
 fn relocate(root: &Path, from: &str, target_dir: &str, new_name: &str) -> Result<String, String> {
@@ -65,7 +59,7 @@ fn relocate(root: &Path, from: &str, target_dir: &str, new_name: &str) -> Result
 
 #[tauri::command]
 pub fn rename_item(app_handle: tauri::AppHandle, project_name: String, path: String, new_name: String) -> Result<String, String> {
-    let root = project_path(&app_handle, &project_name);
+    let root = resolve_in_project(&app_handle, &project_name, "")?;
     let parent = Path::new(&path).parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
     relocate(&root, &path, &parent, &new_name)
@@ -73,7 +67,7 @@ pub fn rename_item(app_handle: tauri::AppHandle, project_name: String, path: Str
 
 #[tauri::command]
 pub fn move_item(app_handle: tauri::AppHandle, project_name: String, path: String, target_dir: String) -> Result<String, String> {
-    let root = project_path(&app_handle, &project_name);
+    let root = resolve_in_project(&app_handle, &project_name, "")?;
     let name = Path::new(&path)
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
