@@ -100,7 +100,6 @@ pub fn run() {
         .manage(ChildProcessState(Arc::new(Mutex::new(None))))
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
-        .plugin(tauri_plugin_shell::init())
         .on_window_event(|window, event| {
             if window.label() == MAIN_WINDOW_LABEL {
                 if let tauri::WindowEvent::Destroyed = event {
