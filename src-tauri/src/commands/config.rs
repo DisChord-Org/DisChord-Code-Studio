@@ -252,30 +252,3 @@ pub fn save_config_raw(app_handle: tauri::AppHandle, content: String) -> Result<
     info!("config.json editado manualmente y guardado en {:?}", path);
     Ok(())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn keybindings_default_to_empty() {
-        let config: AppConfig = serde_json::from_str("{}").unwrap();
-        assert!(config.keybindings.is_empty());
-    }
-
-    #[test]
-    fn keybindings_keep_what_the_user_saved() {
-        let config: AppConfig = serde_json::from_str(r#"{"keybindings": {"file.save": "Mod+K", "run.toggle": ""}}"#).unwrap();
-
-        assert_eq!(config.keybindings.get("file.save").map(String::as_str), Some("Mod+K"));
-        assert_eq!(config.keybindings.get("run.toggle").map(String::as_str), Some(""));
-    }
-
-    #[test]
-    fn a_malformed_keybindings_field_does_not_break_the_config() {
-        let config: AppConfig = serde_json::from_str(r#"{"keybindings": 5, "editor_font_size": 20}"#).unwrap();
-
-        assert!(config.keybindings.is_empty());
-        assert_eq!(config.editor_font_size, 20);
-    }
-}

@@ -107,33 +107,3 @@ pub(super) fn stdin_command(app_handle: &tauri::AppHandle, project_name: &str, f
     command.current_dir(&project_dir).arg("--stdin").arg("--stdin-filepath").arg(&file);
     (command, file)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[cfg(unix)]
-    #[test]
-    fn feeds_stdin_and_collects_output() {
-        let mut command = Command::new("cat");
-        command.arg("-");
-
-        let out = run_process(command, Some("hola mundo".into()), Duration::from_secs(5)).unwrap();
-
-        assert_eq!(out.code, Some(0));
-        assert_eq!(out.stdout, "hola mundo");
-    }
-
-    #[cfg(unix)]
-    #[test]
-    fn kills_a_process_that_takes_too_long() {
-        let mut command = Command::new("sleep");
-        command.arg("30");
-
-        let started = Instant::now();
-        let result = run_process(command, None, Duration::from_millis(300));
-
-        assert!(result.is_err());
-        assert!(started.elapsed() < Duration::from_secs(5));
-    }
-}

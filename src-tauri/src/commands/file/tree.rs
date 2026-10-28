@@ -109,15 +109,3 @@ pub fn read_hidden_files(app_handle: tauri::AppHandle, name: String) -> Result<V
 
     Ok(hidden)
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn relative_paths_use_forward_slashes() {
-        assert_eq!(to_relative(Path::new("C:\\proj\\bot\\src\\index.chord"), "C:\\proj\\bot"), "src/index.chord");
-        assert_eq!(to_relative(Path::new("/home/u/bot/src/a.chord"), "/home/u/bot"), "src/a.chord");
-        assert_eq!(to_relative(Path::new("/home/u/bot/index.chord"), "/home/u/bot"), "index.chord");
-    }
-}

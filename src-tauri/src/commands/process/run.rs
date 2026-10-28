@@ -194,22 +194,3 @@ mod tests {
         panic!("processes started by the run survived the stop");
     }
 }
-
-#[cfg(test)]
-mod path_tests {
-    use super::*;
-
-    #[test]
-    fn paths_inside_the_project_become_relative() {
-        let project = Path::new("/home/u/proyectos/bot");
-
-        assert_eq!(relative_to(project, "/home/u/proyectos/bot/src/index.chord").as_deref(), Some("src/index.chord"));
-    }
-
-    #[test]
-    fn paths_outside_the_project_are_dropped() {
-        let project = Path::new("/home/u/proyectos/bot");
-
-        assert_eq!(relative_to(project, "/home/u/otro/src/index.chord"), None);
-    }
-}

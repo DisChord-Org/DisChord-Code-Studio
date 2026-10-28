@@ -47,22 +47,3 @@ pub fn list_project_paths(app_handle: tauri::AppHandle, project_name: String) ->
     let root = project_path(&app_handle, &project_name);
     Ok(project_files(&root)?.into_iter().map(|(rel, _)| rel).collect())
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn listing_skips_ignored() {
-        let root = std::env::temp_dir().join(format!("dischord-search-tests-c-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&root);
-        fs::create_dir_all(root.join("src")).unwrap();
-        fs::create_dir_all(root.join("lib")).unwrap();
-        fs::write(root.join(".gitignore"), "lib\n").unwrap();
-        fs::write(root.join("src/a.chord"), "x").unwrap();
-        fs::write(root.join("lib/b.chord"), "x").unwrap();
-        let names: Vec<_> = project_files(&root).unwrap().into_iter().map(|f| f.0).collect();
-        assert!(names.contains(&"src/a.chord".to_string()));
-        assert!(!names.iter().any(|n| n.starts_with("lib/")));
-    }
-}

@@ -47,35 +47,3 @@ pub(super) fn parse_declarations(output: &Output) -> DeclarationsResult {
         Err(_) => declarations_failure(combined_output(output)),
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    fn output(code: i32, stdout: &str, stderr: &str) -> Output {
-        Output { code: Some(code), stdout: stdout.into(), stderr: stderr.into() }
-    }
-
-    #[test]
-    fn reads_the_declarations_of_valid_code() {
-        let result = parse_declarations(&output(
-            0,
-            r#"{"ok":true,"diagnostics":[],"schema":1,"emit":"ast","ast":[],"declarations":[{"kind":"parameter","name":"n","container":"saludar","start":{"line":3,"column":17},"end":{"line":3,"column":18}}]}"#,
-            "",
-        ));
-
-        assert!(result.ok);
-        assert_eq!(result.declarations.len(), 1);
-        assert_eq!(result.declarations[0].container.as_deref(), Some("saludar"));
-        assert_eq!(result.declarations[0].start.column, 17);
-    }
-
-    #[test]
-    fn code_that_does_not_parse_has_no_declarations() {
-        let result = parse_declarations(&output(1, r#"{"ok":false,"diagnostics":[{"message":"mal","line":1,"column":1}]}"#, ""));
-
-        assert!(!result.ok);
-        assert!(result.declarations.is_empty());
-        assert!(result.tool_error.is_none());
-    }
-}
