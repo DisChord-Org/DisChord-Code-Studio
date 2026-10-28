@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { notify } from "../../utils/Toasts";
 import type { OpenTab } from "./types";
+import { neighbourOnLeft, partitionTabs, pruneRightPane } from "./splitLogic";
 
 export const useSplitView = (openTabs: OpenTab[], activeTabPath: string | null, setActiveTabPath: (path: string | null) => void) => {
     const [rightPaths, setRightPaths] = useState<string[]>([]);
@@ -8,14 +9,12 @@ export const useSplitView = (openTabs: OpenTab[], activeTabPath: string | null, 
     const lastLeftActive = useRef<string | null>(null);
 
     const onRight = (path: string) => rightPaths.includes(path);
-    const rightTabs = rightPaths.flatMap(path => openTabs.filter(t => t.relative_path === path));
-    const leftTabs = openTabs.filter(t => !onRight(t.relative_path));
-    const rightActiveTab = rightTabs.find(t => t.relative_path === rightActive) ?? null;
+    const { leftTabs, rightTabs, rightActiveTab } = partitionTabs(openTabs, rightPaths, rightActive);
 
     useEffect(() => {
-        const alive = rightPaths.filter(path => openTabs.some(t => t.relative_path === path));
-        if (alive.length !== rightPaths.length) setRightPaths(alive);
-        if (rightActive !== null && !alive.includes(rightActive)) setRightActive(alive[alive.length - 1] ?? null);
+        const { paths, active } = pruneRightPane(rightPaths, rightActive, openTabs);
+        if (paths.length !== rightPaths.length) setRightPaths(paths);
+        if (active !== rightActive) setRightActive(active);
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [openTabs]);
 
@@ -38,8 +37,7 @@ export const useSplitView = (openTabs: OpenTab[], activeTabPath: string | null, 
             return;
         }
         if (path === activeTabPath) {
-            const index = leftTabs.indexOf(tab);
-            setActiveTabPath((leftTabs[index + 1] ?? leftTabs[index - 1]).relative_path);
+            setActiveTabPath(neighbourOnLeft(leftTabs, path));
         }
         setRightPaths([...rightPaths, path]);
         setRightActive(path);

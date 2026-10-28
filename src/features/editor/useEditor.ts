@@ -5,7 +5,7 @@ import { useWindowLayout } from "./useWindowLayout";
 import { useOpenTabs } from "./useOpenTabs";
 import { useRunControl } from "./useRunControl";
 import { useProjectWatcher } from "./useProjectWatcher";
-import { confirmAction } from "../../utils/Dialogs";
+import { useProjectLeave } from "./useProjectLeave";
 
 const maxTabShortcuts = 9;
 
@@ -47,66 +47,24 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
         ),
     });
 
-    const confirmLeaveProject = async (): Promise<boolean> => {
-        const dirtyTabs = openTabs.filter(t => t.isDirty);
-        if (dirtyTabs.length === 0) return true;
-        return confirmAction(
-            dirtyTabs.length === 1
-                ? `Tienes cambios sin guardar en "${dirtyTabs[0].name}". ¿Quieres salir de todos modos? Se perderán.`
-                : `Tienes cambios sin guardar en ${dirtyTabs.length} ficheros. ¿Quieres salir de todos modos? Se perderán.`,
-            "Salir",
-            { title: "Cambios sin guardar", detail: "Los cambios sin guardar se perderán." }
-        );
-    };
-
-    const handleBack = async () => {
-        if (!(await confirmLeaveProject())) return;
-
-        if (run.isRunning) await run.stopRun();
-
-        onBack();
-    };
-
-    const handleSwitchProject = async (name: string) => {
-        if (name === projectName) return;
-        if (!(await confirmLeaveProject())) return;
-        if (!onSwitchProject) return;
-
-        onSwitchProject(name);
-    };
+    const { handleBack, handleSwitchProject } = useProjectLeave({
+        projectName,
+        openTabs,
+        isRunning: run.isRunning,
+        stopRun: run.stopRun,
+        onBack,
+        onSwitchProject,
+    });
 
     return {
         fileTree,
-        openTabs,
-        activeTabPath: tabs.activeTabPath,
-        activeTab: tabs.activeTab,
-        isRunning: run.isRunning,
-        showTerminal: run.showTerminal,
-        terminalStartTab: run.terminalStartTab,
-        outputSignal: run.outputSignal,
-        toggleShellTerminal: run.toggleShellTerminal,
+        refreshFiles,
         isMaximized,
+        tabs,
+        run,
         codeCanvasRef,
         minimapViewport,
-        setActiveTabPath: tabs.setActiveTabPath,
-        setShowTerminal: run.setShowTerminal,
         setMinimapViewport,
-        handleFileSelect,
-        openFileAt: tabs.openFileAt,
-        handlePathMoved: tabs.handlePathMoved,
-        handlePathDeleted: tabs.handlePathDeleted,
-        gotoTarget: tabs.gotoTarget,
-        openPackagesTab: tabs.openPackagesTab,
-        openShortcutsTab,
-        closeTab: tabs.closeTab,
-        updateActiveTabContent: tabs.updateActiveTabContent,
-        setActiveTabDirty: tabs.setActiveTabDirty,
-        updateTabContent: tabs.updateTabContent,
-        setTabDirty: tabs.setTabDirty,
-        refreshFiles,
-        handleToggleRun: run.toggleRun,
-        handleStopRun: run.stopRun,
-        handleRestartRun: run.restartRun,
         handleBack,
         handleSwitchProject,
     };

@@ -3,7 +3,8 @@ import { invoke } from "@tauri-apps/api/core";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 import type { FileNode, GotoTarget, OpenTab } from "./types";
 import { packagesTabId, shortcutsTabId } from "./types";
-import { baseName, isSameOrInside, remapPath } from "./pathUtils";
+import { remapPath } from "./pathUtils";
+import { addFileTab, fallbackAfterClose, remapTabs, removeDeletedTabs } from "./tabsLogic";
 import { restoreTabsSession, saveTabsSession } from "./tabsSession";
 import { confirmAction } from "../../utils/Dialogs";
 
@@ -92,25 +93,14 @@ export const useOpenTabs = (projectName: string) => {
                 filePath: node.relative_path
             });
 
-            setOpenTabs(prev => {
-                if (prev.some(t => t.relative_path === node.relative_path)) return prev;
-
-                const newTab: OpenTab = {
-                    kind: "file",
-                    relative_path: node.relative_path,
-                    name: node.name,
-                    content: text,
-                    isDirty: false,
-                    isPinned: false,
-                };
-
-                const previewIndex = prev.findIndex(t => t.kind === "file" && !t.isPinned);
-                if (previewIndex === -1) return [...prev, newTab];
-
-                const next = [...prev];
-                next[previewIndex] = newTab;
-                return next;
-            });
+            setOpenTabs(prev => addFileTab(prev, {
+                kind: "file",
+                relative_path: node.relative_path,
+                name: node.name,
+                content: text,
+                isDirty: false,
+                isPinned: false,
+            }));
         } catch (error) {
             console.error("Error al leer archivo:", error);
         }
@@ -123,27 +113,17 @@ export const useOpenTabs = (projectName: string) => {
 
     /** An item was renamed or moved: keep its open tabs (and everything under a moved folder) pointing at it. */
     const handlePathMoved = (from: string, to: string) => {
-        setOpenTabs(prev => prev.map(t => {
-            const path = remapPath(t.relative_path, from, to);
-            return path === t.relative_path || t.kind !== "file" ? t : { ...t, relative_path: path, name: baseName(path) };
-        }));
+        setOpenTabs(prev => remapTabs(prev, from, to));
         setActiveTabPath(prev => (prev ? remapPath(prev, from, to) : prev));
     };
 
     /** An item was deleted: close its tabs (and those of everything under a deleted folder) without asking. */
     const handlePathDeleted = (path: string) => {
-        const tabs = openTabsRef.current;
-        const isGone = (t: OpenTab) => t.kind === "file" && isSameOrInside(t.relative_path, path);
-        if (!tabs.some(isGone)) return;
+        const result = removeDeletedTabs(openTabsRef.current, activeTabPathRef.current, path);
+        if (!result) return;
 
-        const remaining = tabs.filter(t => !isGone(t));
-        setOpenTabs(remaining);
-
-        const activeIndex = tabs.findIndex(t => t.relative_path === activeTabPathRef.current);
-        if (activeIndex !== -1 && isGone(tabs[activeIndex])) {
-            const fallback = tabs.slice(activeIndex + 1).find(t => !isGone(t)) ?? remaining[remaining.length - 1] ?? null;
-            setActiveTabPath(fallback?.relative_path ?? null);
-        }
+        setOpenTabs(result.remaining);
+        if (result.activeGone) setActiveTabPath(result.nextActive);
     };
 
     /** Opens (or focuses) one of the tabs that are not files. */
@@ -186,10 +166,7 @@ export const useOpenTabs = (projectName: string) => {
             const idx = prev.findIndex(t => t.relative_path === path);
             const next = prev.filter(t => t.relative_path !== path);
 
-            if (activeTabPathRef.current === path) {
-                const fallback = next[idx] ?? next[idx - 1] ?? null;
-                setActiveTabPath(fallback?.relative_path ?? null);
-            }
+            if (activeTabPathRef.current === path) setActiveTabPath(fallbackAfterClose(next, idx));
 
             return next;
         });
@@ -205,19 +182,6 @@ export const useOpenTabs = (projectName: string) => {
         if (tab) setActiveTabPath(tab.relative_path);
     };
 
-    const updateActiveTabContent = (value: string) => {
-        setOpenTabs(prev => prev.map(t =>
-            t.relative_path === activeTabPathRef.current ? { ...t, content: value, isDirty: true, isPinned: true } : t
-        ));
-    };
-
-    const setActiveTabDirty = (value: boolean) => {
-        setOpenTabs(prev => prev.map(t =>
-            t.relative_path === activeTabPathRef.current ? { ...t, isDirty: value } : t
-        ));
-    };
-
-    /** Same as the active-tab updaters, for a tab shown in the split pane. */
     const updateTabContent = (path: string, value: string) => {
         setOpenTabs(prev => prev.map(t =>
             t.relative_path === path ? { ...t, content: value, isDirty: true, isPinned: true } : t
@@ -247,8 +211,6 @@ export const useOpenTabs = (projectName: string) => {
         closeTab,
         closeActiveTab,
         activateTabAt,
-        updateActiveTabContent,
-        setActiveTabDirty,
         updateTabContent,
         setTabDirty,
     };

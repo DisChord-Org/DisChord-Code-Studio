@@ -10,4 +10,4 @@ export { EmptyEditor } from "./components/EmptyEditor";
 export { useEditor } from "./useEditor";
 export { useSplitView } from "./useSplitView";
 
-export type { FileNode, MinimapViewport, CodeCanvasHandle, OpenTab } from "./types";
+export type { FileNode, GotoTarget, MinimapViewport, CodeCanvasHandle, OpenTab } from "./types";
