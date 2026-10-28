@@ -6,7 +6,7 @@ interface LibrarySource {
     source: string;
 }
 
-let exportsByProject = new Map<string, ChordSymbol[]>();
+const exportsByProject = new Map<string, ChordSymbol[]>();
 let currentProject: string | null = null;
 
 export const loadLibraryExports = async (projectName: string) => {

@@ -61,7 +61,7 @@ const chordLanguage = StreamLanguage.define({
             return "variableName";
         }
 
-        if (stream.match(/[{}()\[\].,;]/)) return "punctuation";
+        if (stream.match(/[{}()[\].,;]/)) return "punctuation";
         stream.next();
         return null;
     },

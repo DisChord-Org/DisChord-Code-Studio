@@ -183,6 +183,7 @@ function Update() {
                     return next;
                 });
             } catch {
+                // Progress is best effort: a failed read just keeps the previous state.
             }
         })();
 
@@ -236,7 +237,6 @@ function Update() {
             setAutoRestartSeconds((s) => (s === null ? null : s - 1));
         }, 1000);
         return () => clearTimeout(timer);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [autoRestartSeconds]);
 
     const handleClose = () => {
