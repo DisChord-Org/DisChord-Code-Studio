@@ -92,6 +92,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                                     title={project.name}
                                     subtitle={`Última edición: ${formatRelativeTime(project.last_modified)}`}
                                     meta={<ProjectTime name={project.name} />}
+                                    stacked={config.view_mode === "grid"}
                                     onDelete={() => handleDeleteProject(project.name)}
                                     onClick={() => onSelectProject(project.name)}
                                 />
