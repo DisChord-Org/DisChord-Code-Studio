@@ -15,17 +15,12 @@ export const useOpenTabs = (projectName: string) => {
     const [restoredProject, setRestoredProject] = useState<string | null>(null);
     const [gotoTarget, setGotoTarget] = useState<GotoTarget | null>(null);
 
-    // Mirrors of the state so handlers called from stale closures (shortcuts, listeners) read current values.
+    // Mirrors of the state, assigned during render so handlers called from stale closures (shortcuts, listeners) never lag a render behind.
     const openTabsRef = useRef<OpenTab[]>([]);
     const activeTabPathRef = useRef<string | null>(null);
 
-    useEffect(() => {
-        openTabsRef.current = openTabs;
-    }, [openTabs]);
-
-    useEffect(() => {
-        activeTabPathRef.current = activeTabPath;
-    }, [activeTabPath]);
+    openTabsRef.current = openTabs;
+    activeTabPathRef.current = activeTabPath;
 
     useEffect(() => {
         setOpenTabs([]);
