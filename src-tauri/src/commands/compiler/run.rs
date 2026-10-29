@@ -5,7 +5,7 @@ use std::thread;
 use std::time::{Duration, Instant};
 
 use crate::log_err::LogErr;
-use crate::paths::project_path;
+use crate::paths::resolve_in_project;
 use crate::platform::{build_path_env, compiler_binary_path, silent_command, strip_npm_env};
 
 pub(super) const CHECK_TIMEOUT: Duration = Duration::from_secs(15);
@@ -99,11 +99,11 @@ pub(super) fn compiler_command(app_handle: &tauri::AppHandle) -> Command {
     command
 }
 
-pub(super) fn stdin_command(app_handle: &tauri::AppHandle, project_name: &str, file_path: &str) -> (Command, PathBuf) {
-    let project_dir = project_path(app_handle, project_name);
-    let file = project_dir.join(file_path);
+pub(super) fn stdin_command(app_handle: &tauri::AppHandle, project_name: &str, file_path: &str) -> Result<(Command, PathBuf), String> {
+    let project_dir = resolve_in_project(app_handle, project_name, "")?;
+    let file = resolve_in_project(app_handle, project_name, file_path)?;
 
     let mut command = compiler_command(app_handle);
     command.current_dir(&project_dir).arg("--stdin").arg("--stdin-filepath").arg(&file);
-    (command, file)
+    Ok((command, file))
 }

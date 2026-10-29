@@ -5,7 +5,6 @@ use tauri::Manager;
 const WORKFLOWS_DIR_NAME: &str = "DisChord-Workflows";
 
 pub fn workflows_root(app_handle: &tauri::AppHandle) -> PathBuf {
-    // Fall back to the current dir (or ".") so a missing documents dir never panics.
     let mut path = app_handle
         .path()
         .document_dir()
@@ -21,18 +20,31 @@ pub fn project_path(app_handle: &tauri::AppHandle, project_name: &str) -> PathBu
     path
 }
 
-/// True when `relative` stays under its base: only plain names, no `..`, root or drive prefix.
 pub fn is_inside_project(relative: &str) -> bool {
     Path::new(relative)
         .components()
         .all(|c| matches!(c, Component::Normal(_) | Component::CurDir))
 }
 
-/// Resolves `relative` under the project, rejecting names or paths that would escape it.
+fn escapes_root(root: &Path, full: &Path) -> bool {
+    let Ok(root) = root.canonicalize() else { return false };
+    let Some(existing) = full.ancestors().find(|p| p.exists()) else { return false };
+    match existing.canonicalize() {
+        Ok(resolved) => !resolved.starts_with(&root),
+        Err(_) => true,
+    }
+}
+
 pub fn resolve_in_project(app_handle: &tauri::AppHandle, project_name: &str, relative: &str) -> Result<PathBuf, String> {
     let single_name = Path::new(project_name).components().count() == 1;
     if project_name.is_empty() || !single_name || !is_inside_project(project_name) || !is_inside_project(relative) {
         return Err("Ruta no válida.".into());
     }
-    Ok(project_path(app_handle, project_name).join(relative))
+
+    let root = project_path(app_handle, project_name);
+    let full = root.join(relative);
+    if escapes_root(&root, &full) {
+        return Err("Ruta no válida.".into());
+    }
+    Ok(full)
 }

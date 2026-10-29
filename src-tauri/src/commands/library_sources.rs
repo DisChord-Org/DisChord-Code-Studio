@@ -2,7 +2,7 @@ use std::fs;
 
 use serde::Serialize;
 
-use crate::paths::project_path;
+use crate::paths::resolve_in_project;
 
 const MAX_SOURCE_BYTES: u64 = 512 * 1024;
 
@@ -14,7 +14,7 @@ pub struct LibrarySource {
 
 #[tauri::command]
 pub async fn get_library_sources(app_handle: tauri::AppHandle, project_name: String) -> Result<Vec<LibrarySource>, String> {
-    let lib_dir = project_path(&app_handle, &project_name).join("lib");
+    let lib_dir = resolve_in_project(&app_handle, &project_name, "lib")?;
 
     tauri::async_runtime::spawn_blocking(move || {
         let Ok(entries) = fs::read_dir(&lib_dir) else { return Vec::new() };

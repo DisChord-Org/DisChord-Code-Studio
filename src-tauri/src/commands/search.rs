@@ -3,7 +3,7 @@ use std::path::Path;
 
 use ignore::gitignore::Gitignore;
 
-use crate::paths::project_path;
+use crate::paths::resolve_in_project;
 use super::file::build_gitignore_matcher;
 
 const SKIPPED_DIRS: [&str; 2] = [".git", "node_modules"];
@@ -44,6 +44,6 @@ fn project_files(root: &Path) -> Result<Vec<(String, std::path::PathBuf)>, Strin
 
 #[tauri::command]
 pub fn list_project_paths(app_handle: tauri::AppHandle, project_name: String) -> Result<Vec<String>, String> {
-    let root = project_path(&app_handle, &project_name);
+    let root = resolve_in_project(&app_handle, &project_name, "")?;
     Ok(project_files(&root)?.into_iter().map(|(rel, _)| rel).collect())
 }

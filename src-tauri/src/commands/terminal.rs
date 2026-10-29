@@ -13,7 +13,7 @@ use tauri::{Emitter, Manager};
 
 use crate::commands::config_sections::section_values;
 use crate::log_err::LogErr;
-use crate::paths::project_path;
+use crate::paths::resolve_in_project;
 use crate::platform::{build_path_env, default_shell, NPM_ENV_VARS_TO_STRIP};
 
 struct TerminalSession {
@@ -121,7 +121,7 @@ fn drain_utf8(pending: &mut Vec<u8>) -> Option<String> {
 
 #[tauri::command]
 pub fn terminal_open(app_handle: tauri::AppHandle, project_name: String, cols: u16, rows: u16, rounded: bool) -> Result<String, String> {
-    let cwd = project_path(&app_handle, &project_name);
+    let cwd = resolve_in_project(&app_handle, &project_name, "")?;
 
     let pair = native_pty_system().openpty(pty_size(cols, rows)).log_err("No se pudo abrir el pseudoterminal")?;
 

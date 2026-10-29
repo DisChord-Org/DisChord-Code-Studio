@@ -20,7 +20,7 @@ use tauri::Emitter;
 
 use crate::commands::file::build_gitignore_matcher;
 use crate::log_err::LogErr;
-use crate::paths::project_path;
+use crate::paths::resolve_in_project;
 
 type Watcher = Debouncer<RecommendedWatcher, RecommendedCache>;
 
@@ -88,7 +88,7 @@ fn watch_dir(debouncer: &Arc<Mutex<Watcher>>, watched: &Arc<Mutex<HashSet<PathBu
 
 #[tauri::command]
 pub fn watch_project(app_handle: tauri::AppHandle, state: tauri::State<'_, WatcherState>, project_name: String) -> Result<(), String> {
-    let root = project_path(&app_handle, &project_name);
+    let root = resolve_in_project(&app_handle, &project_name, "")?;
     if !root.is_dir() {
         return Err(format!("La carpeta del proyecto no existe: {:?}", root));
     }

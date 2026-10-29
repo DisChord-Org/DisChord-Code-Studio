@@ -11,7 +11,7 @@ use super::stream::stream_to_terminal;
 use crate::commands::compiler::check_project;
 use crate::log_err::LogErr;
 use crate::output::{emit_line, emit_located_line, emit_run_end, LineKind, Location, RunStatus};
-use crate::paths::project_path;
+use crate::paths::resolve_in_project;
 use crate::platform::{build_path_env, isolate_process_group, resolve_chord_command, strip_npm_env, terminate_process_tree};
 use crate::ChildProcessState;
 
@@ -113,7 +113,7 @@ fn watch_run(app_handle: AppHandle, run: Arc<Mutex<Option<Child>>>, pid: u32, st
 }
 
 pub(super) fn start(app_handle: AppHandle, state: &ChildProcessState, project_name: String) -> Result<(), String> {
-    let project_dir = project_path(&app_handle, &project_name);
+    let project_dir = resolve_in_project(&app_handle, &project_name, "")?;
 
     let chord_file = project_dir.join(ENTRY_POINT);
     if !chord_file.exists() {

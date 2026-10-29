@@ -5,7 +5,7 @@ use std::path::Path;
 use serde::Serialize;
 use log::{info, error, warn, debug};
 
-use crate::paths::{workflows_root, project_path};
+use crate::paths::{resolve_in_project, workflows_root};
 use crate::platform::resolve_chord_command;
 use crate::log_err::LogErr;
 
@@ -107,7 +107,7 @@ pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<
         return Err("El motor 'chord' no está listo. Revisa la configuración.".into());
     }
 
-    let path = project_path(&app_handle, &name);
+    let path = resolve_in_project(&app_handle, &name, "")?;
 
     if path.exists() {
         warn!("El proyecto '{}' ya existe en {:?}", name, path);
@@ -139,7 +139,7 @@ pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<
 
 #[tauri::command]
 pub fn delete_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
-    let path = project_path(&app_handle, &name);
+    let path = resolve_in_project(&app_handle, &name, "")?;
 
     if path.exists() && path.is_dir() {
         info!("Eliminando proyecto completo: {:?}", path);

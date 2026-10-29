@@ -5,7 +5,7 @@ use log::{info, warn};
 use tauri::{AppHandle, Manager};
 
 use crate::log_err::LogErr;
-use crate::paths::project_path;
+use crate::paths::resolve_in_project;
 use crate::platform::{bin_dir, open_in_file_manager};
 
 fn open_path_in_explorer(path: &Path) -> Result<(), String> {
@@ -14,7 +14,7 @@ fn open_path_in_explorer(path: &Path) -> Result<(), String> {
 }
 
 pub(super) fn open_project(app_handle: &AppHandle, project_name: &str) -> Result<(), String> {
-    let path = project_path(app_handle, project_name);
+    let path = resolve_in_project(app_handle, project_name, "")?;
 
     if !path.exists() {
         warn!("Intento de abrir explorador en ruta inexistente: {:?}", path);

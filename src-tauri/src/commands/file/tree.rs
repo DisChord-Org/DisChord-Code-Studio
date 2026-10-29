@@ -5,7 +5,7 @@ use serde::Serialize;
 use ignore::gitignore::Gitignore;
 use log::info;
 
-use crate::paths::project_path;
+use crate::paths::resolve_in_project;
 use super::gitignore::{build_gitignore_matcher, GITIGNORE_FILE};
 
 #[derive(Serialize)]
@@ -57,7 +57,6 @@ fn scan_dir(path: &Path, root_str: &str, matcher: &Gitignore) -> Vec<ProjectFile
     files
 }
 
-/// Files that the `.gitignore` hides from the tree, found at any depth (folders are walked, never listed).
 fn collect_hidden(path: &Path, root_str: &str, matcher: &Gitignore, out: &mut Vec<ProjectFile>) {
     let Ok(entries) = fs::read_dir(path) else { return };
 
@@ -84,7 +83,7 @@ fn collect_hidden(path: &Path, root_str: &str, matcher: &Gitignore, out: &mut Ve
 
 #[tauri::command]
 pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
-    let root_path = project_path(&app_handle, &name);
+    let root_path = resolve_in_project(&app_handle, &name, "")?;
     info!("Escaneando archivos del proyecto: {:?}", root_path);
 
     let root_str = root_path.to_string_lossy().to_string();
@@ -97,7 +96,7 @@ pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<
 
 #[tauri::command]
 pub fn read_hidden_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
-    let root_path = project_path(&app_handle, &name);
+    let root_path = resolve_in_project(&app_handle, &name, "")?;
     info!("Escaneando ficheros ocultos del proyecto: {:?}", root_path);
 
     let root_str = root_path.to_string_lossy().to_string();

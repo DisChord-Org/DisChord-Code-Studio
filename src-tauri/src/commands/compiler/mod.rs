@@ -25,7 +25,7 @@ pub async fn compiler_check(
         return Ok(tool_failure("El archivo es demasiado grande para comprobarlo mientras escribes.".into()));
     }
 
-    let (mut command, file) = stdin_command(&app_handle, &project_name, &file_path);
+    let (mut command, file) = stdin_command(&app_handle, &project_name, &file_path)?;
     command.arg("--json");
 
     tauri::async_runtime::spawn_blocking(move || {
@@ -63,7 +63,7 @@ pub async fn compiler_declarations(
         return Ok(declarations_failure("El archivo es demasiado grande.".into()));
     }
 
-    let (mut command, _) = stdin_command(&app_handle, &project_name, &file_path);
+    let (mut command, _) = stdin_command(&app_handle, &project_name, &file_path)?;
     command.arg("--emit").arg("ast");
 
     tauri::async_runtime::spawn_blocking(move || {

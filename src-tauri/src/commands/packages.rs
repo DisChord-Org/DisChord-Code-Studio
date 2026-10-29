@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use tauri::Emitter;
 
 use crate::log_err::LogErr;
-use crate::paths::project_path;
+use crate::paths::resolve_in_project;
 use crate::platform::{build_path_env, resolve_chord_command, strip_npm_env};
 
 #[derive(Deserialize)]
@@ -144,7 +144,7 @@ pub async fn pkg_search(app_handle: tauri::AppHandle, query: Option<String>, ins
 
 #[tauri::command]
 pub fn list_project_libraries(app_handle: tauri::AppHandle, project_name: String) -> Result<Vec<ProjectLibrary>, String> {
-    let lib_dir = project_path(&app_handle, &project_name).join("lib");
+    let lib_dir = resolve_in_project(&app_handle, &project_name, "lib")?;
 
     if !lib_dir.exists() {
         return Ok(vec![]);
@@ -415,7 +415,7 @@ pub async fn pkg_uninstall(app_handle: tauri::AppHandle, name: String, version: 
 pub async fn pkg_use(app_handle: tauri::AppHandle, project_name: String, name: String, version: String) -> Result<PkgOpOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || {
         let version = normalize_version(&version);
-        let project_dir = project_path(&app_handle, &project_name);
+        let project_dir = resolve_in_project(&app_handle, &project_name, "")?;
         let outcome = run_pkg_json_op(&app_handle, "use", &["use", &name, &version], Some(&project_dir), Some(&name), "No se pudo ejecutar 'chord pkg use'")?;
 
         if outcome.success {
@@ -431,7 +431,7 @@ pub async fn pkg_use(app_handle: tauri::AppHandle, project_name: String, name: S
 #[tauri::command]
 pub async fn pkg_unuse(app_handle: tauri::AppHandle, project_name: String, name: String) -> Result<PkgOpOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let project_dir = project_path(&app_handle, &project_name);
+        let project_dir = resolve_in_project(&app_handle, &project_name, "")?;
         run_pkg_json_op(&app_handle, "unuse", &["unuse", &name], Some(&project_dir), Some(&name), "No se pudo ejecutar 'chord pkg unuse'")
     })
     .await
@@ -441,7 +441,7 @@ pub async fn pkg_unuse(app_handle: tauri::AppHandle, project_name: String, name:
 #[tauri::command]
 pub async fn pkg_sync(app_handle: tauri::AppHandle, project_name: String) -> Result<PkgOpOutcome, String> {
     tauri::async_runtime::spawn_blocking(move || {
-        let project_dir = project_path(&app_handle, &project_name);
+        let project_dir = resolve_in_project(&app_handle, &project_name, "")?;
         let outcome = run_pkg_json_op(&app_handle, "sync", &["sync"], Some(&project_dir), None, "No se pudo ejecutar 'chord pkg sync'")?;
 
         if outcome.success {
