@@ -18,7 +18,7 @@ jobs:
       - name: setup node
         uses: actions/setup-node@v4
         with:
-          node-version: lts/*
+          node-version: 22
           cache: 'pnpm'
 
       - name: install Rust stable
@@ -39,6 +39,9 @@ jobs:
 
       - name: lint
         run: pnpm lint
+
+      - name: frontend build
+        run: pnpm exec vite build
 
       - name: clippy
         working-directory: src-tauri
