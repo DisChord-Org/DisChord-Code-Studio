@@ -376,6 +376,27 @@ export const EditorSettings = ({ config, updateConfig }: EditorSettingsProps) =>
 
             <div className="py-3 border-b border-white/5">
                 <button
+                    onClick={() => updateConfig({ editor_block_form: !config.editor_block_form })}
+                    className="w-full flex items-center justify-between text-left"
+                >
+                    <div>
+                        <p className="text-sm text-gray-200 font-medium mb-0.5">Formulario de bloques</p>
+                        <p className="text-xs text-gray-500">
+                            Muestra un formulario con los campos de cada bloque (como enviar mensaje) mientras tienes el cursor dentro, para rellenarlos sin escribir las claves.
+                        </p>
+                    </div>
+                    <span
+                        className={`shrink-0 ml-3 w-9 h-5 rounded-full p-0.5 transition-colors ${config.editor_block_form ? "bg-accent" : "bg-white/10"}`}
+                    >
+                        <span
+                            className={`block w-4 h-4 rounded-full bg-white transition-transform ${config.editor_block_form ? "translate-x-4" : "translate-x-0"}`}
+                        />
+                    </span>
+                </button>
+            </div>
+
+            <div className="py-3 border-b border-white/5">
+                <button
                     onClick={() => updateConfig({ editor_word_wrap: !config.editor_word_wrap })}
                     className="w-full flex items-center justify-between text-left"
                 >

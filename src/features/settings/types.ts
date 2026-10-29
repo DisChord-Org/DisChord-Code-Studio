@@ -15,6 +15,7 @@ export interface AppConfig {
     editor_keep_statusbar: boolean;
     editor_final_newline: boolean;
     editor_live_diagnostics: boolean;
+    editor_block_form: boolean;
     terminal_background_source: "bundled" | "custom" | "none";
     terminal_background_image: string;
     terminal_background_dim: number;

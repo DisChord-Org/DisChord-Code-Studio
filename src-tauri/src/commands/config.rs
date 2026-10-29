@@ -142,6 +142,7 @@ pub struct AppConfig {
     pub editor_keep_statusbar: bool,
     pub editor_final_newline: bool,
     pub editor_live_diagnostics: bool,
+    pub editor_block_form: bool,
     #[serde(deserialize_with = "lenient")]
     pub terminal_background_source: BackgroundSource,
     pub terminal_background_image: String,
@@ -169,6 +170,7 @@ impl Default for AppConfig {
             editor_keep_statusbar: false,
             editor_final_newline: true,
             editor_live_diagnostics: true,
+            editor_block_form: true,
             terminal_background_source: BackgroundSource::default(),
             terminal_background_image: String::new(),
             terminal_background_dim: default_background_dim(),
