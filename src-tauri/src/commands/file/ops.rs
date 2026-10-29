@@ -20,11 +20,12 @@ pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_,
         .and_then(|os_str| os_str.to_str())
         .unwrap_or(&file_path);
 
-    let _ = update_presence(
-        &discord.client,
-        &format!("Proyecto: {}", project_name),
-        &format!("Editando {}", file_name)
-    );
+    let client = discord.client.clone();
+    let project_label = format!("Proyecto: {}", project_name);
+    let file_label = format!("Editando {}", file_name);
+    std::thread::spawn(move || {
+        let _ = update_presence(&client, &project_label, &file_label);
+    });
 
     info!("Leyendo contenido: {:?}", file_path);
     fs::read_to_string(&path).log_err(&format!("No se pudo leer el archivo {:?}", path))
