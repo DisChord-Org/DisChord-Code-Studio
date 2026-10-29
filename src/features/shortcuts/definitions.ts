@@ -96,6 +96,14 @@ export const shortcutDefinitions: ShortcutDefinition[] = [
         defaultAccelerator: "Mod+Alt+D",
     },
     {
+        id: "editor.toggleBlockForm",
+        label: "Formulario de bloques",
+        description: "Activa o desactiva el formulario que aparece dentro de bloques como enviar mensaje.",
+        group: "editor",
+        scope: "app",
+        defaultAccelerator: "Mod+Alt+B",
+    },
+    {
         id: "editor.toggleWordWrap",
         label: "Ajuste de línea",
         group: "editor",

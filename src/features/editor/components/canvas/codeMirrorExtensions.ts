@@ -8,11 +8,11 @@ import { chord } from "../../../../languages/chord-language";
 import { loadedLanguageFor } from "../../../../languages/language-for-file";
 import { copyFlashClass } from "./CodeCanvas.constants";
 
-// Compartments are shared by every editor instance; each view keeps its own configuration for them.
 export const languageConf = new Compartment();
 export const wrapConf = new Compartment();
 export const indentConf = new Compartment();
 export const diagnosticsConf = new Compartment();
+export const blockFormConf = new Compartment();
 
 export const indentExtension = (size: number, useTabs: boolean) => [
     EditorState.tabSize.of(size),
@@ -21,7 +21,6 @@ export const indentExtension = (size: number, useTabs: boolean) => [
 
 export const isChordFile = (fileName: string) => fileName.toLowerCase().endsWith(".chord");
 
-/** Chord has its own synchronous grammar; other languages load lazily and may not be ready yet. */
 export const languageExtensionFor = (fileName: string) =>
     isChordFile(fileName) ? chord() : (loadedLanguageFor(fileName) ?? []);
 
@@ -36,7 +35,6 @@ interface FlashRange {
 export const addFlash = StateEffect.define<FlashRange>();
 export const clearFlash = StateEffect.define<null>();
 
-/** Briefly highlights what was just copied. */
 export const flashField = StateField.define({
     create() { return Decoration.none; },
     update(decorations, transaction) {

@@ -13,8 +13,9 @@ import { loadLibraryExports } from "../../../../languages/chord-libraries";
 import { dischordEditorTheme } from "../../../../languages/editor-theme";
 import { completionTheme } from "../../../../languages/completion-theme";
 import { searchTheme } from "../../../../languages/search-theme";
+import { blockForm } from "../../../../languages/block-form";
 import {
-    languageConf, wrapConf, indentConf, diagnosticsConf, indentExtension, isChordFile,
+    languageConf, wrapConf, indentConf, diagnosticsConf, blockFormConf, indentExtension, isChordFile,
     languageExtensionFor, completionExtensionFor, addFlash, clearFlash, flashField,
 } from "./codeMirrorExtensions";
 import { rememberTabView, restoreTabView } from "../../tabsSession";
@@ -25,6 +26,7 @@ import { middleClickJustHappened } from "../../../../utils/MiddleClick";
 import { forgetDiagnostics, applyRename, goToDefinition, isValidIdentifier, languageIntelligence, liveDiagnostics, renameTargets } from "../../../compiler";
 import { Modal } from "../../../../components/ui";
 import { showError } from "../../../../utils/Dialogs";
+import { notify } from "../../../../utils/Toasts";
 
 interface CodeCanvasProps {
     projectName: string;
@@ -56,6 +58,18 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     const useTabsRef = useRef(config.editor_use_tabs);
     useTabsRef.current = config.editor_use_tabs;
+
+    const blockFormOn = config.editor_block_form && isChordFile(fileName);
+    const blockFormOnRef = useRef(blockFormOn);
+    blockFormOnRef.current = blockFormOn;
+
+    const blockFormExtension = (on: boolean) =>
+        on
+            ? blockForm(() => {
+                updateConfigRef.current({ editor_block_form: false });
+                notify("info", "Puedes volver a activar el formulario de bloques en Configuración > Editor.");
+            })
+            : [];
 
     const diagnosticsOn = config.editor_live_diagnostics && isChordFile(fileName);
     const diagnosticsOnRef = useRef(diagnosticsOn);
@@ -91,6 +105,11 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         }
         applyRename(view, renaming.ranges, name);
     };
+
+    useShortcut("editor.toggleBlockForm", () => {
+        const view = viewRef.current;
+        if (view && isChordFile(fileName) && (view.hasFocus || !requireFocus)) updateConfigRef.current({ editor_block_form: !blockFormOnRef.current });
+    });
 
     useShortcut("editor.toggleWordWrap", () => updateConfigRef.current({ editor_word_wrap: !wordWrapRef.current }));
 
@@ -159,7 +178,8 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     }),
                     dischordEditorTheme,
                     completionTheme,
-                    searchTheme
+                    searchTheme,
+                    blockFormConf.of(blockFormExtension(blockFormOnRef.current))
                 ]
             }),
             parent: editorRef.current
@@ -188,7 +208,6 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             });
         };
 
-        // Two frames: the first lays the document out, the second has the final scroll metrics.
         requestAnimationFrame(() => requestAnimationFrame(reportViewport));
 
         const rememberScroll = () => rememberTabView(projectName, relative_path, view);
@@ -205,7 +224,6 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             viewRef.current = null;
             forgetDiagnostics(relative_path);
         }
-        // Rebuilding the editor on every prop change would lose undo history; only a file switch recreates it.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [relative_path]);
 
@@ -242,6 +260,10 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     }, [diagnosticsOn]);
 
     useEffect(() => {
+        viewRef.current?.dispatch({ effects: blockFormConf.reconfigure(blockFormExtension(blockFormOn)) });
+    }, [blockFormOn]);
+
+    useEffect(() => {
         viewRef.current?.dispatch({
             effects: indentConf.reconfigure(indentExtension(config.editor_tab_size, config.editor_use_tabs))
         });
@@ -255,7 +277,6 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         const pos = line.from + Math.min(Math.max(goto.column - 1, 0), line.length);
         view.dispatch({ selection: { anchor: pos }, effects: EditorView.scrollIntoView(pos, { y: "center" }) });
         view.focus();
-        // The nonce, not the target, signals a new request, so jumping twice to the same spot works.
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [goto?.nonce]);
 

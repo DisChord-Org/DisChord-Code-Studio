@@ -41,7 +41,13 @@ const rules: Rule[] = [
     ({ words, before }) => (before === "clase" || words.includes("extiende") ? { kind: "clase" } : null),
     ({ before, last }) => (last === "bot" && before === "encender" ? { kind: "encender bot" } : null),
 
-    ({ last }, _parent, corelib) => (last && corelib?.blocks.some((b) => b.name === last) ? { kind: last } : null),
+    ({ words }, _parent, corelib) => {
+        const block = corelib?.blocks.find((b) => {
+            const parts = b.name.split(" ");
+            return words.length >= parts.length && words.slice(-parts.length).join(" ") === b.name;
+        });
+        return block ? { kind: block.name } : null;
+    },
 
     ({ last }, parent, corelib) => {
         if (!last || !parent || !corelib) return null;
