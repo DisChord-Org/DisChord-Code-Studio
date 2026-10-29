@@ -2,10 +2,12 @@ import { SystemMonitorRings } from "../../../system-monitor";
 import { ModifiedBadge, Tooltip, Button } from "../../../../components/ui";
 import { useShortcutLabel } from "../../../shortcuts";
 import { useFileDiagnostics } from "../../../compiler";
+import { ProjectTime } from "../../../time-tracking";
 
 const monitorRingSize = 16;
 
 interface StatusBarProps {
+    projectName: string;
     fileName?: string;
     filePath?: string;
     isDirty: boolean;
@@ -14,7 +16,7 @@ interface StatusBarProps {
     onToggleWordWrap: () => void;
 }
 
-export const StatusBar = ({ fileName, filePath, isDirty, contentLength, wordWrap, onToggleWordWrap }: StatusBarProps) => {
+export const StatusBar = ({ projectName, fileName, filePath, isDirty, contentLength, wordWrap, onToggleWordWrap }: StatusBarProps) => {
     const diagnostics = useFileDiagnostics(filePath);
     const wrapShortcut = useShortcutLabel("editor.toggleWordWrap");
 
@@ -58,6 +60,9 @@ export const StatusBar = ({ fileName, filePath, isDirty, contentLength, wordWrap
             </div>
 
             <div className="flex items-center gap-4">
+                <Tooltip label="Tiempo invertido en este proyecto" placement="top" align="end">
+                    <ProjectTime name={projectName} />
+                </Tooltip>
                 {fileName && <span>{contentLength} caracteres</span>}
                 <Tooltip label={wrapShortcut ? `Ajuste de línea (${wrapShortcut})` : "Ajuste de línea"} placement="top" align="end">
                     <Button variant="unstyled"

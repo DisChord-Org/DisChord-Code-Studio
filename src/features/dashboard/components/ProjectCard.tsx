@@ -1,13 +1,15 @@
+import type { ReactNode } from "react";
 import { Tooltip } from "../../../components/ui";
 
 interface ProjectCardProps {
     title: string;
     subtitle?: string;
+    meta?: ReactNode;
     onClick?: () => void;
     onDelete?: () => void;
 }
 
-export const ProjectCard = ({ title, subtitle, onClick, onDelete }: ProjectCardProps) => {
+export const ProjectCard = ({ title, subtitle, meta, onClick, onDelete }: ProjectCardProps) => {
     return (
         <div 
             onClick={onClick}
@@ -15,7 +17,13 @@ export const ProjectCard = ({ title, subtitle, onClick, onDelete }: ProjectCardP
         >
             <div>
                 <h3 className="text-sm font-semibold text-gray-200 group-hover:text-white">{title}</h3>
-                {subtitle && <p className="text-xs text-gray-500 mt-1">{subtitle}</p>}
+                {(subtitle || meta) && (
+                    <p className="flex items-center gap-1.5 text-xs text-gray-500 mt-1">
+                        {subtitle}
+                        {subtitle && meta && <span className="text-gray-700">·</span>}
+                        {meta}
+                    </p>
+                )}
             </div>
 
             {onDelete && (

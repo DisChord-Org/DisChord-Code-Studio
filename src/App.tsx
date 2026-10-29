@@ -5,12 +5,15 @@ import Editor from "./views/Editor";
 import Update from "./views/Update";
 import Settings from "./views/Settings";
 import { DialogHost, ToastHost } from "./components/ui";
+import { useTimeTracker } from "./features/time-tracking";
 
 const windowLabel = getCurrentWindow().label;
 
 function AppRoutes() {
     const [currentProject, setCurrentProject] = useState<string | null>(null);
     const [showSettings, setShowSettings] = useState(false);
+
+    useTimeTracker(currentProject, windowLabel !== "update");
 
     if (windowLabel === "update") {
         return <Update />;

@@ -4,6 +4,7 @@ import { getVersion } from "@tauri-apps/api/app";
 import { getCurrentWindow, LogicalSize } from "@tauri-apps/api/window";
 import type { ProjectSummary } from "./types";
 import { confirmAction, showError } from "../../utils/Dialogs";
+import { forgetProjectTime } from "../time-tracking";
 
 export const useDashboard = () => {
     const [projects, setProjects] = useState<ProjectSummary[]>([]);
@@ -89,6 +90,7 @@ export const useDashboard = () => {
         if (confirmed) {
             try {
                 await invoke("delete_project", { name });
+                forgetProjectTime(name);
                 await loadProjects();
             } catch (error) {
                 showError("No se pudo borrar el proyecto: " + error);

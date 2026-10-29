@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Button, Title, Label, Logo, Modal, Tooltip, WindowControls, controlsOnLeft } from "../components/ui";
 import { ProjectCard, CreatingProjectCard, useDashboard } from "../features/dashboard";
 import { formatRelativeTime } from "../utils/Time";
+import { ProjectTime } from "../features/time-tracking";
 import { SystemMonitorRings } from "../features/system-monitor";
 import { ViewModeToggle, useConfig } from "../features/settings";
 
@@ -90,6 +91,7 @@ function Dashboard({ onSelectProject, onOpenSettings }: DashboardProps) {
                                 <ProjectCard
                                     title={project.name}
                                     subtitle={`Última edición: ${formatRelativeTime(project.last_modified)}`}
+                                    meta={<ProjectTime name={project.name} />}
                                     onDelete={() => handleDeleteProject(project.name)}
                                     onClick={() => onSelectProject(project.name)}
                                 />

@@ -3,6 +3,7 @@ import { Button } from "../../../components/ui";
 import { ViewModeToggle } from "./ViewModeToggle";
 import type { AppConfig } from "../types";
 import { showError } from "../../../utils/Dialogs";
+import { formatTimeSpent, useTotalTime } from "../../time-tracking";
 
 interface DashboardSettingsProps {
     config: AppConfig;
@@ -10,6 +11,8 @@ interface DashboardSettingsProps {
 }
 
 export const DashboardSettings = ({ config, updateConfig }: DashboardSettingsProps) => {
+    const totalTime = useTotalTime();
+
     const handleOpenAppDataFolder = async () => {
         try {
             await invoke("open_app_data_folder");
@@ -38,6 +41,18 @@ export const DashboardSettings = ({ config, updateConfig }: DashboardSettingsPro
                     value={config.view_mode}
                     onChange={(mode) => updateConfig({ view_mode: mode })}
                 />
+            </div>
+
+            <div className="flex items-center justify-between py-3 border-b border-white/5">
+                <div>
+                    <p className="text-sm text-gray-200 font-medium">Tiempo en DisChord</p>
+                    <p className="text-xs text-gray-500 mt-0.5">Tiempo total que has trabajado en el IDE. Solo cuenta mientras la ventana está activa y la usas.</p>
+                </div>
+
+                <span className="text-sm text-gray-200 tabular-nums">
+                    <i className="bi bi-clock mr-1.5 text-gray-500" aria-hidden="true"></i>
+                    {formatTimeSpent(totalTime)}
+                </span>
             </div>
 
             <div className="flex items-center justify-between py-3 border-b border-white/5">

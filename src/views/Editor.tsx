@@ -155,6 +155,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
 
                     {(isMaximized || config.editor_keep_statusbar) && (
                         <StatusBar
+                            projectName={projectName}
                             fileName={activeFile?.name}
                             filePath={activeFile?.relative_path}
                             isDirty={activeFile?.isDirty ?? false}
