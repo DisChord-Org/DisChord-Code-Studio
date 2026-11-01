@@ -104,6 +104,14 @@ export const shortcutDefinitions: ShortcutDefinition[] = [
         defaultAccelerator: "Mod+Alt+B",
     },
     {
+        id: "editor.toggleAssistant",
+        label: "Amaya",
+        description: "Muestra u oculta el panel de Amaya, el asistente de IA.",
+        group: "editor",
+        scope: "app",
+        defaultAccelerator: "Mod+Alt+I",
+    },
+    {
         id: "editor.toggleWordWrap",
         label: "Ajuste de línea",
         group: "editor",

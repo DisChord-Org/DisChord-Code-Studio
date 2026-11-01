@@ -12,6 +12,7 @@ import {
 import { EditorPane } from "./EditorPane";
 import { useShortcut } from "../features/shortcuts";
 import { QuickOpen } from "../features/search";
+import { AiPanel } from "../features/ai";
 import { useConfig } from "../features/settings";
 import { loadCorelib } from "../features/compiler";
 import { preloadCommonLanguages } from "../languages/language-for-file";
@@ -46,6 +47,9 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
     const { leftTabs, rightTabs, rightActiveTab, setRightActive, isSplit, movePane, toggleSplit } = useSplitView(tabs.openTabs, activeTabPath, setActiveTabPath);
     useShortcut("editor.splitView", toggleSplit);
 
+    const [showAi, setShowAi] = useState(false);
+    useShortcut("editor.toggleAssistant", () => setShowAi((open) => !open));
+
     const [overlay, setOverlay] = useState<"quickOpen" | null>(null);
     useShortcut("file.quickOpen", () => setOverlay("quickOpen"));
 
@@ -66,6 +70,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                 onOpenPackages={tabs.openPackagesTab}
                 onOpenShortcuts={tabs.openShortcutsTab}
                 onToggleTerminal={config.advanced_mode ? run.toggleShellTerminal : undefined}
+                aiOpen={showAi}
+                onToggleAi={() => setShowAi((open) => !open)}
             />
 
             {overlay === "quickOpen" && (
@@ -165,6 +171,14 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                         />
                     )}
                 </main>
+
+                {showAi && (
+                    <AiPanel
+                        projectName={projectName}
+                        file={activeFile ? { name: activeFile.name, path: activeFile.relative_path } : undefined}
+                        onClose={() => setShowAi(false)}
+                    />
+                )}
             </div>
         </div>
     );

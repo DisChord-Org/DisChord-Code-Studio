@@ -7,7 +7,9 @@ import { EditMenu } from "./menus/EditMenu";
 import { RunMenu } from "./menus/RunMenu";
 import { HelpMenu } from "./menus/HelpMenu";
 import { ProjectSwitcher } from "./menus/ProjectSwitcher";
-import { WindowControls, BackButton, Logo, controlsOnLeft } from "../../../../components/ui";
+import { WindowControls, BackButton, Logo, Tooltip, controlsOnLeft } from "../../../../components/ui";
+import { useShortcutLabel } from "../../../shortcuts";
+import { AmayaIcon } from "../../../ai";
 import type { ProjectSummary } from "../../../dashboard";
 import type { FileNode, OpenHiddenFileDetail } from "../../types";
 import { showError } from "../../../../utils/Dialogs";
@@ -26,9 +28,12 @@ interface ToolbarProps {
     onOpenPackages: () => void;
     onOpenShortcuts: () => void;
     onToggleTerminal?: () => void;
+    aiOpen: boolean;
+    onToggleAi: () => void;
 }
 
-export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject, onOpenPackages, onOpenShortcuts, onToggleTerminal }: ToolbarProps) => {
+export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject, onOpenPackages, onOpenShortcuts, onToggleTerminal, aiOpen, onToggleAi }: ToolbarProps) => {
+    const aiShortcut = useShortcutLabel("editor.toggleAssistant");
     const [openMenu, setOpenMenu] = useState<MenuKey>(null);
     const menuBarRef = useRef<HTMLDivElement>(null);
     const projectMenuRef = useRef<HTMLDivElement>(null);
@@ -166,6 +171,18 @@ export const Toolbar = ({ projectName, onBack, onRun, isRunning, onSwitchProject
             </div>
 
             <div data-tauri-drag-region className="flex items-center justify-end flex-1 h-full">
+                <Tooltip label={aiShortcut ? `Amaya (${aiShortcut})` : "Amaya"} placement="bottom" align="end">
+                    <button
+                        type="button"
+                        onClick={onToggleAi}
+                        aria-pressed={aiOpen}
+                        aria-label="Amaya"
+                        className={`mr-2 flex h-8 w-8 items-center justify-center rounded transition-colors ${aiOpen ? "bg-white/10" : "hover:bg-white/5"}`}
+                    >
+                        <AmayaIcon size={20} className={aiOpen ? "" : "opacity-70"} />
+                    </button>
+                </Tooltip>
+
                 <BackButton onClick={onBack} className="mr-4" />
 
                 {/* On macOS the controls sit on the left, and the logo takes their place on the right. */}

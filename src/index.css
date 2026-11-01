@@ -155,6 +155,29 @@ html[data-platform="linux"]:not([data-maximized]) #root {
     animation: card-shimmer-sweep 1.6s ease-in-out infinite;
 }
 
+/* The plan name in the assistant's header: Pro is a soft gradient, Max a slowly moving amber one. */
+.plan-pro {
+    background-image: linear-gradient(90deg, var(--color-accent-light), #c9c8c5);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+}
+.plan-max {
+    background-image: linear-gradient(90deg, #d4a860, #f8ebc8, #d4a860);
+    background-size: 200% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    filter: drop-shadow(0 0 4px rgba(212, 168, 96, 0.35));
+    animation: plan-shimmer 3s linear infinite;
+}
+@keyframes plan-shimmer {
+    to { background-position: -200% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .plan-max { animation: none; }
+}
+
 /* The editor's own scrollbar, when the app draws another one next to the minimap. */
 .hide-native-scrollbar .cm-scroller {
     scrollbar-width: none !important;
@@ -164,6 +187,47 @@ html[data-platform="linux"]:not([data-maximized]) #root {
     width: 0 !important;
     height: 0 !important;
 }
+
+/* A message of the assistant's chat slides in softly when it appears. */
+@keyframes ai-enter {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+.ai-enter {
+    animation: ai-enter 220ms ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-enter { animation: none; }
+}
+
+/* "Pensando…": a soft light running across the word. */
+.ai-thinking {
+    background-image: linear-gradient(90deg, #6b7280 30%, #e5e7eb 50%, #6b7280 70%);
+    background-size: 250% 100%;
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    animation: ai-thinking 1.8s linear infinite;
+}
+@keyframes ai-thinking {
+    from { background-position: 100% 0; }
+    to { background-position: -100% 0; }
+}
+@media (prefers-reduced-motion: reduce) {
+    .ai-thinking { animation: none; background-image: none; color: #6b7280; }
+}
+
+/* Syntax colors for code in the assistant's answers: the same palette as the editor (One Dark). */
+.hljs { color: #abb2bf; }
+.hljs-comment, .hljs-quote { color: #5c6370; font-style: italic; }
+.hljs-keyword, .hljs-selector-tag, .hljs-literal, .hljs-doctag { color: #c678dd; }
+.hljs-string, .hljs-regexp, .hljs-addition { color: #98c379; }
+.hljs-number, .hljs-symbol, .hljs-bullet { color: #d19a66; }
+.hljs-title, .hljs-title.function_, .hljs-section { color: #61afef; }
+.hljs-built_in, .hljs-type, .hljs-title.class_ { color: #e6c07b; }
+.hljs-attr, .hljs-attribute, .hljs-property, .hljs-params, .hljs-variable { color: #d19a66; }
+.hljs-tag, .hljs-name, .hljs-deletion { color: #e06c75; }
+.hljs-meta, .hljs-link { color: #7f848e; }
 
 @keyframes shake {
     10%, 90% { transform: translateX(-1px); }
