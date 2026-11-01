@@ -61,7 +61,7 @@ export const EditorPane = ({
 
         return (
             <div className="flex h-full">
-                <div className="flex-1 min-w-0 overflow-hidden">
+                <div className={`flex-1 min-w-0 overflow-hidden ${sideContent ? "hide-native-scrollbar" : ""}`}>
                     <CodeCanvas
                         ref={canvasRef}
                         key={`${projectName}:${pane}:${activeTab.relative_path}`}

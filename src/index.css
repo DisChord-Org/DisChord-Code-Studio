@@ -155,6 +155,16 @@ html[data-platform="linux"]:not([data-maximized]) #root {
     animation: card-shimmer-sweep 1.6s ease-in-out infinite;
 }
 
+/* The editor's own scrollbar, when the app draws another one next to the minimap. */
+.hide-native-scrollbar .cm-scroller {
+    scrollbar-width: none !important;
+}
+.hide-native-scrollbar .cm-scroller::-webkit-scrollbar {
+    display: none !important;
+    width: 0 !important;
+    height: 0 !important;
+}
+
 @keyframes shake {
     10%, 90% { transform: translateX(-1px); }
     20%, 80% { transform: translateX(2px); }
