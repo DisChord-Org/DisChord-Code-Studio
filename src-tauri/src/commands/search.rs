@@ -35,7 +35,7 @@ fn walk(dir: &Path, root: &Path, matcher: &Gitignore, out: &mut Vec<(String, std
     }
 }
 
-fn project_files(root: &Path) -> Result<Vec<(String, std::path::PathBuf)>, String> {
+pub(crate) fn project_files(root: &Path) -> Result<Vec<(String, std::path::PathBuf)>, String> {
     let matcher = build_gitignore_matcher(root)?;
     let mut files = Vec::new();
     walk(root, root, &matcher, &mut files);

@@ -57,6 +57,7 @@ pub fn run() {
         .manage(UpdateState(Arc::new(Mutex::new(HashMap::new()))))
         .manage(Mutex::new(System::new_all()))
         .manage(commands::terminal::TerminalState::default())
+        .manage(commands::ai::AiState::default())
         .manage(commands::watcher::WatcherState::default())
         .setup(move |app| {
             // app_log_dir() automatically resolves to:
@@ -151,6 +152,14 @@ pub fn run() {
             commands::packages::pkg_sync,
 
             commands::window_size::get_home_window_size,
+
+            commands::ai::ai_status,
+            commands::ai::ai_me,
+            commands::ai::ai_login,
+            commands::ai::ai_logout,
+            commands::ai::ai_send,
+            commands::ai::ai_cancel,
+            commands::ai::ai_command_respond,
 
             commands::compiler::compiler_check,
             commands::compiler::compiler_corelib,
