@@ -7,6 +7,7 @@ import { notify } from "../../../utils/Toasts";
 import { safeUrl } from "../safeUrl";
 import { describeLanguage } from "../languages";
 import { useCopy } from "../useCopy";
+import { applyCode } from "../../editor/components/canvas/activeEditor";
 import { FileIcon } from "../../editor/components/FileIcon";
 
 const codeFont = { fontFamily: "var(--editor-font-family, monospace)" };
@@ -18,12 +19,17 @@ const flattenText = (node: ReactNode): string => {
     return "";
 };
 
+/** The text of a code block, without the line break the parser leaves at its end. */
+const codeOf = (children: ReactNode) => flattenText(children).replace(/\n$/, "");
+
+const actionClass = "flex items-center gap-1 rounded px-1.5 py-0.5 transition-colors hover:bg-white/[0.06] hover:text-accent";
+
 const openLink = (url: string) => {
     openUrl(url).catch((error) => notify("error", "No se pudo abrir el enlace.", [String(error)]));
 };
 
 const CodeBlock = ({ language, className, children }: { language: string; className?: string; children: ReactNode }) => {
-    const { copied, copy } = useCopy(() => flattenText(children).replace(/\n$/, ""));
+    const { copied, copy } = useCopy(() => codeOf(children));
 
     const { label, fileName } = describeLanguage(language);
 
@@ -34,10 +40,20 @@ const CodeBlock = ({ language, className, children }: { language: string; classN
                     <FileIcon name={fileName} size={14} />
                     {label}
                 </span>
-                <button type="button" onClick={() => void copy()} className="flex items-center gap-1 transition-colors hover:text-accent">
-                    <i className={`bi ${copied ? "bi-check2 text-green-400" : "bi-clipboard"}`} aria-hidden="true"></i>
-                    {copied ? "Copiado" : "Copiar"}
-                </button>
+                <div className="flex items-center gap-1">
+                    <button type="button" title="Insertar en el editor, después del cursor" onClick={() => applyCode(codeOf(children), "insert")} className={actionClass}>
+                        <i className="bi bi-box-arrow-in-down" aria-hidden="true"></i>
+                        Insertar
+                    </button>
+                    <button type="button" title="Reemplazar el texto seleccionado en el editor" onClick={() => applyCode(codeOf(children), "replace")} className={actionClass}>
+                        <i className="bi bi-arrow-left-right" aria-hidden="true"></i>
+                        Reemplazar
+                    </button>
+                    <button type="button" onClick={() => void copy()} className={actionClass}>
+                        <i className={`bi ${copied ? "bi-check2 text-green-400" : "bi-clipboard"}`} aria-hidden="true"></i>
+                        {copied ? "Copiado" : "Copiar"}
+                    </button>
+                </div>
             </div>
             <pre className="custom-scrollbar overflow-x-auto p-2.5 text-xs leading-relaxed" style={codeFont}>
                 <code className={className}>{children}</code>
@@ -76,7 +92,7 @@ const components: Components = {
             </a>
         );
     },
-    // Images are never loaded: the page may only talk to itself, and a link keeps the author's text.
+
     img: ({ src, alt }) => {
         const safe = safeUrl(src);
         return safe ? (
@@ -115,10 +131,9 @@ const cleanUrl = (url: string) => safeUrl(url) ?? "";
 const remarkPlugins = [remarkGfm];
 const rehypePlugins: React.ComponentProps<typeof ReactMarkdown>["rehypePlugins"] = [[rehypeHighlight, { detect: false }]];
 
-// A finished message is not processed again while another one streams in.
 export const Markdown = memo(function Markdown({ children }: { children: string }) {
     return (
-        <div className="select-text text-[13px] leading-relaxed text-gray-300">
+        <div className="min-w-0 select-text text-[13px] leading-relaxed text-gray-300 [overflow-wrap:anywhere]">
             <ReactMarkdown remarkPlugins={remarkPlugins} rehypePlugins={rehypePlugins} components={components} urlTransform={cleanUrl}>
                 {children}
             </ReactMarkdown>

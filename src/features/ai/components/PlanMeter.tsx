@@ -16,7 +16,6 @@ const percentOf = (quota?: AiQuota) => (quota?.limit && quota.limit > 0 ? Math.m
 
 const clock = (date: Date) => date.toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit", hour12: false });
 
-/** "hoy a las 14:30", or "el lunes 3 a las 14:30" on another day. */
 const absolute = (date: Date) =>
     date.toDateString() === new Date().toDateString()
         ? `hoy a las ${clock(date)}`
@@ -49,18 +48,29 @@ const QuotaRow = ({ title, quota }: { title: string; quota?: AiQuota }) => {
     );
 };
 
-/** How much of the plan's allowance has been used, in the app and through Discord, with the figures on hover. */
-export const PlanMeter = ({ account }: { account: AiAccount | null }) => {
+const planValue = (account: AiAccount | null) => {
     const { chat, bridge } = account?.usage ?? {};
-    if (!chat?.limit || chat.limit <= 0) return null;
+    return chat?.limit && chat.limit > 0 ? Math.max(percentOf(chat), percentOf(bridge)) : null;
+};
 
-    // The bar shows whichever of the two allowances is closest to running out.
-    const value = Math.max(percentOf(chat), percentOf(bridge));
+export const PlanDetails = ({ account }: { account: AiAccount | null }) => {
+    if (planValue(account) === null) return <p className="text-gray-500">Aún no hay datos del plan.</p>;
+
+    return (
+        <>
+            <QuotaRow title="En la app" quota={account?.usage?.chat} />
+            <QuotaRow title="En Discord" quota={account?.usage?.bridge} />
+        </>
+    );
+};
+
+export const PlanMeter = ({ account }: { account: AiAccount | null }) => {
+    const value = planValue(account);
+    if (value === null) return null;
 
     return (
         <Meter label="Plan" value={value} kind="quota" align="right">
-            <QuotaRow title="En la app" quota={chat} />
-            <QuotaRow title="En Discord" quota={bridge} />
+            <PlanDetails account={account} />
         </Meter>
     );
 };

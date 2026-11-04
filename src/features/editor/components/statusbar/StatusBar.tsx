@@ -3,8 +3,10 @@ import { ModifiedBadge, Tooltip, Button } from "../../../../components/ui";
 import { useShortcutLabel } from "../../../shortcuts";
 import { useFileDiagnostics } from "../../../compiler";
 import { ProjectTime } from "../../../time-tracking";
+import { AmayaIcon, askAmaya } from "../../../ai";
 
 const monitorRingSize = 16;
+const maxErrorsSent = 10;
 
 interface StatusBarProps {
     projectName: string;
@@ -33,6 +35,18 @@ export const StatusBar = ({ projectName, fileName, filePath, isDirty, contentLen
                 )}
 
                 {isDirty && <ModifiedBadge />}
+
+                {filePath && diagnostics.errors > 0 && (
+                    <Tooltip label="Enviar los errores a Amaya para que los arregle" placement="top" align="start">
+                        <Button variant="unstyled"
+                            onClick={() => askAmaya(`Arregla los errores de ${filePath}:\n${diagnostics.errorMessages.slice(0, maxErrorsSent).map((m) => `- ${m}`).join("\n")}`)}
+                            className="flex items-center gap-1 text-gray-400 transition-colors hover:text-accent"
+                        >
+                            <AmayaIcon size={12} />
+                            Arreglar con Amaya
+                        </Button>
+                    </Tooltip>
+                )}
 
                 {diagnostics.toolError ? (
                     <Tooltip label={`El compilador no pudo comprobar el archivo: ${diagnostics.toolError}`} placement="top" align="start">

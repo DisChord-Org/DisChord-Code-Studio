@@ -46,7 +46,7 @@ export const liveDiagnostics = (projectName: string, filePath: string): Extensio
             const result = await checkSource(projectName, filePath, view.state.doc.toString());
 
             if (result.tool_error) {
-                setFileDiagnostics(filePath, { errors: 0, warnings: 0, toolError: result.tool_error });
+                setFileDiagnostics(filePath, { errors: 0, warnings: 0, toolError: result.tool_error, errorMessages: [] });
                 return [];
             }
 
@@ -54,6 +54,9 @@ export const liveDiagnostics = (projectName: string, filePath: string): Extensio
                 errors: result.diagnostics.filter((d) => severityOf(d.severity) === "error").length,
                 warnings: result.diagnostics.filter((d) => severityOf(d.severity) === "warning").length,
                 toolError: null,
+                errorMessages: result.diagnostics
+                    .filter((d) => severityOf(d.severity) === "error")
+                    .map((d) => `${d.line ? `línea ${d.line}: ` : ""}${d.message}`),
             });
 
             return toEditorDiagnostics(view.state.doc, result.diagnostics);

@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
-import type { AiAccount, AiAuth, AiContextUsage, AiItem, AiSessionUsage, AiUser, ToolStatus } from "./types";
+import { itemsOfSession, type StoredMessage } from "./sessionItems";
+import type { AiAccount, AiAuth, AiContextUsage, AiItem, AiSessionSummary, AiSessionUsage, AiUser, ToolStatus } from "./types";
 
 const notSignedIn = "not_signed_in";
 const accountRefreshMs = 15_000;
 
 const errorTexts: Record<string, string> = {
     session_not_found: "La conversación ya no existe en el servidor. Empieza una nueva.",
+    nothing_to_compact: "No hay nada que compactar todavía.",
     upstream_unavailable: "El modelo no está disponible ahora mismo. Inténtalo de nuevo en un momento.",
     client_outdated: "Esta versión del IDE es demasiado antigua para Amaya. Actualiza el IDE.",
     too_many_connections: "Hay demasiados dispositivos conectados con tu cuenta.",
@@ -42,6 +44,7 @@ export const useAiChat = (projectName: string) => {
     const [account, setAccount] = useState<AiAccount | null>(null);
     const [context, setContext] = useState<AiContextUsage | null>(null);
     const [usage, setUsage] = useState<AiSessionUsage | null>(null);
+    const [compacting, setCompacting] = useState(false);
     const nextId = useRef(1);
     const sessionId = useRef<string | null>(null);
     const lastRefresh = useRef(0);
@@ -95,13 +98,17 @@ export const useAiChat = (projectName: string) => {
         });
     }, []);
 
-    const refreshAccount = useCallback((force = false) => {
-        if (!force && Date.now() - lastRefresh.current < accountRefreshMs) return;
+    const refreshAccount = useCallback(async (force = false) => {
+        if (!force && Date.now() - lastRefresh.current < accountRefreshMs) return null;
         lastRefresh.current = Date.now();
-        invoke<AiAccount>("ai_me")
-            // The avatar is downloaded apart; an answer that lacks it must not take away the one already shown.
-            .then((next) => setAccount((prev) => ({ ...next, avatarDataUrl: next.avatarDataUrl ?? prev?.avatarDataUrl })))
-            .catch((error) => console.warn("No se pudo leer la cuenta de Amaya:", error));
+        try {
+            const fresh = await invoke<AiAccount>("ai_me");
+            setAccount((prev) => ({ ...fresh, avatarDataUrl: fresh.avatarDataUrl ?? prev?.avatarDataUrl }));
+            return fresh;
+        } catch (error) {
+            console.warn("No se pudo leer la cuenta de Amaya:", error);
+            return null;
+        }
     }, []);
 
     const onEvent = useCallback((event: ServerEvent) => {
@@ -137,6 +144,17 @@ export const useAiChat = (projectName: string) => {
                 setAccount((prev) => ({ ...prev, plan: text(event.plan) }));
                 refreshAccount(true);
                 break;
+            case "compact:start":
+                setCompacting(true);
+                break;
+            case "compact:done":
+                setCompacting(false);
+                notice("info", "Conversación compactada");
+                break;
+            case "compact:error":
+                setCompacting(false);
+                notice("error", "No se pudo compactar la conversación.");
+                break;
             case "chat:start":
                 sessionId.current = text(event.sessionId) || sessionId.current;
                 updateAssistant(text(event.messageId), () => ({}));
@@ -162,6 +180,7 @@ export const useAiChat = (projectName: string) => {
                 break;
             case "chat:error": {
                 const code = text(event.error);
+                setCompacting(false);
                 if (code === "session_not_found") sessionId.current = null;
                 notice("error", errorTexts[code] ?? `Amaya no pudo responder (${code || "error"}).`);
                 setThinking(false);
@@ -182,7 +201,6 @@ export const useAiChat = (projectName: string) => {
                     tool: text(event.tool),
                     summary: text(event.summary),
                     detail: optionalText(event.detail),
-                    mutating: event.mutating === true,
                 }]);
                 break;
             case "ai:command":
@@ -218,6 +236,7 @@ export const useAiChat = (projectName: string) => {
 
     const resetConversation = useCallback(() => {
         sessionId.current = null;
+        setCompacting(false);
         pendingText.current = new Map();
         setItems([]);
         setContext(null);
@@ -229,13 +248,13 @@ export const useAiChat = (projectName: string) => {
         setThinking(false);
     }, [projectName, resetConversation]);
 
-    const send = async (question: string, filePath?: string) => {
+    const send = async (question: string, files: string[] = []) => {
         const content = question.trim();
         if (!content || thinking) return;
 
         setItems((prev) => [...prev, { kind: "user", id: id(), content }]);
         setThinking(true);
-        const withFile = filePath ? `${content}\n\n[Archivo abierto en el editor: ${filePath}]` : content;
+        const withFile = files.length > 0 ? `${content}\n\n[Archivos: ${files.join(", ")}]` : content;
         try {
             await invoke("ai_send", { projectName, content: withFile, sessionId: sessionId.current });
         } catch (error) {
@@ -247,6 +266,39 @@ export const useAiChat = (projectName: string) => {
                 notice("error", String(error));
             }
         }
+    };
+
+    const compact = () => {
+        if (!sessionId.current) {
+            notice("info", "No hay nada que compactar todavía.");
+            return;
+        }
+        invoke("ai_compact", { sessionId: sessionId.current }).catch((error) => {
+            setCompacting(false);
+            notice("error", String(error));
+        });
+    };
+
+    const showContext = () => {
+        setItems((prev) => [...prev, { kind: "report", id: id(), report: "context", context, usage, account }]);
+    };
+
+    const showUsage = async () => {
+        const fresh = await refreshAccount(true);
+        if (fresh) setItems((prev) => [...prev, { kind: "report", id: id(), report: "usage", context: null, usage: null, account: fresh }]);
+        else notice("error", "No se pudo leer el consumo del plan.");
+    };
+
+    const loadSessions = () => invoke<AiSessionSummary[]>("ai_sessions", { projectName });
+
+    const openSession = async (id: string) => {
+        const session = await invoke<{ id: string; messages: StoredMessage[]; context?: AiContextUsage }>("ai_session", { sessionId: id });
+        pendingText.current = new Map();
+        sessionId.current = session.id;
+        setItems(itemsOfSession(session.messages, () => nextId.current++));
+        setContext(session.context && typeof session.context.tokens === "number" ? session.context : null);
+        setUsage(null);
+        setThinking(false);
     };
 
     const stop = () => {
@@ -271,5 +323,5 @@ export const useAiChat = (projectName: string) => {
         invoke("ai_command_respond", { commandId, approved }).catch((error) => notice("error", String(error)));
     }, [notice]);
 
-    return { items, thinking, auth, user, account, context, usage, send, stop, clear, login, logout, respond };
+    return { items, thinking, auth, user, account, context, usage, send, stop, clear, login, logout, respond, compact, compacting, showContext, showUsage, loadSessions, openSession };
 };

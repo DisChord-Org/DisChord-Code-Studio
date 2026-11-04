@@ -7,8 +7,10 @@ import { AmayaIcon } from "./components/AmayaIcon";
 import { ContextMeter } from "./components/ContextMeter";
 import { PlanMeter } from "./components/PlanMeter";
 import { UserBadge } from "./components/UserBadge";
+import { AiHistory } from "./components/AiHistory";
 import { AiSignIn } from "./components/AiSignIn";
 import { ApprovalRow } from "./components/ApprovalRow";
+import { ReportRow } from "./components/ReportRow";
 import { AssistantRow, NoticeRow, ThinkingRow, ToolRow, UserRow } from "./components/AiMessageRow";
 import { useAiChat } from "./useAiChat";
 import type { AiItem } from "./types";
@@ -22,12 +24,13 @@ interface AiPanelProps {
         name: string;
         path: string
     };
+    prefill?: { text: string; nonce: number };
     onClose: () => void;
 }
 
 const isHidden = (item: AiItem) => item.kind === "assistant" && !item.content && !item.streaming;
 
-const startsTurn = (previous: AiItem | undefined) => !previous || previous.kind === "user" || previous.kind === "notice";
+const startsTurn = (previous: AiItem | undefined) => !previous || previous.kind === "user" || previous.kind === "notice" || previous.kind === "report";
 
 const renderItem = (item: AiItem, avatar: boolean, respond: (commandId: string, approved: boolean) => void, onContinue: () => void) => {
     switch (item.kind) {
@@ -35,19 +38,24 @@ const renderItem = (item: AiItem, avatar: boolean, respond: (commandId: string, 
         case "assistant": return <AssistantRow key={item.id} item={item} onContinue={onContinue} />;
         case "tool": return <ToolRow key={item.id} item={item} avatar={avatar} />;
         case "notice": return <NoticeRow key={item.id} item={item} />;
+        case "report": return <ReportRow key={item.id} item={item} />;
         case "approval": return <ApprovalRow key={item.id} item={item} avatar={avatar} onRespond={respond} />;
     }
 };
 
 const headerButton = "flex h-5 w-5 items-center justify-center rounded text-gray-500 transition-colors hover:text-accent disabled:opacity-30 disabled:hover:text-gray-500";
 
-export const AiPanel = ({ projectName, file, onClose }: AiPanelProps) => {
-    const { items, thinking, auth, user, account, context, usage, send, stop, clear, login, logout, respond } = useAiChat(projectName);
+export const AiPanel = ({ projectName, file, prefill, onClose }: AiPanelProps) => {
+    const { items, thinking, auth, user, account, context, usage, send, stop, clear, login, logout, respond, compact, compacting, showContext, showUsage, loadSessions, openSession } = useAiChat(projectName);
+    const [showHistory, setShowHistory] = useState(false);
     const sendRef = useRef(send);
     sendRef.current = send;
     const onContinue = useCallback(() => void sendRef.current("continúa"), []);
     const { size: width, startDrag } = useResizablePanel({ initialSize: panelSize.initial, min: panelSize.min, max: panelSize.max, axis: "x", invert: true });
-    const [draft, setDraft] = useState<{ text: string; nonce: number }>();
+    const [draft, setDraft] = useState<{ text: string; nonce: number } | undefined>(prefill);
+    useEffect(() => {
+        if (prefill) setDraft(prefill);
+    }, [prefill]);
     const list = useRef<HTMLDivElement>(null);
     const followsEnd = useRef(true);
 
@@ -113,8 +121,21 @@ export const AiPanel = ({ projectName, file, onClose }: AiPanelProps) => {
                         </button>
                     </Tooltip>
                 )}
+                {signedIn && (
+                    <Tooltip label="Conversaciones anteriores" placement="bottom" align="end">
+                        <button
+                            type="button"
+                            onClick={() => setShowHistory((open) => !open)}
+                            aria-pressed={showHistory}
+                            aria-label="Conversaciones anteriores"
+                            className={`${headerButton} ${showHistory ? "text-accent" : ""}`}
+                        >
+                            <i className="bi bi-clock-history text-[13px]" aria-hidden="true"></i>
+                        </button>
+                    </Tooltip>
+                )}
                 <Tooltip label="Nueva conversación" placement="bottom" align="end">
-                    <button type="button" onClick={clear} disabled={empty && !thinking} aria-label="Nueva conversación" className={headerButton}>
+                    <button type="button" onClick={() => { clear(); setShowHistory(false); }} disabled={empty && !thinking} aria-label="Nueva conversación" className={headerButton}>
                         <i className="bi bi-plus-lg text-[13px]" aria-hidden="true"></i>
                     </button>
                 </Tooltip>
@@ -125,15 +146,24 @@ export const AiPanel = ({ projectName, file, onClose }: AiPanelProps) => {
                 </Tooltip>
             </header>
 
-            <div ref={list} onScroll={onScroll} className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto">
-                <div ref={content} className="flex flex-1 flex-col">
+            <div ref={list} onScroll={onScroll} className="custom-scrollbar flex min-h-0 flex-1 flex-col overflow-y-auto overflow-x-hidden">
+                <div ref={content} className="flex min-w-0 flex-1 flex-col">
                     {!signedIn ? (
                         <AiSignIn auth={auth} onLogin={() => void login()} />
+                    ) : showHistory ? (
+                        <AiHistory
+                            load={loadSessions}
+                            onOpen={async (id) => {
+                                await openSession(id);
+                                setShowHistory(false);
+                            }}
+                        />
                     ) : empty ? (
                         <AiEmptyState onPick={(text) => setDraft({ text, nonce: Date.now() })} />
                     ) : (
                         <div className="flex flex-col gap-4 px-3 py-2">
                             {shown.map(({ item, avatar }) => renderItem(item, avatar, respond, onContinue))}
+                            {compacting && <p className="ai-thinking text-center text-xs" role="status">Compactando la conversación…</p>}
                             {thinking && !busyWithTool && !answering && <ThinkingRow />}
                         </div>
                     )}
@@ -141,6 +171,7 @@ export const AiPanel = ({ projectName, file, onClose }: AiPanelProps) => {
             </div>
 
             <AiComposer
+                projectName={projectName}
                 fileName={file?.name}
                 thinking={thinking}
                 disabled={!signedIn}
@@ -151,11 +182,12 @@ export const AiPanel = ({ projectName, file, onClose }: AiPanelProps) => {
                     </>
                 )}
                 draft={draft}
-                onSend={(text, withFile) => {
+                onSend={(text, withFile, files) => {
                     followsEnd.current = true;
-                    void send(text, withFile ? file?.path : undefined);
+                    void send(text, [...(withFile && file ? [file.path] : []), ...files.filter((path) => path !== file?.path)]);
                 }}
                 onStop={stop}
+                onCommand={(command) => (command === "compact" ? compact() : command === "context" ? showContext() : showUsage())}
             />
         </aside>
     );

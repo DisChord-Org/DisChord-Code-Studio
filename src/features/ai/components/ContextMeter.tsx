@@ -11,32 +11,37 @@ const cacheOf = (usage: AiSessionUsage) => {
     return { input, percent: input > 0 ? Math.round((usage.cacheHitTokens / input) * 100) : 0 };
 };
 
-interface ContextMeterProps {
+export interface ContextMeterProps {
     context: AiContextUsage | null;
     usage: AiSessionUsage | null;
     account: AiAccount | null;
 }
 
-/** How full the conversation is, with the figures on hover. */
-export const ContextMeter = ({ context, usage, account }: ContextMeterProps) => {
+const figuresOf = (context: AiContextUsage | null, account: AiAccount | null) => {
     const planLimit = context?.limit ?? account?.contextLimit ?? 0;
     const compactAt = context?.compactAt ?? 0;
-    // The conversation is compacted before the plan's limit when the server says so, so that is the real ceiling.
     const limit = compactAt > 0 ? Math.min(compactAt, planLimit) : planLimit;
+
     if (limit <= 0) return null;
 
     const tokens = context?.tokens ?? 0;
-    const value = Math.min(100, (tokens / limit) * 100);
+    return { tokens, limit, value: Math.min(100, (tokens / limit) * 100) };
+};
+
+export const ContextDetails = ({ context, usage, account }: ContextMeterProps) => {
+    const figures = figuresOf(context, account);
+    if (!figures) return <p className="text-gray-500">Aún no hay datos del contexto.</p>;
+
     const cache = usage ? cacheOf(usage) : null;
     const cacheLow = !!cache && cache.input >= cacheLowInputTokens && cache.percent < cacheLowPercent;
 
     return (
-        <Meter label="Contexto" value={value} align="left">
+        <>
             <div className="flex justify-between">
                 <span>Contexto</span>
-                <span>{formatTokens(tokens)} / {formatTokens(limit)} tokens</span>
+                <span>{formatTokens(figures.tokens)} / {formatTokens(figures.limit)} tokens</span>
             </div>
-            <MeterBar value={value} />
+            <MeterBar value={figures.value} />
             {usage && cache && (
                 <div className="flex justify-between border-t border-border pt-2">
                     <span>Gastado aquí</span>
@@ -48,6 +53,17 @@ export const ContextMeter = ({ context, usage, account }: ContextMeterProps) => 
                 </div>
             )}
             <p className="leading-relaxed text-gray-500">Al llenarse, la conversación se compacta sola.</p>
+        </>
+    );
+};
+
+export const ContextMeter = (props: ContextMeterProps) => {
+    const figures = figuresOf(props.context, props.account);
+    if (!figures) return null;
+
+    return (
+        <Meter label="Contexto" value={figures.value} align="left">
+            <ContextDetails {...props} />
         </Meter>
     );
 };
