@@ -5,6 +5,9 @@ import { FileIcon } from "../FileIcon";
 const tabIconSize = 13;
 const middleMouseButton = 1;
 
+/** The data type a dragged tab carries, so a pane knows it is a tab (and which) that is being dropped on it. */
+export const tabDragType = "application/x-dischord-tab";
+
 interface TabBarProps {
     tabs: OpenTab[];
     activePath: string | null;
@@ -28,6 +31,11 @@ export const TabBar = ({ tabs, activePath, onSelect, onClose, onOpenInSplit, onT
                         key={tab.relative_path}
                         role="tab"
                         aria-selected={isActive}
+                        draggable={tab.kind === "file"}
+                        onDragStart={(e) => {
+                            e.dataTransfer.setData(tabDragType, tab.relative_path);
+                            e.dataTransfer.effectAllowed = "move";
+                        }}
                         onClick={(e) => {
                             if ((e.ctrlKey || e.metaKey) && tab.kind === "file" && onOpenInSplit) onOpenInSplit(tab.relative_path);
                             else onSelect(tab.relative_path);

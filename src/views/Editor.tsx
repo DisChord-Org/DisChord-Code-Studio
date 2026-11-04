@@ -8,11 +8,13 @@ import {
     EditorScrollbar,
     useEditor,
     useSplitView,
+    useTabDrop,
 } from "../features/editor";
+import { useResizablePanel } from "../features/editor/useResizablePanel";
 import { EditorPane } from "./EditorPane";
 import { useShortcut } from "../features/shortcuts";
 import { QuickOpen } from "../features/search";
-import { AiPanel } from "../features/ai";
+import { AiPanel, onAskAmaya } from "../features/ai";
 import { useConfig } from "../features/settings";
 import { loadCorelib } from "../features/compiler";
 import { preloadCommonLanguages } from "../languages/language-for-file";
@@ -44,11 +46,21 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
         preloadCommonLanguages();
     }, []);
 
-    const { leftTabs, rightTabs, rightActiveTab, setRightActive, isSplit, movePane, toggleSplit } = useSplitView(tabs.openTabs, activeTabPath, setActiveTabPath);
+    const { leftTabs, rightTabs, rightActiveTab, setRightActive, isSplit, movePane, toggleSplit } = useSplitView(projectName, tabs.openTabs, activeTabPath, setActiveTabPath);
     useShortcut("editor.splitView", toggleSplit);
+
+    const { size: splitWidth, startDrag: startSplitDrag } = useResizablePanel({ initialSize: 560, min: 280, max: 1400, axis: "x", invert: true });
+
+    const { draggingTab, dropOn } = useTabDrop((path) => rightTabs.some((t) => t.relative_path === path), movePane);
 
     const [showAi, setShowAi] = useState(false);
     useShortcut("editor.toggleAssistant", () => setShowAi((open) => !open));
+
+    const [prefill, setPrefill] = useState<{ text: string; nonce: number }>();
+    useEffect(() => onAskAmaya((text) => {
+        setShowAi(true);
+        setPrefill({ text, nonce: Date.now() });
+    }), []);
 
     const [overlay, setOverlay] = useState<"quickOpen" | null>(null);
     useShortcut("file.quickOpen", () => setOverlay("quickOpen"));
@@ -94,8 +106,8 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                 />
 
                 <main className="flex-1 flex flex-col bg-app-bg overflow-hidden">
-                    <div className="flex-1 min-h-0 flex overflow-hidden">
-                        <div className="flex-1 min-w-0 flex flex-col">
+                    <div className="relative flex-1 min-h-0 flex overflow-hidden">
+                        <div className="flex-1 min-w-0 flex flex-col" {...dropOn("left")}>
                             <EditorPane
                                 pane="main"
                                 projectName={projectName}
@@ -129,7 +141,11 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                         </div>
 
                         {rightActiveTab && (
-                            <div className="flex-1 min-w-0 flex flex-col border-l border-border-strong">
+                            <div className="relative flex shrink-0 flex-col border-l border-border-strong" style={{ width: splitWidth, maxWidth: "75%" }} {...dropOn("right")}>
+                                <div
+                                    onMouseDown={startSplitDrag}
+                                    className="absolute left-0 top-0 z-20 h-full w-1 -translate-x-1/2 cursor-col-resize transition-colors hover:bg-accent/50 active:bg-accent"
+                                />
                                 <EditorPane
                                     pane="split"
                                     projectName={projectName}
@@ -142,6 +158,15 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                                     onDirtyChange={tabs.setTabDirty}
                                     requireFocus
                                 />
+                            </div>
+                        )}
+
+                        {draggingTab && !rightActiveTab && (
+                            <div
+                                className="absolute inset-y-0 right-0 z-30 flex w-1/4 items-center justify-center border-l-2 border-dashed border-accent bg-accent/10 text-xs text-accent-light"
+                                {...dropOn("right")}
+                            >
+                                Suelta aquí para dividir
                             </div>
                         )}
                     </div>
@@ -175,6 +200,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                 {showAi && (
                     <AiPanel
                         projectName={projectName}
+                        prefill={prefill}
                         file={activeFile ? { name: activeFile.name, path: activeFile.relative_path } : undefined}
                         onClose={() => setShowAi(false)}
                     />

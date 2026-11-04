@@ -3,13 +3,48 @@ import { notify } from "../../utils/Toasts";
 import type { OpenTab } from "./types";
 import { neighbourOnLeft, partitionTabs, pruneRightPane } from "./splitLogic";
 
-export const useSplitView = (openTabs: OpenTab[], activeTabPath: string | null, setActiveTabPath: (path: string | null) => void) => {
+interface SavedSplit {
+    paths: string[];
+    active: string | null;
+}
+
+const splitKey = (projectName: string) => `dischord:editor-split:${projectName}`;
+
+const readSplit = (projectName: string): SavedSplit | null => {
+    try {
+        const parsed = JSON.parse(localStorage.getItem(splitKey(projectName)) ?? "null");
+        return Array.isArray(parsed?.paths) ? { paths: parsed.paths.filter((p: unknown) => typeof p === "string"), active: typeof parsed.active === "string" ? parsed.active : null } : null;
+    } catch {
+        return null;
+    }
+};
+
+export const useSplitView = (projectName: string, openTabs: OpenTab[], activeTabPath: string | null, setActiveTabPath: (path: string | null) => void) => {
     const [rightPaths, setRightPaths] = useState<string[]>([]);
     const [rightActive, setRightActive] = useState<string | null>(null);
     const lastLeftActive = useRef<string | null>(null);
+    const restoredFor = useRef<string | null>(null);
 
     const onRight = (path: string) => rightPaths.includes(path);
     const { leftTabs, rightTabs, rightActiveTab } = partitionTabs(openTabs, rightPaths, rightActive);
+
+    useEffect(() => {
+        if (restoredFor.current === projectName || openTabs.length === 0) return;
+        restoredFor.current = projectName;
+
+        const saved = readSplit(projectName);
+        const paths = (saved?.paths ?? []).filter((path) => openTabs.some((t) => t.kind === "file" && t.relative_path === path));
+        if (paths.length === 0 || paths.length >= openTabs.length) return;
+        setRightPaths(paths);
+        setRightActive(saved?.active && paths.includes(saved.active) ? saved.active : paths[paths.length - 1]);
+    }, [openTabs, projectName]);
+
+    useEffect(() => {
+        if (restoredFor.current !== projectName) return;
+        try {
+            localStorage.setItem(splitKey(projectName), JSON.stringify({ paths: rightPaths, active: rightActive }));
+        } catch {}
+    }, [rightPaths, rightActive, projectName]);
 
     useEffect(() => {
         const { paths, active } = pruneRightPane(rightPaths, rightActive, openTabs);
