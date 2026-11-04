@@ -43,7 +43,9 @@ export const useSplitView = (projectName: string, openTabs: OpenTab[], activeTab
         if (restoredFor.current !== projectName) return;
         try {
             localStorage.setItem(splitKey(projectName), JSON.stringify({ paths: rightPaths, active: rightActive }));
-        } catch {}
+        } catch {
+            // Remembering the split is a convenience; without storage it simply starts closed.
+        }
     }, [rightPaths, rightActive, projectName]);
 
     useEffect(() => {
