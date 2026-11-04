@@ -14,6 +14,8 @@ use crate::platform::build_path_env;
 
 const UNAUTHORIZED_CLOSE: u16 = 4001;
 const PREVIEW_CHARS: usize = 600;
+const MAX_DIFF_LINES: usize = 40;
+const MAX_DIFF_LINE_CHARS: usize = 200;
 
 enum ConnectError {
     Unauthorized,
@@ -195,11 +197,25 @@ fn summary_of(call: &Call) -> String {
     format!("{} {}", call.tool, target).trim().to_string()
 }
 
+fn diff_lines(removed: &str, added: &str) -> String {
+    let marked = |mark: char, text: &str| {
+        text.lines().map(|line| format!("{} {}", mark, line.chars().take(MAX_DIFF_LINE_CHARS).collect::<String>())).collect::<Vec<_>>()
+    };
+    let mut lines = marked('-', removed);
+    lines.extend(marked('+', added));
+    let extra = lines.len().saturating_sub(MAX_DIFF_LINES);
+    lines.truncate(MAX_DIFF_LINES);
+    if extra > 0 {
+        lines.push(format!("… {} líneas más", extra));
+    }
+    lines.join("\n")
+}
+
 fn detail_of(call: &Call) -> Option<String> {
     let text = |key: &str| call.args.get(key).and_then(Value::as_str);
     match call.tool.as_str() {
-        "write_file" => text("content").map(preview),
-        "edit_file" => Some(format!("- {}\n+ {}", preview(text("old_string").unwrap_or_default()), preview(text("new_string").unwrap_or_default()))),
+        "write_file" => text("content").map(|content| diff_lines("", content)),
+        "edit_file" => Some(diff_lines(text("old_string").unwrap_or_default(), text("new_string").unwrap_or_default())),
         "run_command" if !call.cwd.is_empty() => Some(format!("en {}", call.cwd)),
         _ => None,
     }
@@ -209,8 +225,12 @@ pub fn summary_for(command: &Value) -> String {
     summary_of(&call_of(command))
 }
 
-fn only_reads(call: &Call) -> bool {
-    matches!(call.tool.as_str(), "read_file" | "list_directory" | "search_files" | "find_files")
+fn runs_without_asking(call: &Call) -> bool {
+    match call.tool.as_str() {
+        "read_file" | "list_directory" | "search_files" | "find_files" => true,
+        "run_command" => tools::is_minor_command(&call.command),
+        _ => false,
+    }
 }
 
 async fn handle_request(app: AppHandle, command: Value, server_asked: bool) {
@@ -226,18 +246,21 @@ async fn handle_request(app: AppHandle, command: Value, server_asked: bool) {
     };
 
     let call = call_of(&command);
-    let mutating = !only_reads(&call);
-    if server_asked || mutating {
+
+    if !runs_without_asking(&call) {
         emit(&app, json!({
             "type": "ai:approval",
             "commandId": id,
             "tool": call.tool,
             "summary": summary_of(&call),
             "detail": detail_of(&call),
-            "mutating": mutating,
         }));
         app.state::<AiState>().0.lock().await.pending.insert(id, PendingCommand { command, server_asked, root });
         return;
+    }
+
+    if server_asked {
+        send(&app, json!({ "type": "command:respond", "commandId": id, "approved": true })).await;
     }
     execute(app, command, root).await;
 }

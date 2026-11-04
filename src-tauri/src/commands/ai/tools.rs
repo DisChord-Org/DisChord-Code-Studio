@@ -305,3 +305,36 @@ pub fn run(root: &Path, tool: &str, args: &Value, command: &str, cwd: &str, path
         Err(message) => Outcome::error(message),
     }
 }
+
+const SHELL_SYNTAX: &str = ";&|<>$`(){}\\\"'*?~!#\n\r";
+const MAX_MINOR_COMMAND_CHARS: usize = 200;
+const VERSION_PROGRAMS: [&str; 7] = ["node", "npm", "pnpm", "git", "chord", "dischord", "dischord-compiler"];
+const GIT_READ_ONLY: [&str; 4] = ["status", "log", "branch", "rev-parse"];
+const GIT_RISKY_FLAGS: [&str; 6] = ["-p", "--patch", "--output", "--ext-diff", "--textconv", "-c"];
+
+fn is_plain_word(word: &str) -> bool {
+    !word.is_empty() && word.chars().all(|c| c.is_ascii_alphanumeric() || "._/@^:=-".contains(c))
+}
+
+fn is_local_path(word: &str) -> bool {
+    is_plain_word(word) && !word.starts_with('/') && !word.split('/').any(|part| part == "..")
+}
+
+pub fn is_minor_command(command: &str) -> bool {
+    let command = command.trim();
+    if command.is_empty() || command.chars().count() > MAX_MINOR_COMMAND_CHARS || command.chars().any(|c| SHELL_SYNTAX.contains(c)) {
+        return false;
+    }
+
+    let words: Vec<&str> = command.split_whitespace().collect();
+    let (program, args) = (words[0], &words[1..]);
+
+    match program {
+        "pwd" => args.is_empty(),
+        "ls" => args.iter().all(|a| a.starts_with('-') && is_plain_word(a) || is_local_path(a)),
+        "git" if args.first().is_some_and(|sub| GIT_READ_ONLY.contains(sub)) => {
+            args[1..].iter().all(|a| is_plain_word(a) && !GIT_RISKY_FLAGS.iter().any(|risky| a == risky || a.starts_with(&format!("{}=", risky))))
+        }
+        _ => VERSION_PROGRAMS.contains(&program) && matches!(args, ["--version"] | ["-v"] | ["-V"]),
+    }
+}

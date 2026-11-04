@@ -154,24 +154,30 @@ pub async fn refresh(app: &tauri::AppHandle, session: &StoredSession) -> Result<
     Ok(StoredSession { access_token: access, refresh_token: refresh, ..session.clone() })
 }
 
-pub enum MeError {
+/// Why a call to the server with the access token did not give an answer.
+pub enum ApiError {
     Unauthorized,
     Other(String),
 }
 
-pub async fn me(app: &tauri::AppHandle, access_token: &str) -> Result<Value, MeError> {
+pub async fn get_json(app: &tauri::AppHandle, access_token: &str, path: &str) -> Result<Value, ApiError> {
     let response = http()
-        .get(url("/auth/me"))
+        .get(url(path))
         .bearer_auth(access_token)
         .header("X-Amaya-Client", client_version(app))
         .send()
         .await
-        .map_err(|e| MeError::Other(e.to_string()))?;
+        .map_err(|e| ApiError::Other(e.to_string()))?;
     match response.status().as_u16() {
-        401 => Err(MeError::Unauthorized),
-        code if !(200..300).contains(&code) => Err(MeError::Other(format!("El servidor respondió {}.", code))),
-        _ => response.json().await.map_err(|e| MeError::Other(e.to_string())),
+        401 => Err(ApiError::Unauthorized),
+        404 => Err(ApiError::Other("No se encontró en el servidor.".into())),
+        code if !(200..300).contains(&code) => Err(ApiError::Other(format!("El servidor respondió {}.", code))),
+        _ => response.json().await.map_err(|e| ApiError::Other(e.to_string())),
     }
+}
+
+pub async fn me(app: &tauri::AppHandle, access_token: &str) -> Result<Value, ApiError> {
+    get_json(app, access_token, "/auth/me").await
 }
 
 const AVATAR_HOSTS: [&str; 2] = ["cdn.discordapp.com", "media.discordapp.net"];

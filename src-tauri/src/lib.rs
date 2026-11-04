@@ -155,6 +155,9 @@ pub fn run() {
 
             commands::ai::ai_status,
             commands::ai::ai_me,
+            commands::ai::ai_sessions,
+            commands::ai::ai_session,
+            commands::ai::ai_compact,
             commands::ai::ai_login,
             commands::ai::ai_logout,
             commands::ai::ai_send,

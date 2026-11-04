@@ -15,6 +15,7 @@ use crate::paths::resolve_in_project;
 use auth::{PairingState, StoredSession};
 
 const EVENT: &str = "ai-event";
+const MAX_SESSIONS_LISTED: usize = 30;
 const POLL_EVERY: Duration = Duration::from_secs(2);
 const DISCHORD_SKILL: &str = "dischord";
 pub(crate) const NOT_SIGNED_IN: &str = "not_signed_in";
@@ -60,28 +61,40 @@ pub async fn ai_status(app: AppHandle, state: State<'_, AiState>) -> Result<Valu
     Ok(json!({ "signedIn": session.signed_in(), "user": user_of(session) }))
 }
 
-#[tauri::command]
-pub async fn ai_me(app: AppHandle, state: State<'_, AiState>) -> Result<Value, String> {
+async fn authorized<T, F, Fut>(app: &AppHandle, state: &State<'_, AiState>, call: F) -> Result<T, String>
+where
+    F: Fn(String) -> Fut,
+    Fut: std::future::Future<Output = Result<T, auth::ApiError>>,
+{
     let token = {
         let mut inner = state.0.lock().await;
-        let session = inner.session(&app);
+        let session = inner.session(app);
         if !session.signed_in() {
             return Err(NOT_SIGNED_IN.into());
         }
         session.access_token.clone()
     };
 
-    let mut account = match auth::me(&app, &token).await {
-        Ok(account) => account,
-        Err(auth::MeError::Other(message)) => return Err(message),
-        Err(auth::MeError::Unauthorized) => {
-            let renewed = socket::renew(&app).await?;
-            match auth::me(&app, &renewed.access_token).await {
-                Ok(account) => account,
-                Err(_) => return Err(NOT_SIGNED_IN.into()),
-            }
+    match call(token).await {
+        Ok(value) => Ok(value),
+        Err(auth::ApiError::Other(message)) => Err(message),
+        Err(auth::ApiError::Unauthorized) => {
+            let renewed = socket::renew(app).await?;
+            call(renewed.access_token).await.map_err(|e| match e {
+                auth::ApiError::Unauthorized => NOT_SIGNED_IN.to_string(),
+                auth::ApiError::Other(message) => message,
+            })
         }
-    };
+    }
+}
+
+#[tauri::command]
+pub async fn ai_me(app: AppHandle, state: State<'_, AiState>) -> Result<Value, String> {
+    let mut account = authorized(&app, &state, |token| {
+        let app = app.clone();
+        async move { auth::me(&app, &token).await }
+    })
+    .await?;
 
     let avatar_url = account.get("avatarUrl").and_then(Value::as_str).map(str::to_string);
     if avatar_url.is_none() {
@@ -110,6 +123,44 @@ pub async fn ai_me(app: AppHandle, state: State<'_, AiState>) -> Result<Value, S
     session.user = Some(user);
     let _ = auth::save(&app, session);
     Ok(account)
+}
+
+#[tauri::command]
+pub async fn ai_sessions(app: AppHandle, state: State<'_, AiState>, project_name: String) -> Result<Vec<Value>, String> {
+    let root = resolve_in_project(&app, &project_name, "")?;
+    let all = authorized(&app, &state, |token| {
+        let app = app.clone();
+        async move { auth::get_json(&app, &token, "/sessions").await }
+    })
+    .await?;
+
+    let same_folder = |path: &str| std::path::Path::new(path.trim_end_matches(['/', '\\'])) == root;
+    let updated = |s: &Value| s.get("updatedAt").and_then(Value::as_str).map(str::to_string);
+    let mut mine: Vec<&Value> = all
+        .as_array()
+        .map(|list| list.iter().filter(|s| s.get("workingDirectory").and_then(Value::as_str).is_some_and(same_folder)).collect())
+        .unwrap_or_default();
+    mine.sort_by_key(|s| std::cmp::Reverse(updated(s)));
+    let sessions: Vec<Value> = mine.into_iter().take(MAX_SESSIONS_LISTED).cloned().collect();
+    Ok(sessions)
+}
+
+#[tauri::command]
+pub async fn ai_session(app: AppHandle, state: State<'_, AiState>, session_id: String) -> Result<Value, String> {
+    if session_id.is_empty() || !session_id.chars().all(|c| c.is_ascii_alphanumeric() || c == '-') {
+        return Err("Conversación no válida.".into());
+    }
+    authorized(&app, &state, |token| {
+        let app = app.clone();
+        let path = format!("/sessions/{}", session_id);
+        async move { auth::get_json(&app, &token, &path).await }
+    })
+    .await
+}
+
+#[tauri::command]
+pub async fn ai_compact(state: State<'_, AiState>, session_id: String) -> Result<(), String> {
+    send_raw(&state, json!({ "type": "chat:compact", "sessionId": session_id })).await
 }
 
 #[tauri::command]
