@@ -26,6 +26,13 @@ const el = <K extends keyof HTMLElementTagNameMap>(tag: K, className: string, te
 
 const fieldSelector = ".cm-block-form-field";
 
+const defaultColor = "#5865f2";
+
+const colorOf = (raw: string) => {
+    const match = /^(?:0x|#)([0-9a-f]{6})$/i.exec(raw.trim());
+    return match ? `#${match[1].toLowerCase()}` : null;
+};
+
 const marginFor = (view: EditorView, indent: number) => `${6 + indent * view.defaultCharacterWidth}px`;
 
 export class BlockFormWidget extends WidgetType {
@@ -219,7 +226,26 @@ export class BlockFormWidget extends WidgetType {
         input.addEventListener("keydown", (e) => {
             if (e.key === "Enter") apply();
         });
-        return { element: input, sync: (next: string) => { if (document.activeElement !== input) input.value = next; } };
+
+        const syncText = (next: string) => {
+            if (document.activeElement !== input) input.value = next;
+        };
+        if (!field.keys.includes("color")) return { element: input, sync: syncText };
+
+        const swatch = el("input", "cm-block-form-swatch");
+        swatch.type = "color";
+        swatch.title = "Elegir un color";
+        swatch.value = colorOf(value) ?? defaultColor;
+        swatch.addEventListener("change", () => this.commit(view, field, `0x${swatch.value.slice(1).toUpperCase()}`));
+        const row = el("div", "cm-block-form-color");
+        row.append(input, swatch);
+        return {
+            element: row,
+            sync: (next: string) => {
+                syncText(next);
+                swatch.value = colorOf(next) ?? defaultColor;
+            },
+        };
     }
 
     private select(view: EditorView, field: CorelibField, values: string[], value: string) {

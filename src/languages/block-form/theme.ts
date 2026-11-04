@@ -96,6 +96,17 @@ export const blockFormTheme = EditorView.theme({
     [`${form}-confirm:focus, ${form}-never:focus, ${form}-chip:focus, ${form}-close:focus`]: {
         outline: "none",
     },
+    [`${form}-color`]: { display: "flex", alignItems: "center", gap: "6px" },
+    [`${form}-swatch`]: {
+        width: "26px",
+        height: "26px",
+        flex: "none",
+        padding: "0",
+        border: "1px solid var(--color-border)",
+        borderRadius: "4px",
+        background: "transparent",
+        cursor: "pointer",
+    },
     [`${form}-chips`]: { display: "flex", flexWrap: "wrap", gap: "5px" },
     [`${form}-chip`]: {
         padding: "3px 8px",
