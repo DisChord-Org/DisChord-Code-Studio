@@ -1,11 +1,12 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import type { FileNode } from "./types";
 
-/** Keeps the project file tree loaded and in sync with changes on disk. */
-export const useProjectWatcher = (projectName: string) => {
+export const useProjectWatcher = (projectName: string, onChange?: () => void) => {
     const [fileTree, setFileTree] = useState<FileNode[]>([]);
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
 
     const refreshFiles = useCallback(async () => {
         try {
@@ -24,11 +25,16 @@ export const useProjectWatcher = (projectName: string) => {
     useEffect(() => {
         invoke("watch_project", { projectName }).catch(console.error);
 
+        let settle: ReturnType<typeof setTimeout> | undefined;
         const unlisten = listen<string>("project-files-changed", (event) => {
-            if (event.payload === projectName) refreshFiles();
+            if (event.payload !== projectName) return;
+            refreshFiles();
+            clearTimeout(settle);
+            settle = setTimeout(() => onChangeRef.current?.(), 300);
         });
 
         return () => {
+            clearTimeout(settle);
             unlisten.then((cleanup) => cleanup());
             invoke("unwatch_project").catch(console.error);
         };

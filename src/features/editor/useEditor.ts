@@ -20,8 +20,10 @@ export const useEditor = ({ projectName, onBack, onSwitchProject }: UseEditorArg
     const [minimapViewport, setMinimapViewport] = useState<MinimapViewport | undefined>(undefined);
 
     const { isMaximized } = useWindowLayout(projectName);
-    const { fileTree, refreshFiles } = useProjectWatcher(projectName);
+    const reloadTabs = useRef<() => void>(() => {});
+    const { fileTree, refreshFiles } = useProjectWatcher(projectName, () => reloadTabs.current());
     const tabs = useOpenTabs(projectName);
+    reloadTabs.current = tabs.reloadCleanTabs;
     const run = useRunControl(projectName);
 
     const { handleFileSelect, openTabs, closeActiveTab, activateTabAt, openShortcutsTab } = tabs;

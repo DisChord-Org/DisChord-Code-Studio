@@ -189,6 +189,22 @@ export const useOpenTabs = (projectName: string) => {
         ));
     };
 
+    const reloadCleanTabs = async () => {
+        const clean = openTabsRef.current.filter(t => t.kind === "file" && !t.isDirty);
+        const fresh = await Promise.all(clean.map(async t => {
+            try {
+                return [t.relative_path, await invoke<string>("read_file_content", { projectName, filePath: t.relative_path })] as const;
+            } catch {
+                return null;
+            }
+        }));
+        const contents = new Map(fresh.filter((f): f is readonly [string, string] => f !== null));
+        setOpenTabs(prev => prev.map(t => {
+            const content = contents.get(t.relative_path);
+            return content !== undefined && !t.isDirty && content !== t.content ? { ...t, content } : t;
+        }));
+    };
+
     const activeTab = openTabs.find(t => t.relative_path === activeTabPath) ?? null;
 
     return {
@@ -208,5 +224,6 @@ export const useOpenTabs = (projectName: string) => {
         activateTabAt,
         updateTabContent,
         setTabDirty,
+        reloadCleanTabs,
     };
 };

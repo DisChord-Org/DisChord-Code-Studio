@@ -2,7 +2,7 @@ import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from "re
 import { invoke } from "@tauri-apps/api/core";
 
 import { EditorView, basicSetup } from "codemirror";
-import { EditorState } from "@codemirror/state";
+import { Annotation, EditorState, Transaction } from "@codemirror/state";
 import { oneDark } from "@codemirror/theme-one-dark";
 import { keymap, scrollPastEnd } from "@codemirror/view";
 import { indentWithTab } from "@codemirror/commands";
@@ -19,6 +19,7 @@ import {
     languageExtensionFor, completionExtensionFor, addFlash, clearFlash, flashField,
 } from "./codeMirrorExtensions";
 import { rememberTabView, restoreTabView } from "../../tabsSession";
+import { clearActiveEditor, setActiveEditor } from "./activeEditor";
 import { copyFlashMs } from "./CodeCanvas.constants";
 import { useConfig } from "../../../settings";
 import { useShortcut } from "../../../shortcuts";
@@ -40,11 +41,15 @@ interface CodeCanvasProps {
     requireFocus?: boolean;
 }
 
+/** Marks a change that came from the file on disk, not from typing: it is not an edit, and cannot be undone. */
+const fromDisk = Annotation.define<boolean>();
+
 export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange, goto, requireFocus = false
 }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
+    const lastEmitted = useRef<string | null>(null);
     const { config, updateConfig } = useConfig();
 
     const onViewportChangeRef = useRef(onViewportChange);
@@ -161,12 +166,16 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     EditorView.updateListener.of((update) => {
                         if (update.selectionSet) rememberTabView(projectName, relative_path, update.view);
                         if (update.docChanged) {
-                            setIsDirty(true);
-                            onChange(update.state.doc.toString());
+                            if (!update.transactions.some((tr) => tr.annotation(fromDisk))) {
+                                setIsDirty(true);
+                                lastEmitted.current = update.state.doc.toString();
+                                onChange(lastEmitted.current);
+                            }
                             reportViewport();
                         }
                     }),
                     EditorView.domEventHandlers({
+                        focus: (_event, focused) => setActiveEditor(focused),
                         paste: () => middleClickJustHappened(),
                         copy: (_event, copyView) => {
                             const { from, to } = copyView.state.selection.main;
@@ -198,6 +207,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         restoreTabView(projectName, relative_path, view);
         setIsDirty(false);
         view.focus();
+        setActiveEditor(view);
 
         const scroller = view.scrollDOM;
         const reportViewport = () => {
@@ -220,30 +230,13 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             scroller.removeEventListener("scroll", rememberScroll);
             scroller.removeEventListener("scroll", reportViewport);
             resizeObserver.disconnect();
+            clearActiveEditor(view);
             view.destroy();
             viewRef.current = null;
             forgetDiagnostics(relative_path);
         }
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [relative_path]);
-
-    useEffect(() => {
-        const view = viewRef.current;
-        if (!view || !content) return;
-
-        const currentContent = view.state.doc.toString();
-        if (currentContent === content) return;
-
-        view.dispatch({
-            changes: {
-                from: 0,
-                to: currentContent.length,
-                insert: content
-            }
-        });
-        setIsDirty(false);
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [content]);
 
     useEffect(() => {
         viewRef.current?.dispatch({
@@ -268,6 +261,18 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             effects: indentConf.reconfigure(indentExtension(config.editor_tab_size, config.editor_use_tabs))
         });
     }, [config.editor_tab_size, config.editor_use_tabs]);
+
+    useEffect(() => {
+        const view = viewRef.current;
+        if (!view || content === lastEmitted.current || view.state.doc.toString() === content) return;
+
+        const caret = Math.min(view.state.selection.main.head, content.length);
+        view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: content },
+            selection: { anchor: caret },
+            annotations: [fromDisk.of(true), Transaction.addToHistory.of(false)],
+        });
+    }, [content]);
 
     useEffect(() => {
         const view = viewRef.current;
