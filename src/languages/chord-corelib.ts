@@ -36,6 +36,11 @@ export interface CorelibBlock {
     nested: Array<{ key: string; block: string; shape: string }>;
 }
 
+export interface CorelibDeclaration {
+    keyword: string;
+    block: string;
+}
+
 export interface CorelibData {
     keywords: string[];
     classes: CorelibClass[];
@@ -45,6 +50,7 @@ export interface CorelibData {
     literals: Array<{ name: string; value: string }>;
     events: Array<{ name: string; params: string[] }>;
     blocks: CorelibBlock[];
+    declarations: CorelibDeclaration[];
     scopes: Array<{ construct: string; identifiers: string[] }>;
 }
 
@@ -64,6 +70,7 @@ export const setCorelib = (raw: unknown) => {
             literals: data.literals ?? [],
             events: data.events ?? [],
             blocks: data.blocks!,
+            declarations: data.declarations ?? [],
             scopes: data.scopes ?? [],
         }
         : null;

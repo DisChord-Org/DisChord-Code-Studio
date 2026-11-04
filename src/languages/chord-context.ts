@@ -41,6 +41,11 @@ const rules: Rule[] = [
     ({ words, before }) => (before === "clase" || words.includes("extiende") ? { kind: "clase" } : null),
     ({ before, last }) => (last === "bot" && before === "encender" ? { kind: "encender bot" } : null),
 
+    ({ words, last }, _parent, corelib) => {
+        const declaration = words.length >= 3 && words[words.length - 3] === "nuevo" ? corelib?.declarations.find((d) => d.keyword === words[words.length - 2]) : undefined;
+        return declaration && last ? { kind: declaration.block, name: last } : null;
+    },
+
     ({ words }, _parent, corelib) => {
         const block = corelib?.blocks.find((b) => {
             const parts = b.name.split(" ");
