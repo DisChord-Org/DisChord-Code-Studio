@@ -55,7 +55,12 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(DiscordState { client: discord_state })
         .manage(UpdateState(Arc::new(Mutex::new(HashMap::new()))))
-        .manage(Mutex::new(System::new_all()))
+        .manage(Mutex::new({
+            let mut sys = System::new();
+            sys.refresh_cpu_usage();
+            sys.refresh_memory();
+            sys
+        }))
         .manage(commands::terminal::TerminalState::default())
         .manage(commands::ai::AiState::default())
         .manage(commands::watcher::WatcherState::default())
