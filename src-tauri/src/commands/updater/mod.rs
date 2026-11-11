@@ -6,6 +6,7 @@ mod runtime;
 use tauri::{Emitter, Manager};
 use serde::{Serialize, Deserialize};
 use log::error;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use crate::UpdateState;
 
@@ -74,8 +75,26 @@ pub fn get_update_state(app_handle: tauri::AppHandle) -> Vec<UpdateProgress> {
 //   3. Compiler
 //   4. Embedded Node.js
 //   5. Embedded pnpm
+static SEQUENCE_RUNNING: AtomicBool = AtomicBool::new(false);
+
+struct SequenceGuard;
+
+impl Drop for SequenceGuard {
+    fn drop(&mut self) {
+        SEQUENCE_RUNNING.store(false, Ordering::SeqCst);
+    }
+}
+
 pub fn run_full_update_sequence(app_handle: tauri::AppHandle) {
+    // Reentrancy guard: ignore the request if a sequence is already running.
+    if SEQUENCE_RUNNING.swap(true, Ordering::SeqCst) {
+        return;
+    }
+
     std::thread::spawn(move || {
+        // Released on every exit path, including panics.
+        let _guard = SequenceGuard;
+
         if let Err(e) = window::open_update_window(&app_handle) {
             error!("No se pudo abrir la ventana de actualización: {}", e);
         }

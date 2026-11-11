@@ -300,7 +300,7 @@ function Update() {
                 </span>
 
                 <div className="flex gap-2">
-                    {hasError && (
+                    {hasError && allSettled && (
                         <Button variant="ghost" className="text-xs" onClick={handleRetry}>
                             Reintentar
                         </Button>
