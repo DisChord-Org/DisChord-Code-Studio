@@ -1,6 +1,7 @@
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command};
+#[cfg(not(target_os = "windows"))]
 use std::time::Duration;
 
 use tauri::Manager;
@@ -26,6 +27,7 @@ pub fn silent_command(program: impl AsRef<std::ffi::OsStr>) -> Command {
     command
 }
 
+#[cfg(not(target_os = "windows"))]
 const KILL_GRACE_PERIOD: Duration = Duration::from_secs(2);
 
 pub const NPM_ENV_VARS_TO_STRIP: &[&str] = &[
@@ -91,7 +93,7 @@ pub fn looks_like_valid_binary(path: &Path) -> bool {
         if file.read_exact(&mut header).is_err() {
             return false;
         }
-        return &header == b"MZ";
+        &header == b"MZ"
     }
 
     // Mach-O (32/64 bit, big/little endian) or a universal ("fat") binary.

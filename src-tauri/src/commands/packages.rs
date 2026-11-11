@@ -66,7 +66,7 @@ impl From<RawPackageEntry> for PackageEntry {
                 created_at: info.created_at,
             })
             .collect();
-        versions.sort_by(|a, b| b.created_at.cmp(&a.created_at));
+        versions.sort_by_key(|v| std::cmp::Reverse(v.created_at));
 
         PackageEntry {
             name: raw.name,
