@@ -205,7 +205,6 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         }
 
         restoreTabView(projectName, relative_path, view);
-        setIsDirty(false);
         view.focus();
         setActiveEditor(view);
 
