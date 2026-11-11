@@ -67,7 +67,7 @@ fn confine(root: &Path, requested: &str) -> Step<PathBuf> {
     if invalid || !inside {
         return Err(format!("La ruta '{}' queda fuera del proyecto.", requested));
     }
-    if full.components().any(|c| c.as_os_str() == ".git") {
+    if full.components().any(|c| c.as_os_str().to_string_lossy().eq_ignore_ascii_case(".git")) {
         return Err("No se permite acceder a la carpeta .git.".into());
     }
     if is_secret_file(&full) {
@@ -317,8 +317,10 @@ fn is_plain_word(word: &str) -> bool {
 }
 
 fn is_local_path(word: &str) -> bool {
-    is_plain_word(word) && !word.starts_with('/') && !word.split('/').any(|part| part == "..")
+    is_plain_word(word) && !word.contains(':') && !word.starts_with('/') && !word.split('/').any(|part| part == "..")
 }
+
+const GIT_BRANCH_LIST_FLAGS: [&str; 6] = ["--list", "-a", "-v", "-vv", "-r", "--all"];
 
 pub fn is_minor_command(command: &str) -> bool {
     let command = command.trim();
@@ -332,9 +334,52 @@ pub fn is_minor_command(command: &str) -> bool {
     match program {
         "pwd" => args.is_empty(),
         "ls" => args.iter().all(|a| a.starts_with('-') && is_plain_word(a) || is_local_path(a)),
+        "git" if args.first() == Some(&"branch") => args[1..].iter().all(|a| GIT_BRANCH_LIST_FLAGS.contains(a)),
         "git" if args.first().is_some_and(|sub| GIT_READ_ONLY.contains(sub)) => {
             args[1..].iter().all(|a| is_plain_word(a) && !GIT_RISKY_FLAGS.iter().any(|risky| a == risky || a.starts_with(&format!("{}=", risky))))
         }
         _ => VERSION_PROGRAMS.contains(&program) && matches!(args, ["--version"] | ["-v"] | ["-V"]),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn git_branch_only_lists() {
+        for ok in ["git branch", "git branch --list", "git branch -a", "git branch -v", "git branch -vv", "git branch -r"] {
+            assert!(is_minor_command(ok), "{ok}");
+        }
+        for bad in ["git branch -D main", "git branch -f main HEAD", "git branch -m old new", "git branch newbranch", "git branch -a -D"] {
+            assert!(!is_minor_command(bad), "{bad}");
+        }
+    }
+
+    #[test]
+    fn ls_rejects_absolute_paths() {
+        for bad in ["ls C:/Windows", "ls c:/", "ls /etc", "ls ../x", "ls D:foo", "ls src C:/x"] {
+            assert!(!is_minor_command(bad), "{bad}");
+        }
+        for ok in ["ls", "ls -la", "ls src", "ls src/components"] {
+            assert!(is_minor_command(ok), "{ok}");
+        }
+    }
+
+    #[test]
+    fn read_only_git_still_allowed() {
+        for ok in ["git status", "git log", "git log --oneline -n 5", "git rev-parse HEAD", "git --version", "pwd"] {
+            assert!(is_minor_command(ok), "{ok}");
+        }
+        assert!(!is_minor_command("git log -p"));
+        assert!(!is_minor_command("git push"));
+    }
+
+    #[test]
+    fn confine_blocks_git_case_insensitive() {
+        let root = std::env::temp_dir();
+        for p in [".git/config", ".GIT/config", ".Git/config"] {
+            assert!(confine(&root, p).is_err(), "{p}");
+        }
     }
 }
