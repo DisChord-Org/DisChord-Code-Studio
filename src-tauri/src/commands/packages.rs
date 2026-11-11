@@ -337,7 +337,7 @@ fn run_pkg_json_op(
     configure_pkg_command(app_handle, &mut command);
     command.arg("pkg").args(args).arg("--json");
     command.stdout(Stdio::piped());
-    command.stderr(Stdio::piped());
+    command.stderr(Stdio::null());
 
     if let Some(cwd) = cwd {
         command.current_dir(cwd);

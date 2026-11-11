@@ -74,7 +74,7 @@ fn run_component_update(app_handle: &tauri::AppHandle, component: &str) -> bool 
     let mut command = platform::silent_command(&binary);
     command.arg("update").arg(component).arg("--json");
     command.stdout(Stdio::piped());
-    command.stderr(Stdio::piped());
+    command.stderr(Stdio::null());
 
     let child = match command.spawn() {
         Ok(child) => child,
