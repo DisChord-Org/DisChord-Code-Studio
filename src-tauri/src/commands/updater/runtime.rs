@@ -97,23 +97,43 @@ fn install_node(app_handle: &tauri::AppHandle) -> Result<(), String> {
         .bytes()
         .log_err("No se pudo leer la descarga de Node.js")?;
 
-    if dir.exists() {
-        fs::remove_dir_all(&dir).log_err("No se pudo borrar la instalación anterior de Node.js")?;
+    let staging = dir.with_file_name("node.installing");
+    if staging.exists() {
+        fs::remove_dir_all(&staging).log_err("No se pudo limpiar una instalación incompleta de Node.js")?;
     }
-    fs::create_dir_all(&dir).log_err("No se pudo crear la carpeta de Node.js")?;
+    fs::create_dir_all(&staging).log_err("No se pudo crear la carpeta temporal de Node.js")?;
 
-    extract_archive(&bytes, &archive_name, &dir)?;
+    if let Err(e) = extract_archive(&bytes, &archive_name, &staging) {
+        let _ = fs::remove_dir_all(&staging);
+        return Err(e);
+    }
 
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;
         for entry in ["node", "npm", "npx"] {
-            let p = dir.join("bin").join(entry);
+            let p = staging.join("bin").join(entry);
             if p.exists() {
                 let _ = fs::set_permissions(&p, fs::Permissions::from_mode(0o755));
             }
         }
     }
+
+    let backup = dir.with_file_name("node.old");
+    let _ = fs::remove_dir_all(&backup);
+    let had_previous = dir.exists();
+    if had_previous {
+        fs::rename(&dir, &backup).log_err("No se pudo apartar la instalación anterior de Node.js")?;
+    }
+    if let Err(e) = fs::rename(&staging, &dir) {
+        if had_previous {
+            let _ = fs::rename(&backup, &dir);
+        }
+        let _ = fs::remove_dir_all(&staging);
+        error!("No se pudo activar la nueva instalación de Node.js: {}", e);
+        return Err(format!("No se pudo activar la nueva instalación de Node.js: {}", e));
+    }
+    let _ = fs::remove_dir_all(&backup);
 
     info!("Node.js {} instalado en {:?}", version, dir);
     Ok(())
