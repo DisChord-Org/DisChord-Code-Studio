@@ -6,7 +6,11 @@ on:
       - 'v*'
 
 jobs:
+  checks:
+    uses: ./.github/workflows/typecheck-lint-build.yml
+
   publish-tauri:
+    needs: checks
     permissions:
       contents: write
     strategy:
@@ -26,9 +30,6 @@ jobs:
 
       - name: install pnpm
         uses: pnpm/action-setup@v4
-
-      - name: install bun
-        uses: oven-sh/setup-bun@v1
 
       - name: setup node
         uses: actions/setup-node@v4
@@ -50,20 +51,7 @@ jobs:
       
       - name: Ad-hoc sign (macOS only)
         if: matrix.platform == 'macos-latest'
-        env:
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: |
-          pnpm tauri build --target aarch64-apple-darwin
-          
-          APP_PATH=$(find src-tauri/target/aarch64-apple-darwin/release/bundle/macos -name "*.app" | head -n 1)
-          if [ -d "$APP_PATH" ]; then
-            echo "Firmando ad-hoc: $APP_PATH"
-            codesign --force --deep -s - "$APP_PATH"
-          else
-            echo "No se encontró el .app para firmar"
-            exit 1
-          fi
+        run: echo "APPLE_SIGNING_IDENTITY=-" >> "$GITHUB_ENV"
 
       - uses: tauri-apps/tauri-action@v0
         env:
