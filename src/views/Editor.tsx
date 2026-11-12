@@ -197,14 +197,14 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                     )}
                 </main>
 
-                {showAi && (
-                    <AiPanel
-                        projectName={projectName}
-                        prefill={prefill}
-                        file={activeFile ? { name: activeFile.name, path: activeFile.relative_path } : undefined}
-                        onClose={() => setShowAi(false)}
-                    />
-                )}
+                <AiPanel
+                    projectName={projectName}
+                    prefill={prefill}
+                    file={activeFile ? { name: activeFile.name, path: activeFile.relative_path } : undefined}
+                    open={showAi}
+                    onClose={() => setShowAi(false)}
+                    onRequestOpen={() => setShowAi(true)}
+                />
             </div>
         </div>
     );

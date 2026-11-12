@@ -25,7 +25,9 @@ interface AiPanelProps {
         path: string
     };
     prefill?: { text: string; nonce: number };
+    open: boolean;
     onClose: () => void;
+    onRequestOpen: () => void;
 }
 
 const isHidden = (item: AiItem) => item.kind === "assistant" && !item.content && !item.streaming;
@@ -45,7 +47,7 @@ const renderItem = (item: AiItem, avatar: boolean, respond: (commandId: string, 
 
 const headerButton = "flex h-5 w-5 items-center justify-center rounded text-gray-500 transition-colors hover:text-accent disabled:opacity-30 disabled:hover:text-gray-500";
 
-export const AiPanel = ({ projectName, file, prefill, onClose }: AiPanelProps) => {
+export const AiPanel = ({ projectName, file, prefill, open, onClose, onRequestOpen }: AiPanelProps) => {
     const { items, thinking, auth, user, account, context, usage, send, stop, clear, login, logout, respond, compact, compacting, showContext, showUsage, loadSessions, openSession } = useAiChat(projectName);
     const [showHistory, setShowHistory] = useState(false);
     const sendRef = useRef(send);
@@ -86,11 +88,27 @@ export const AiPanel = ({ projectName, file, prefill, onClose }: AiPanelProps) =
     }, [items]);
     const empty = items.length === 0;
 
+    const root = useRef<HTMLElement>(null);
+    const onRequestOpenRef = useRef(onRequestOpen);
+    onRequestOpenRef.current = onRequestOpen;
+    const lastApproval = useRef(0);
+    const newestApproval = items.reduce((max, item) => (item.kind === "approval" ? Math.max(max, item.id) : max), 0);
+    useEffect(() => {
+        if (newestApproval > lastApproval.current && !open) onRequestOpenRef.current();
+        lastApproval.current = newestApproval;
+    }, [newestApproval, open]);
+
+    useEffect(() => {
+        if (open) root.current?.querySelector("textarea")?.focus();
+    }, [open]);
+
     return (
         <aside
+            ref={root}
             aria-label="Amaya"
+            aria-hidden={!open}
             className="relative z-10 flex shrink-0 flex-col bg-panel-alt shadow-[-1px_0_3px_0_rgba(0,0,0,0.35)]"
-            style={{ width }}
+            style={{ width, display: open ? undefined : "none" }}
             onKeyDown={(e) => {
                 if (e.key === "Escape") {
                     e.stopPropagation();
