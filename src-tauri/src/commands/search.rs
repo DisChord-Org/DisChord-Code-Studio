@@ -43,7 +43,11 @@ pub(crate) fn project_files(root: &Path) -> Result<Vec<(String, std::path::PathB
 }
 
 #[tauri::command]
-pub fn list_project_paths(app_handle: tauri::AppHandle, project_name: String) -> Result<Vec<String>, String> {
-    let root = resolve_in_project(&app_handle, &project_name, "")?;
-    Ok(project_files(&root)?.into_iter().map(|(rel, _)| rel).collect())
+pub async fn list_project_paths(app_handle: tauri::AppHandle, project_name: String) -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root = resolve_in_project(&app_handle, &project_name, "")?;
+        Ok(project_files(&root)?.into_iter().map(|(rel, _)| rel).collect())
+    })
+    .await
+    .map_err(|e| format!("La tarea de búsqueda falló: {}", e))?
 }

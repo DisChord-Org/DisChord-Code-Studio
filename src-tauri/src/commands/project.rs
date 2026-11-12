@@ -58,8 +58,12 @@ pub fn get_latest_modification(path: &Path) -> SystemTime {
 }
 
 #[tauri::command]
-pub fn get_projects(app_handle: tauri::AppHandle) -> Vec<ProjectInfo> {
-    let root_path = workflows_root(&app_handle);
+pub async fn get_projects(app_handle: tauri::AppHandle) -> Vec<ProjectInfo> {
+    tauri::async_runtime::spawn_blocking(move || list_projects(&app_handle)).await.unwrap_or_default()
+}
+
+fn list_projects(app_handle: &tauri::AppHandle) -> Vec<ProjectInfo> {
+    let root_path = workflows_root(app_handle);
     debug!("Listando proyectos desde: {:?}", root_path);
 
     let mut projects = Vec::new();
@@ -99,7 +103,13 @@ fn scaffold_project_folders(project_dir: &Path) {
 }
 
 #[tauri::command]
-pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
+pub async fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || create_project_blocking(app_handle, name))
+        .await
+        .map_err(|e| format!("La tarea de creación falló: {}", e))?
+}
+
+fn create_project_blocking(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
     info!("Solicitud de creación de proyecto: {}", name);
 
     if let Err(e) = resolve_chord_command(&app_handle).arg("-v").output() {
@@ -138,7 +148,13 @@ pub fn create_new_project(app_handle: tauri::AppHandle, name: String) -> Result<
 }
 
 #[tauri::command]
-pub fn delete_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
+pub async fn delete_project(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
+    tauri::async_runtime::spawn_blocking(move || delete_project_blocking(app_handle, name))
+        .await
+        .map_err(|e| format!("La tarea de borrado falló: {}", e))?
+}
+
+fn delete_project_blocking(app_handle: tauri::AppHandle, name: String) -> Result<String, String> {
     let path = resolve_in_project(&app_handle, &name, "")?;
 
     if path.exists() && path.is_dir() {

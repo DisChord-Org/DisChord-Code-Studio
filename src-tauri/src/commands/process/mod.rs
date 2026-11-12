@@ -10,13 +10,19 @@ use crate::ChildProcessState;
 pub use run::kill_run;
 
 #[tauri::command]
-pub fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>, project_name: String) -> Result<(), String> {
-    run::start(app_handle, &state, project_name)
+pub async fn run_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>, project_name: String) -> Result<(), String> {
+    let run = state.0.clone();
+    tauri::async_runtime::spawn_blocking(move || run::start(app_handle, run, project_name))
+        .await
+        .map_err(|e| format!("La tarea de ejecución falló: {}", e))?
 }
 
 #[tauri::command]
-pub fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>) -> Result<String, String> {
-    run::stop(&app_handle, &state)
+pub async fn stop_chord_project(app_handle: tauri::AppHandle, state: State<'_, ChildProcessState>) -> Result<String, String> {
+    let run = state.0.clone();
+    tauri::async_runtime::spawn_blocking(move || run::stop(&app_handle, &run))
+        .await
+        .map_err(|e| format!("La tarea de detención falló: {}", e))?
 }
 
 #[tauri::command]
