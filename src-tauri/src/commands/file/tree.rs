@@ -1,8 +1,10 @@
-use std::fs;
-use std::path::Path;
+use std::collections::HashMap;
+use std::ffi::OsStr;
+use std::path::{Path, PathBuf};
 
 use serde::Serialize;
 use ignore::gitignore::Gitignore;
+use ignore::WalkBuilder;
 use log::info;
 
 use crate::paths::resolve_in_project;
@@ -27,84 +29,107 @@ fn to_relative(file: &Path, root: &str) -> String {
 const GIT_DIR: &str = ".git";
 const DEPENDENCIES_DIR: &str = "node_modules";
 
-fn scan_dir(path: &Path, root_str: &str, matcher: &Gitignore) -> Vec<ProjectFile> {
-    let mut files = Vec::new();
+fn walker(root: &Path) -> WalkBuilder {
+    let mut builder = WalkBuilder::new(root);
+    builder.standard_filters(false).hidden(false).follow_links(false);
+    builder
+}
 
-    if let Ok(entries) = fs::read_dir(path) {
-        for entry in entries.flatten() {
-            let file_path = entry.path();
-            let file_name = entry.file_name().to_string_lossy().to_string();
+fn is_always_skipped(name: &OsStr) -> bool {
+    name == GITIGNORE_FILE || name == GIT_DIR || name == DEPENDENCIES_DIR
+}
 
-            if file_name == GITIGNORE_FILE || file_name == GIT_DIR {
-                continue;
-            }
-
-            let is_dir = file_path.is_dir();
-            if matcher.matched(&file_path, is_dir).is_ignore() {
-                continue;
-            }
-
-            files.push(ProjectFile {
-                name: file_name,
-                is_dir,
-                relative_path: to_relative(&file_path, root_str),
-                children: is_dir.then(|| scan_dir(&file_path, root_str, matcher)),
-            });
-        }
-    }
+fn build_children(parent: &Path, root_str: &str, by_parent: &mut HashMap<PathBuf, Vec<(PathBuf, bool)>>) -> Vec<ProjectFile> {
+    let mut files: Vec<ProjectFile> = by_parent
+        .remove(parent)
+        .unwrap_or_default()
+        .into_iter()
+        .map(|(path, is_dir)| ProjectFile {
+            name: path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default(),
+            is_dir,
+            relative_path: to_relative(&path, root_str),
+            children: is_dir.then(|| build_children(&path, root_str, by_parent)),
+        })
+        .collect();
 
     files.sort_by(|a, b| b.is_dir.cmp(&a.is_dir).then(a.name.cmp(&b.name)));
     files
 }
 
-fn collect_hidden(path: &Path, root_str: &str, matcher: &Gitignore, out: &mut Vec<ProjectFile>) {
-    let Ok(entries) = fs::read_dir(path) else { return };
+fn scan_tree(root: &Path, root_str: &str, matcher: Gitignore) -> Vec<ProjectFile> {
+    let mut by_parent: HashMap<PathBuf, Vec<(PathBuf, bool)>> = HashMap::new();
 
-    for entry in entries.flatten() {
-        let file_path = entry.path();
-        let file_name = entry.file_name().to_string_lossy().to_string();
+    let entries = walker(root)
+        .filter_entry(move |entry| {
+            if entry.depth() == 0 {
+                return true;
+            }
+            let is_dir = entry.file_type().is_some_and(|t| t.is_dir());
+            !is_always_skipped(entry.file_name()) && !matcher.matched(entry.path(), is_dir).is_ignore()
+        })
+        .build()
+        .flatten();
 
-        if file_name == GITIGNORE_FILE || file_name == GIT_DIR || file_name == DEPENDENCIES_DIR {
+    for entry in entries {
+        if entry.depth() == 0 {
             continue;
         }
-
-        if file_path.is_dir() {
-            collect_hidden(&file_path, root_str, matcher, out);
-        } else if matcher.matched(&file_path, false).is_ignore() {
-            out.push(ProjectFile {
-                name: file_name,
-                is_dir: false,
-                relative_path: to_relative(&file_path, root_str),
-                children: None,
-            });
+        let is_dir = entry.file_type().is_some_and(|t| t.is_dir());
+        if let Some(parent) = entry.path().parent() {
+            by_parent.entry(parent.to_path_buf()).or_default().push((entry.into_path(), is_dir));
         }
     }
+
+    build_children(root, root_str, &mut by_parent)
+}
+
+fn collect_hidden(root: &Path, root_str: &str, matcher: &Gitignore) -> Vec<ProjectFile> {
+    walker(root)
+        .filter_entry(|entry| entry.depth() == 0 || !is_always_skipped(entry.file_name()))
+        .build()
+        .flatten()
+        .filter(|entry| entry.file_type().is_some_and(|t| !t.is_dir()))
+        .filter(|entry| matcher.matched(entry.path(), false).is_ignore())
+        .map(|entry| ProjectFile {
+            name: entry.file_name().to_string_lossy().to_string(),
+            is_dir: false,
+            relative_path: to_relative(entry.path(), root_str),
+            children: None,
+        })
+        .collect()
 }
 
 #[tauri::command]
-pub fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
-    let root_path = resolve_in_project(&app_handle, &name, "")?;
-    info!("Escaneando archivos del proyecto: {:?}", root_path);
+pub async fn read_project_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root_path = resolve_in_project(&app_handle, &name, "")?;
+        info!("Escaneando archivos del proyecto: {:?}", root_path);
 
-    let root_str = root_path.to_string_lossy().to_string();
-    let matcher = build_gitignore_matcher(&root_path)?;
+        let root_str = root_path.to_string_lossy().to_string();
+        let matcher = build_gitignore_matcher(&root_path)?;
 
-    let result = scan_dir(&root_path, &root_str, &matcher);
-    info!("Escaneo completado con éxito para '{}'", name);
-    Ok(result)
+        let result = scan_tree(&root_path, &root_str, matcher);
+        info!("Escaneo completado con éxito para '{}'", name);
+        Ok(result)
+    })
+    .await
+    .map_err(|e| format!("La tarea de escaneo falló: {}", e))?
 }
 
 #[tauri::command]
-pub fn read_hidden_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
-    let root_path = resolve_in_project(&app_handle, &name, "")?;
-    info!("Escaneando ficheros ocultos del proyecto: {:?}", root_path);
+pub async fn read_hidden_files(app_handle: tauri::AppHandle, name: String) -> Result<Vec<ProjectFile>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let root_path = resolve_in_project(&app_handle, &name, "")?;
+        info!("Escaneando ficheros ocultos del proyecto: {:?}", root_path);
 
-    let root_str = root_path.to_string_lossy().to_string();
-    let matcher = build_gitignore_matcher(&root_path)?;
+        let root_str = root_path.to_string_lossy().to_string();
+        let matcher = build_gitignore_matcher(&root_path)?;
 
-    let mut hidden = Vec::new();
-    collect_hidden(&root_path, &root_str, &matcher, &mut hidden);
-    hidden.sort_by(|a, b| a.name.cmp(&b.name));
+        let mut hidden = collect_hidden(&root_path, &root_str, &matcher);
+        hidden.sort_by(|a, b| a.name.cmp(&b.name));
 
-    Ok(hidden)
+        Ok(hidden)
+    })
+    .await
+    .map_err(|e| format!("La tarea de escaneo falló: {}", e))?
 }
