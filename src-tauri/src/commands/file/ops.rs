@@ -7,6 +7,8 @@ use crate::{DiscordState, update_presence};
 use crate::paths::resolve_in_project;
 use crate::log_err::LogErr;
 
+const MAX_EDITABLE_FILE_BYTES: u64 = 10 * 1024 * 1024;
+
 fn item_path(app_handle: &tauri::AppHandle, project_name: &str, relative: impl AsRef<Path>) -> Result<PathBuf, String> {
     resolve_in_project(app_handle, project_name, &relative.as_ref().to_string_lossy())
 }
@@ -28,6 +30,15 @@ pub fn read_file_content(app_handle: tauri::AppHandle, discord: tauri::State<'_,
     });
 
     info!("Leyendo contenido: {:?}", file_path);
+    let size = fs::metadata(&path).log_err(&format!("No se pudo leer el archivo {:?}", path))?.len();
+    if size > MAX_EDITABLE_FILE_BYTES {
+        return Err(format!(
+            "El archivo es demasiado grande para abrirlo en el editor ({:.1} MB; el límite es {} MB)",
+            size as f64 / (1024.0 * 1024.0),
+            MAX_EDITABLE_FILE_BYTES / (1024 * 1024)
+        ));
+    }
+
     fs::read_to_string(&path).log_err(&format!("No se pudo leer el archivo {:?}", path))
 }
 
