@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useSyncExternalStore } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import type { AppConfig } from "./types";
 import { buildFontFamilyCss } from "./font";
@@ -26,37 +26,69 @@ const defaultConfig: AppConfig = {
     keybindings: {},
 };
 
-export const useConfig = () => {
-    const [config, setConfig] = useState<AppConfig>(defaultConfig);
-    const [loaded, setLoaded] = useState(false);
+let current: AppConfig = defaultConfig;
+let loaded = false;
+let started = false;
+let earlyPatch: Partial<AppConfig> = {};
+let saveChain: Promise<void> = Promise.resolve();
+const subscribers = new Set<() => void>();
 
-    useEffect(() => {
-        invoke<AppConfig>("get_config")
-            .then(setConfig)
-            .catch((error) => console.error("No se pudo cargar la configuración:", error))
-            .finally(() => setLoaded(true));
+const emit = () => subscribers.forEach((notifyChange) => notifyChange());
 
-        loadDownloadedFonts();
-    }, []);
+const applyCss = (config: AppConfig) => {
+    document.documentElement.style.setProperty("--editor-font-family", buildFontFamilyCss(config.editor_font_family));
+    document.documentElement.style.setProperty("--editor-font-size", `${config.editor_font_size}px`);
+};
 
-    useEffect(() => {
-        document.documentElement.style.setProperty("--editor-font-family", buildFontFamilyCss(config.editor_font_family));
-    }, [config.editor_font_family]);
+const start = () => {
+    if (started) return;
+    started = true;
+    applyCss(current);
 
-    useEffect(() => {
-        document.documentElement.style.setProperty("--editor-font-size", `${config.editor_font_size}px`);
-    }, [config.editor_font_size]);
+    invoke<AppConfig>("get_config")
+        .then((fromDisk) => {
+            current = { ...fromDisk, ...earlyPatch };
+            earlyPatch = {};
+        })
+        .catch((error) => console.error("No se pudo cargar la configuración:", error))
+        .finally(() => {
+            loaded = true;
+            applyCss(current);
+            emit();
+        });
 
-    const updateConfig = async (patch: Partial<AppConfig>) => {
-        const next = { ...config, ...patch };
-        setConfig(next);
+    loadDownloadedFonts();
+};
 
+const updateConfig = async (patch: Partial<AppConfig>) => {
+    current = { ...current, ...patch };
+    if (!loaded) earlyPatch = { ...earlyPatch, ...patch };
+    applyCss(current);
+    emit();
+
+    saveChain = saveChain.then(async () => {
         try {
-            await invoke("save_config", { config: next });
+            await invoke("save_config", { config: current });
         } catch (error) {
             console.error("No se pudo guardar la configuración:", error);
         }
-    };
+    });
+    await saveChain;
+};
 
-    return { config, loaded, updateConfig };
+const subscribe = (notifyChange: () => void) => {
+    subscribers.add(notifyChange);
+    return () => subscribers.delete(notifyChange);
+};
+
+const getConfig = () => current;
+const getLoaded = () => loaded;
+
+export const useConfig = () => {
+    const config = useSyncExternalStore(subscribe, getConfig);
+    const isLoaded = useSyncExternalStore(subscribe, getLoaded);
+
+    useEffect(start, []);
+
+    return { config, loaded: isLoaded, updateConfig };
 };
