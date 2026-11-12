@@ -13,7 +13,6 @@ use crate::log_err::LogErr;
 use crate::output::{emit_line, emit_located_line, emit_run_end, LineKind, Location, RunStatus};
 use crate::paths::resolve_in_project;
 use crate::platform::{build_path_env, isolate_process_group, resolve_chord_command, strip_npm_env, terminate_process_tree};
-use crate::ChildProcessState;
 
 const ENTRY_POINT: &str = "src/index.chord";
 const NODE_OPTIONS: &str = "--experimental-default-type=module";
@@ -100,7 +99,15 @@ fn watch_run(app_handle: AppHandle, run: Arc<Mutex<Option<Child>>>, pid: u32, st
         let _ = stdout_thread.join();
         let _ = stderr_thread.join();
 
-        if let Some(mut child) = lock_run(&run).take() {
+        let finished = {
+            let mut guard = lock_run(&run);
+            match guard.as_ref() {
+                Some(current) if current.id() == pid => guard.take(),
+                _ => None,
+            }
+        };
+
+        if let Some(mut child) = finished {
             let status = match child.wait() {
                 Ok(exit) if exit.success() => RunStatus::Finished,
                 Ok(exit) => RunStatus::Failed { code: exit.code() },
@@ -112,7 +119,11 @@ fn watch_run(app_handle: AppHandle, run: Arc<Mutex<Option<Child>>>, pid: u32, st
     });
 }
 
-pub(super) fn start(app_handle: AppHandle, state: &ChildProcessState, project_name: String) -> Result<(), String> {
+pub(super) fn start(app_handle: AppHandle, run: Arc<Mutex<Option<Child>>>, project_name: String) -> Result<(), String> {
+    if lock_run(&run).is_some() {
+        return Err("Ya hay un proceso en ejecución".into());
+    }
+
     let project_dir = resolve_in_project(&app_handle, &project_name, "")?;
 
     let chord_file = project_dir.join(ENTRY_POINT);
@@ -142,15 +153,23 @@ pub(super) fn start(app_handle: AppHandle, state: &ChildProcessState, project_na
         return Err("Fallo al capturar la salida del proceso 'chord'".into());
     };
 
-    *lock_run(&state.0) = Some(child);
-    watch_run(app_handle, state.0.clone(), pid, stdout, stderr);
+    {
+        let mut guard = lock_run(&run);
+        if guard.is_some() {
+            drop(guard);
+            kill_run(child);
+            return Err("Ya hay un proceso en ejecución".into());
+        }
+        *guard = Some(child);
+    }
+    watch_run(app_handle, run, pid, stdout, stderr);
 
     Ok(())
 }
 
-pub(super) fn stop(app_handle: &AppHandle, state: &ChildProcessState) -> Result<String, String> {
-    let mut lock = lock_run(&state.0);
-    if let Some(child) = lock.take() {
+pub(super) fn stop(app_handle: &AppHandle, run: &Mutex<Option<Child>>) -> Result<String, String> {
+    let taken = lock_run(run).take();
+    if let Some(child) = taken {
         let pid = child.id();
         info!("Solicitud de detención para proceso PID: {}", pid);
 
