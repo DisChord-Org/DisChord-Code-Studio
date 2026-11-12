@@ -5,6 +5,9 @@ A desktop IDE built for developing, managing, and deploying Discord bots and app
 ## Features
 
 - **Code editor** powered by CodeMirror 6, including a custom `chord` language mode with syntax highlighting and autocompletion.
+- **Amaya (AI chat)** side panel that connects to the DisChord Amaya service (sign-in required). She can read, list, search, create and edit files in the open project and run shell commands; edits, writes and non-trivial commands ask for your approval first, and a few harmless read-only commands run without asking.
+- **Split view** to edit two files side by side: use the split button in the tab bar, or Ctrl/Cmd+click a tab to open it in the second pane.
+- **Diagnostics** from the `chord` compiler shown live in the editor as underlines, gutter markers and inline messages after the offending line (Error Lens style).
 - **Integrated terminal** (xterm.js) to run and manage your project without leaving the app.
 - **Package manager** panel to browse, install, and track dependencies used by your project.
 - **System monitor** showing live CPU/RAM usage.
