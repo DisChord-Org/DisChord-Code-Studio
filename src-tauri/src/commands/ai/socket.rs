@@ -86,9 +86,16 @@ async fn on_closed(app: &AppHandle, tx: &mpsc::UnboundedSender<String>, code: Op
     }
 }
 
+static RENEW_LOCK: tokio::sync::Mutex<()> = tokio::sync::Mutex::const_new(());
+
 pub(super) async fn renew(app: &AppHandle) -> Result<StoredSession, String> {
     let state = app.state::<AiState>();
+    let stale_token = state.0.lock().await.session(app).access_token.clone();
+    let _guard = RENEW_LOCK.lock().await;
     let current = state.0.lock().await.session(app).clone();
+    if current.signed_in() && current.access_token != stale_token {
+        return Ok(current);
+    }
     match auth::refresh(app, &current).await {
         Ok(next) => {
             auth::save(app, &next)?;
