@@ -57,7 +57,7 @@ pub fn load(app: &tauri::AppHandle) -> StoredSession {
 pub fn save(app: &tauri::AppHandle, session: &StoredSession) -> Result<(), String> {
     let path = session_path(app)?;
     let json = serde_json::to_string(session).map_err(|e| e.to_string())?;
-    fs::write(&path, json).log_err("No se pudo guardar la sesión del asistente")?;
+    crate::platform::write_atomic(&path, json).log_err("No se pudo guardar la sesión del asistente")?;
     #[cfg(unix)]
     {
         use std::os::unix::fs::PermissionsExt;

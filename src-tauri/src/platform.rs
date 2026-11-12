@@ -269,6 +269,17 @@ pub fn get_target_triple() -> Result<&'static str, String> {
     }
 }
 
+pub fn write_atomic(path: &Path, contents: impl AsRef<[u8]>) -> std::io::Result<()> {
+    let mut tmp_name = path.file_name().map(|n| n.to_os_string()).unwrap_or_default();
+    tmp_name.push(".tmp");
+    let tmp = path.with_file_name(tmp_name);
+    if let Err(e) = fs::write(&tmp, contents).and_then(|_| fs::rename(&tmp, path)) {
+        let _ = fs::remove_file(&tmp);
+        return Err(e);
+    }
+    Ok(())
+}
+
 pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let repo = if name == "chord" { "DischordCLI" } else { "DisChord" };
     let target = get_target_triple()?;

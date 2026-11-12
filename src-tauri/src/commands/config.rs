@@ -224,7 +224,7 @@ pub fn save_config(app_handle: tauri::AppHandle, config: AppConfig) -> Result<()
     ensure_parent_dir(&path)?;
 
     let json = serde_json::to_string_pretty(&config).log_err("No se pudo serializar la configuración")?;
-    fs::write(&path, json).log_err("No se pudo guardar config.json")?;
+    crate::platform::write_atomic(&path, json).log_err("No se pudo guardar config.json")?;
 
     info!("Configuración guardada en {:?}", path);
     Ok(())
@@ -249,7 +249,7 @@ pub fn save_config_raw(app_handle: tauri::AppHandle, content: String) -> Result<
     let path = config_path(&app_handle)?;
     ensure_parent_dir(&path)?;
 
-    fs::write(&path, content).log_err("No se pudo guardar config.json")?;
+    crate::platform::write_atomic(&path, content).log_err("No se pudo guardar config.json")?;
 
     info!("config.json editado manualmente y guardado en {:?}", path);
     Ok(())
