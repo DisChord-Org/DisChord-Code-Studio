@@ -22,6 +22,16 @@ fn fonts_dir(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> {
 }
 
 fn font_file_path(app_handle: &tauri::AppHandle, name: &str) -> Result<PathBuf, String> {
+    let path = std::path::Path::new(name);
+    let is_plain = !name.is_empty()
+        && name != "."
+        && name != ".."
+        && !name.contains(['/', '\\', ':', '\0'])
+        && path.components().count() == 1
+        && path.extension().is_none_or(|e| e != "ttf" && e != "download");
+    if !is_plain {
+        return Err("Nombre de tipografía no válido.".into());
+    }
     Ok(fonts_dir(app_handle)?.join(format!("{}.ttf", name)))
 }
 

@@ -21,15 +21,15 @@ fn validate_item_name(name: &str) -> Result<&str, String> {
     Ok(name)
 }
 
-fn relocate(root: &Path, from: &str, target_dir: &str, new_name: &str) -> Result<String, String> {
+fn relocate(app_handle: &tauri::AppHandle, project_name: &str, from: &str, target_dir: &str, new_name: &str) -> Result<String, String> {
     let new_name = validate_item_name(new_name)?;
 
     if from.is_empty() || !is_inside_project(from) || !is_inside_project(target_dir) {
         return Err("Ruta no válida.".into());
     }
 
-    let source = root.join(from);
-    let destination_dir = root.join(target_dir);
+    let source = resolve_in_project(app_handle, project_name, from)?;
+    let destination_dir = resolve_in_project(app_handle, project_name, target_dir)?;
     let destination = destination_dir.join(new_name);
     let new_relative = Path::new(target_dir).join(new_name).to_string_lossy().replace('\\', "/");
 
@@ -59,19 +59,17 @@ fn relocate(root: &Path, from: &str, target_dir: &str, new_name: &str) -> Result
 
 #[tauri::command]
 pub fn rename_item(app_handle: tauri::AppHandle, project_name: String, path: String, new_name: String) -> Result<String, String> {
-    let root = resolve_in_project(&app_handle, &project_name, "")?;
     let parent = Path::new(&path).parent().map(|p| p.to_string_lossy().to_string()).unwrap_or_default();
 
-    relocate(&root, &path, &parent, &new_name)
+    relocate(&app_handle, &project_name, &path, &parent, &new_name)
 }
 
 #[tauri::command]
 pub fn move_item(app_handle: tauri::AppHandle, project_name: String, path: String, target_dir: String) -> Result<String, String> {
-    let root = resolve_in_project(&app_handle, &project_name, "")?;
     let name = Path::new(&path)
         .file_name()
         .map(|n| n.to_string_lossy().to_string())
         .ok_or("Ruta no válida.")?;
 
-    relocate(&root, &path, &target_dir, &name)
+    relocate(&app_handle, &project_name, &path, &target_dir, &name)
 }
