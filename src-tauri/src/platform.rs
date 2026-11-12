@@ -249,19 +249,29 @@ pub fn shim_command(path: &Path) -> Command {
     silent_command(path)
 }
 
-pub fn get_target_triple() -> &'static str {
-    if cfg!(target_os = "windows") {
-        "x86_64-pc-windows-msvc"
-    } else if cfg!(target_os = "macos") {
-        "aarch64-apple-darwin"
+pub fn get_target_triple() -> Result<&'static str, String> {
+    if cfg!(target_os = "windows") && cfg!(target_arch = "x86_64") {
+        Ok("x86_64-pc-windows-msvc")
+    } else if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
+        Ok("aarch64-apple-darwin")
+    } else if cfg!(target_os = "macos") && cfg!(target_arch = "x86_64") {
+        Ok("x86_64-apple-darwin")
+    } else if cfg!(target_os = "linux") && cfg!(target_arch = "x86_64") {
+        Ok("x86_64-unknown-linux-gnu")
+    } else if cfg!(target_os = "linux") && cfg!(target_arch = "aarch64") {
+        Ok("aarch64-unknown-linux-gnu")
     } else {
-        "x86_64-unknown-linux-gnu"
+        Err(format!(
+            "No hay un binario de chord para esta plataforma ({}-{}).",
+            std::env::consts::OS,
+            std::env::consts::ARCH
+        ))
     }
 }
 
 pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let repo = if name == "chord" { "DischordCLI" } else { "DisChord" };
-    let target = get_target_triple();
+    let target = get_target_triple()?;
     let ext = if cfg!(windows) { ".exe" } else { "" };
 
     let url = format!(
