@@ -19,7 +19,8 @@ import {
     languageExtensionFor, completionExtensionFor, addFlash, clearFlash, flashField,
 } from "./codeMirrorExtensions";
 import { rememberTabView, restoreTabView } from "../../tabsSession";
-import { clearActiveEditor, setActiveEditor } from "./activeEditor";
+import { clearActiveEditor, isActiveEditor, setActiveEditor } from "./activeEditor";
+import { historyField, saveEditorState, takeEditorState } from "./editorStates";
 import { copyFlashMs } from "./CodeCanvas.constants";
 import { useConfig } from "../../../settings";
 import { useShortcut } from "../../../shortcuts";
@@ -40,6 +41,8 @@ interface CodeCanvasProps {
     goto?: GotoTarget | null;
     requireFocus?: boolean;
 }
+
+const changeDebounceMs = 250;
 
 /** Marks a change that came from the file on disk, not from typing: it is not an edit, and cannot be undone. */
 const fromDisk = Annotation.define<boolean>();
@@ -82,6 +85,24 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     const finalNewlineRef = useRef(config.editor_final_newline);
     finalNewlineRef.current = config.editor_final_newline;
+
+    const onChangeRef = useRef(onChange);
+    onChangeRef.current = onChange;
+    const setIsDirtyRef = useRef(setIsDirty);
+    setIsDirtyRef.current = setIsDirty;
+
+    const changeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
+    const changePending = useRef(false);
+    const dirtyMarked = useRef(false);
+
+    const flushChange = () => {
+        clearTimeout(changeTimer.current);
+        const view = viewRef.current;
+        if (!changePending.current || !view) return;
+        changePending.current = false;
+        lastEmitted.current = view.state.doc.toString();
+        onChangeRef.current(lastEmitted.current);
+    };
 
     const updateConfigRef = useRef(updateConfig);
     updateConfigRef.current = updateConfig;
@@ -126,6 +147,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     }), []);
 
     const handleSave = async (view: EditorView) => {
+        flushChange();
         const doc = view.state.doc;
         if (finalNewlineRef.current && doc.length > 0 && doc.sliceString(doc.length - 1) !== "\n") {
             view.dispatch({ changes: { from: doc.length, insert: "\n" } });
@@ -137,9 +159,11 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                 filePath: relative_path,
                 content: view.state.doc.toString()
             });
+            dirtyMarked.current = false;
             setIsDirty(false);
         } catch (error) {
             console.error(error);
+            notify("error", `No se pudo guardar "${fileName}".`, [String(error)]);
         }
     };
 
@@ -148,10 +172,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
         loadLibraryExports(projectName);
 
-        const view = new EditorView({
-            state: EditorState.create({
-                doc: content,
-                extensions: [
+        const extensions = [
                     basicSetup,
                     oneDark,
                     scrollPastEnd(),
@@ -167,11 +188,19 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                         if (update.selectionSet) rememberTabView(projectName, relative_path, update.view);
                         if (update.docChanged) {
                             if (!update.transactions.some((tr) => tr.annotation(fromDisk))) {
-                                setIsDirty(true);
-                                lastEmitted.current = update.state.doc.toString();
-                                onChange(lastEmitted.current);
+                                if (!dirtyMarked.current) {
+                                    dirtyMarked.current = true;
+                                    setIsDirtyRef.current(true);
+                                }
+                                changePending.current = true;
+                                clearTimeout(changeTimer.current);
+                                changeTimer.current = setTimeout(() => {
+                                    flushChange();
+                                    reportViewport();
+                                }, changeDebounceMs);
+                            } else {
+                                reportViewport();
                             }
-                            reportViewport();
                         }
                     }),
                     EditorView.domEventHandlers({
@@ -189,8 +218,20 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
                     completionTheme,
                     searchTheme,
                     blockFormConf.of(blockFormExtension(blockFormOnRef.current))
-                ]
-            }),
+        ];
+
+        const savedJson = takeEditorState(projectName, relative_path, content);
+        let state: EditorState | null = null;
+        if (savedJson) {
+            try {
+                state = EditorState.fromJSON(savedJson, { extensions }, { history: historyField });
+            } catch (error) {
+                console.error("No se pudo restaurar el historial:", error);
+            }
+        }
+
+        const view = new EditorView({
+            state: state ?? EditorState.create({ doc: content, extensions }),
             parent: editorRef.current
         });
 
@@ -229,6 +270,8 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             scroller.removeEventListener("scroll", rememberScroll);
             scroller.removeEventListener("scroll", reportViewport);
             resizeObserver.disconnect();
+            flushChange();
+            saveEditorState(projectName, relative_path, view.state);
             clearActiveEditor(view);
             view.destroy();
             viewRef.current = null;
@@ -286,7 +329,7 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
 
     useEffect(() => {
         const triggerSave = () => {
-            if (viewRef.current) {
+            if (viewRef.current && isActiveEditor(viewRef.current)) {
                 handleSave(viewRef.current);
             }
         };

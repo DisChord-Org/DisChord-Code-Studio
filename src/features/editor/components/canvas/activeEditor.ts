@@ -11,6 +11,8 @@ export const clearActiveEditor = (view: EditorView) => {
     if (active === view) active = null;
 };
 
+export const isActiveEditor = (view: EditorView) => active === null || active === view;
+
 type ApplyMode = "insert" | "replace";
 
 export const applyCode = (code: string, mode: ApplyMode): boolean => {

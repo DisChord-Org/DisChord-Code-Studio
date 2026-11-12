@@ -7,6 +7,7 @@ import { remapPath } from "./pathUtils";
 import { addFileTab, fallbackAfterClose, remapTabs, removeDeletedTabs } from "./tabsLogic";
 import { restoreTabsSession, saveTabsSession } from "./tabsSession";
 import { confirmAction } from "../../utils/Dialogs";
+import { notify } from "../../utils/Toasts";
 
 /** Open tabs of a project: opening, closing, editing, path changes and session persistence. */
 export const useOpenTabs = (projectName: string) => {
@@ -78,6 +79,7 @@ export const useOpenTabs = (projectName: string) => {
     const handleFileSelect = async (node: FileNode) => {
         if (node.is_dir) return;
 
+        const previousActive = activeTabPathRef.current;
         setActiveTabPath(node.relative_path);
 
         if (openTabsRef.current.some(t => t.relative_path === node.relative_path)) return;
@@ -98,6 +100,9 @@ export const useOpenTabs = (projectName: string) => {
             }));
         } catch (error) {
             console.error("Error al leer archivo:", error);
+            notify("error", `No se pudo abrir "${node.name}".`, [String(error)]);
+            // Do not leave the editor pointing at a tab that never opened.
+            setActiveTabPath(prev => (prev === node.relative_path ? previousActive : prev));
         }
     };
 
