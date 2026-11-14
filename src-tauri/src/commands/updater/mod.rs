@@ -85,10 +85,10 @@ impl Drop for SequenceGuard {
     }
 }
 
-pub fn run_full_update_sequence(app_handle: tauri::AppHandle) {
-    // Reentrancy guard: ignore the request if a sequence is already running.
+pub fn run_full_update_sequence(app_handle: tauri::AppHandle) -> Result<(), String> {
+    // Reentrancy guard: refuse the request if a sequence is already running.
     if SEQUENCE_RUNNING.swap(true, Ordering::SeqCst) {
-        return;
+        return Err("Ya hay una actualización en curso. Espera a que termine.".into());
     }
 
     std::thread::spawn(move || {
@@ -120,6 +120,6 @@ pub fn run_full_update_sequence(app_handle: tauri::AppHandle) {
 
 #[tauri::command]
 pub async fn start_full_update(app_handle: tauri::AppHandle) -> Result<(), String> {
-    run_full_update_sequence(app_handle);
-    Ok(())
+    run_full_update_sequence(app_handle)
 }
+    Ok(())

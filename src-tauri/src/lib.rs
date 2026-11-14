@@ -100,7 +100,9 @@ pub fn run() {
                 info!("Entorno configurado correctamente");
             }
 
-            commands::updater::run_full_update_sequence(app.handle().clone());
+            if let Err(e) = commands::updater::run_full_update_sequence(app.handle().clone()) {
+                warn!("{}", e);
+            }
 
             Ok(())
         })
