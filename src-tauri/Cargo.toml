@@ -1,6 +1,6 @@
 [package]
 name = "dischord-code-studio"
-version = "1.18.1"
+version = "1.18.2"
 description = "Desktop IDE for developing, managing and deploying Discord bots and applications with DisChord"
 authors = ["Ether"]
 license = "MIT"
