@@ -3,16 +3,17 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
 import { startOutputListener, beginRun, pushLine, endRun } from "./components/terminal/outputStore";
 
+import { notify } from "../../utils/Toasts";
+
 type TerminalTab = "output" | "shell";
 
-// Gives the terminal time to show the output tab before the run starts.
+const alreadyRunningError = "Ya hay un proceso en ejecución";
+
 const runStartDelayMs = 300;
-// Gives the previous process time to exit before restarting.
 const restartDelayMs = 400;
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-/** Run/stop/restart of the project plus the visibility state of the terminal panel. */
 export const useRunControl = (projectName: string) => {
     const [isRunning, setIsRunning] = useState(false);
     const [showTerminal, setShowTerminal] = useState(false);
@@ -67,6 +68,12 @@ export const useRunControl = (projectName: string) => {
             try {
                 await invoke("run_chord_project", { projectName });
             } catch (e) {
+                if (String(e).includes(alreadyRunningError)) {
+                    setIsRunning(true);
+                    endRun("stopped", null);
+                    notify("warning", "Ya hay un proceso en ejecución. Detenlo antes de iniciar otro.");
+                    return;
+                }
                 setIsRunning(false);
                 console.error("Error al ejecutar:", e);
                 pushLine("error", `No se pudo ejecutar: ${e}`);
