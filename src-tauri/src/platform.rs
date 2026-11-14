@@ -331,12 +331,8 @@ pub fn get_target_triple() -> Result<&'static str, String> {
         Ok("x86_64-pc-windows-msvc")
     } else if cfg!(target_os = "macos") && cfg!(target_arch = "aarch64") {
         Ok("aarch64-apple-darwin")
-    } else if cfg!(target_os = "macos") && cfg!(target_arch = "x86_64") {
-        Ok("x86_64-apple-darwin")
     } else if cfg!(target_os = "linux") && cfg!(target_arch = "x86_64") {
         Ok("x86_64-unknown-linux-gnu")
-    } else if cfg!(target_os = "linux") && cfg!(target_arch = "aarch64") {
-        Ok("aarch64-unknown-linux-gnu")
     } else {
         Err(format!(
             "No hay un binario de chord para esta plataforma ({}-{}).",
