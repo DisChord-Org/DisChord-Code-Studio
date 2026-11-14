@@ -6,17 +6,16 @@ import { packagesTabId, shortcutsTabId } from "./types";
 import { remapPath } from "./pathUtils";
 import { addFileTab, fallbackAfterClose, remapTabs, removeDeletedTabs } from "./tabsLogic";
 import { restoreTabsSession, saveTabsSession } from "./tabsSession";
-import { confirmAction } from "../../utils/Dialogs";
+import { chooseAction, confirmAction } from "../../utils/Dialogs";
+import { decideDiskChange, decideSaveGuard } from "./diskConflict";
 import { notify } from "../../utils/Toasts";
 
-/** Open tabs of a project: opening, closing, editing, path changes and session persistence. */
 export const useOpenTabs = (projectName: string) => {
     const [openTabs, setOpenTabs] = useState<OpenTab[]>([]);
     const [activeTabPath, setActiveTabPath] = useState<string | null>(null);
     const [restoredProject, setRestoredProject] = useState<string | null>(null);
     const [gotoTarget, setGotoTarget] = useState<GotoTarget | null>(null);
 
-    // Mirrors of the state, assigned during render so handlers called from stale closures (shortcuts, listeners) never lag a render behind.
     const openTabsRef = useRef<OpenTab[]>([]);
     const activeTabPathRef = useRef<string | null>(null);
 
@@ -27,7 +26,6 @@ export const useOpenTabs = (projectName: string) => {
         setOpenTabs([]);
         setActiveTabPath(null);
 
-        // Saving is held back until the saved tabs are back, or the empty list would overwrite them.
         setRestoredProject(null);
         let cancelled = false;
         restoreTabsSession(projectName).then(({ tabs, active }) => {
@@ -43,11 +41,9 @@ export const useOpenTabs = (projectName: string) => {
     }, [projectName]);
 
     useEffect(() => {
-        // Compared by name so a render right after a project switch never files the old tabs under the new project.
         if (restoredProject === projectName) saveTabsSession(projectName, openTabs, activeTabPath);
     }, [restoredProject, openTabs, activeTabPath, projectName]);
 
-    // Closing the window with unsaved files asks first; the Rust side exits once the window is really gone.
     useEffect(() => {
         let closing = false;
         const unlisten = getCurrentWindow().onCloseRequested(async (event) => {
@@ -90,6 +86,8 @@ export const useOpenTabs = (projectName: string) => {
                 filePath: node.relative_path
             });
 
+            diskBase.current.set(node.relative_path, text);
+            askedDisk.current.delete(node.relative_path);
             setOpenTabs(prev => addFileTab(prev, {
                 kind: "file",
                 relative_path: node.relative_path,
@@ -101,7 +99,7 @@ export const useOpenTabs = (projectName: string) => {
         } catch (error) {
             console.error("Error al leer archivo:", error);
             notify("error", `No se pudo abrir "${node.name}".`, [String(error)]);
-            // Do not leave the editor pointing at a tab that never opened.
+
             setActiveTabPath(prev => (prev === node.relative_path ? previousActive : prev));
         }
     };
@@ -111,13 +109,11 @@ export const useOpenTabs = (projectName: string) => {
         setGotoTarget({ path, line, column, nonce: Date.now() });
     };
 
-    /** An item was renamed or moved: keep its open tabs (and everything under a moved folder) pointing at it. */
     const handlePathMoved = (from: string, to: string) => {
         setOpenTabs(prev => remapTabs(prev, from, to));
         setActiveTabPath(prev => (prev ? remapPath(prev, from, to) : prev));
     };
 
-    /** An item was deleted: close its tabs (and those of everything under a deleted folder) without asking. */
     const handlePathDeleted = (path: string) => {
         const result = removeDeletedTabs(openTabsRef.current, activeTabPathRef.current, path);
         if (!result) return;
@@ -126,7 +122,6 @@ export const useOpenTabs = (projectName: string) => {
         if (result.activeGone) setActiveTabPath(result.nextActive);
     };
 
-    /** Opens (or focuses) one of the tabs that are not files. */
     const openSpecialTab = (tab: OpenTab) => {
         setActiveTabPath(tab.relative_path);
 
@@ -176,7 +171,6 @@ export const useOpenTabs = (projectName: string) => {
         if (activeTabPathRef.current) closeTab(activeTabPathRef.current);
     };
 
-    /** Focuses the nth open tab (1-based); does nothing if there is none. */
     const activateTabAt = (position: number) => {
         const tab = openTabsRef.current[position - 1];
         if (tab) setActiveTabPath(tab.relative_path);
@@ -189,14 +183,86 @@ export const useOpenTabs = (projectName: string) => {
     };
 
     const setTabDirty = (path: string, value: boolean) => {
+        if (!value) {
+            const saved = openTabsRef.current.find(t => t.relative_path === path);
+            if (saved) diskBase.current.set(path, saved.content);
+            askedDisk.current.delete(path);
+        }
         setOpenTabs(prev => prev.map(t =>
             t.relative_path === path ? { ...t, isDirty: value } : t
         ));
     };
 
+    const diskBase = useRef(new Map<string, string>());
+    const askedDisk = useRef(new Map<string, string>());
+    const asking = useRef(new Set<string>());
+
+    useEffect(() => {
+        diskBase.current.clear();
+        askedDisk.current.clear();
+    }, [projectName]);
+
+    const resolveConflict = async (tab: OpenTab, diskContent: string) => {
+        asking.current.add(tab.relative_path);
+        try {
+            const choice = await chooseAction(
+                `"${tab.name}" ha cambiado en el disco y tú tienes cambios sin guardar en el editor.`,
+                ["Conservar mis cambios", "Cargar la versión del disco", "Decidir luego"],
+                { title: "Conflicto con el disco", detail: "Si conservas tus cambios, el próximo guardado sobrescribirá la versión del disco." }
+            );
+
+            const current = openTabsRef.current.find(t => t.relative_path === tab.relative_path);
+            if (!current) return;
+
+            askedDisk.current.set(tab.relative_path, diskContent);
+            if (choice === 0) {
+                diskBase.current.set(tab.relative_path, diskContent);
+            } else if (choice === 1) {
+                diskBase.current.set(tab.relative_path, diskContent);
+                setOpenTabs(prev => prev.map(t =>
+                    t.relative_path === tab.relative_path ? { ...t, content: diskContent, isDirty: false } : t
+                ));
+            }
+        } finally {
+            asking.current.delete(tab.relative_path);
+        }
+    };
+
+    const guardSave = async (path: string, content: string): Promise<"save" | "cancel" | "reloaded"> => {
+        if (asking.current.has(path)) return "cancel";
+
+        let diskContent: string | undefined;
+        try {
+            diskContent = await invoke<string>("read_file_content", { projectName, filePath: path });
+        } catch {
+            return "save";
+        }
+        if (decideSaveGuard({ saveContent: content, baseContent: diskBase.current.get(path), diskContent }) === "save") return "save";
+
+        asking.current.add(path);
+        try {
+            const name = openTabsRef.current.find(t => t.relative_path === path)?.name ?? path;
+            const choice = await chooseAction(
+                `"${name}" ha cambiado en el disco desde que lo abriste o lo revisaste.`,
+                ["Sobrescribir el disco", "Cargar la versión del disco", "Cancelar"],
+                { title: "Conflicto con el disco", detail: "Si sobrescribes, se perderá la versión que hay en el disco." }
+            );
+            if (choice === 0) return "save";
+            if (choice === 1) {
+                diskBase.current.set(path, diskContent);
+                askedDisk.current.set(path, diskContent);
+                setOpenTabs(prev => prev.map(t => t.relative_path === path ? { ...t, content: diskContent, isDirty: false } : t));
+                return "reloaded";
+            }
+            return "cancel";
+        } finally {
+            asking.current.delete(path);
+        }
+    };
+
     const reloadCleanTabs = async () => {
-        const clean = openTabsRef.current.filter(t => t.kind === "file" && !t.isDirty);
-        const fresh = await Promise.all(clean.map(async t => {
+        const files = openTabsRef.current.filter(t => t.kind === "file");
+        const fresh = await Promise.all(files.map(async t => {
             try {
                 return [t.relative_path, await invoke<string>("read_file_content", { projectName, filePath: t.relative_path })] as const;
             } catch {
@@ -204,10 +270,31 @@ export const useOpenTabs = (projectName: string) => {
             }
         }));
         const contents = new Map(fresh.filter((f): f is readonly [string, string] => f !== null));
+
+        const conflicts: [OpenTab, string][] = [];
+        for (const tab of openTabsRef.current) {
+            const disk = contents.get(tab.relative_path);
+            if (disk === undefined || asking.current.has(tab.relative_path)) continue;
+
+            const action = decideDiskChange({
+                isDirty: tab.isDirty,
+                tabContent: tab.content,
+                baseContent: diskBase.current.get(tab.relative_path),
+                diskContent: disk,
+                askedContent: askedDisk.current.get(tab.relative_path),
+            });
+            if (action === "conflict") conflicts.push([tab, disk]);
+            else if (action === "ignore" && tab.isDirty && disk === tab.content) diskBase.current.set(tab.relative_path, disk);
+            if (action === "reload") diskBase.current.set(tab.relative_path, disk);
+            if (!tab.isDirty) diskBase.current.set(tab.relative_path, disk);
+        }
+
         setOpenTabs(prev => prev.map(t => {
             const content = contents.get(t.relative_path);
             return content !== undefined && !t.isDirty && content !== t.content ? { ...t, content } : t;
         }));
+
+        for (const [tab, disk] of conflicts) await resolveConflict(tab, disk);
     };
 
     const activeTab = openTabs.find(t => t.relative_path === activeTabPath) ?? null;
@@ -229,6 +316,7 @@ export const useOpenTabs = (projectName: string) => {
         activateTabAt,
         updateTabContent,
         setTabDirty,
+        guardSave,
         reloadCleanTabs,
     };
 };

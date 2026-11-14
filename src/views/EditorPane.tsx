@@ -16,6 +16,7 @@ interface EditorPaneProps {
     splitOpen?: boolean;
     onContentChange: (path: string, value: string) => void;
     onDirtyChange: (path: string, value: boolean) => void;
+    beforeSave?: (path: string, content: string) => Promise<"save" | "cancel" | "reloaded">;
     canvasRef?: Ref<CodeCanvasHandle>;
     onViewportChange?: (viewport: MinimapViewport) => void;
     goto?: GotoTarget | null;
@@ -36,6 +37,7 @@ export const EditorPane = ({
     splitOpen,
     onContentChange,
     onDirtyChange,
+    beforeSave,
     canvasRef,
     onViewportChange,
     goto,
@@ -71,6 +73,7 @@ export const EditorPane = ({
                         content={activeTab.content}
                         setIsDirty={(value) => onDirtyChange(activeTab.relative_path, value)}
                         onChange={(value) => onContentChange(activeTab.relative_path, value)}
+                        beforeSave={beforeSave}
                         onViewportChange={onViewportChange}
                         goto={goto}
                         requireFocus={requireFocus}

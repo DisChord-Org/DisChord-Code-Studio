@@ -120,6 +120,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                                 splitOpen={isSplit}
                                 onContentChange={tabs.updateTabContent}
                                 onDirtyChange={tabs.setTabDirty}
+                                beforeSave={tabs.guardSave}
                                 canvasRef={codeCanvasRef}
                                 onViewportChange={setMinimapViewport}
                                 goto={tabs.gotoTarget}
@@ -156,6 +157,7 @@ export const Editor = ({ projectName, onBack, onSwitchProject }: EditorInterface
                                     onOpenInSplit={movePane}
                                     onContentChange={tabs.updateTabContent}
                                     onDirtyChange={tabs.setTabDirty}
+                                    beforeSave={tabs.guardSave}
                                     requireFocus
                                 />
                             </div>

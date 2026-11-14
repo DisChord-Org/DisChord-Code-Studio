@@ -1,6 +1,10 @@
 export interface DialogRequest {
     id: number;
-    kind: "confirm" | "error";
+    kind: "confirm" | "error" | "choice";
+    /** Only for kind "choice": the buttons, in order. */
+    choices?: string[];
+    /** Only for kind "choice": the index picked, or null when dismissed. */
+    resolveChoice?: (index: number | null) => void;
     message: string;
     title?: string;
     /** Secondary line, e.g. a warning that the action cannot be undone. */
@@ -15,10 +19,16 @@ const listeners = new Set<() => void>();
 
 const notify = () => listeners.forEach((listener) => listener());
 
-const enqueue = (request: Omit<DialogRequest, "id" | "resolve">) =>
+const enqueue = (request: Omit<DialogRequest, "id" | "resolve" | "resolveChoice">, resolveChoice?: DialogRequest["resolveChoice"]) =>
     new Promise<boolean>((resolve) => {
-        queue = [...queue, { ...request, id: nextId++, resolve }];
+        queue = [...queue, { ...request, id: nextId++, resolve, resolveChoice }];
         notify();
+    });
+
+/** Asks to pick one of several actions. Resolves with the index picked, or null if the dialog is dismissed. */
+export const chooseAction = (message: string, choices: string[], options: { title?: string; detail?: string } = {}) =>
+    new Promise<number | null>((resolve) => {
+        void enqueue({ kind: "choice", message, choices, confirmLabel: "", ...options }, resolve);
     });
 
 /** Asks a yes/no question with the app's own dialog. Never use `window.confirm`: the dialog plugin makes it async. */
@@ -36,6 +46,16 @@ export const answerDialog = (id: number, accepted: boolean) => {
 
     queue = queue.filter((r) => r.id !== id);
     request.resolve(accepted);
+    notify();
+};
+
+export const answerChoice = (id: number, index: number | null) => {
+    const request = queue.find((r) => r.id === id);
+    if (!request) return;
+
+    queue = queue.filter((r) => r.id !== id);
+    request.resolveChoice?.(index);
+    request.resolve(index !== null);
     notify();
 };
 

@@ -37,6 +37,7 @@ interface CodeCanvasProps {
     setIsDirty: (value: boolean) => void;
     content: string;
     onChange: (value: string) => void;
+    beforeSave?: (path: string, content: string) => Promise<"save" | "cancel" | "reloaded">;
     onViewportChange?: (viewport: MinimapViewport) => void;
     goto?: GotoTarget | null;
     requireFocus?: boolean;
@@ -48,7 +49,7 @@ const changeDebounceMs = 250;
 const fromDisk = Annotation.define<boolean>();
 
 export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
-    projectName, relative_path, fileName, content, setIsDirty, onChange, onViewportChange, goto, requireFocus = false
+    projectName, relative_path, fileName, content, setIsDirty, onChange, beforeSave, onViewportChange, goto, requireFocus = false
 }, ref) => {
     const editorRef = useRef<HTMLDivElement>(null);
     const viewRef = useRef<EditorView | null>(null);
@@ -90,6 +91,9 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
     onChangeRef.current = onChange;
     const setIsDirtyRef = useRef(setIsDirty);
     setIsDirtyRef.current = setIsDirty;
+
+    const beforeSaveRef = useRef(beforeSave);
+    beforeSaveRef.current = beforeSave;
 
     const changeTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
     const changePending = useRef(false);
@@ -153,14 +157,18 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
             view.dispatch({ changes: { from: doc.length, insert: "\n" } });
         }
 
+        const saved = view.state.doc.toString();
         try {
-            await invoke("save_file_content", { 
+            if (beforeSaveRef.current && (await beforeSaveRef.current(relative_path, saved)) !== "save") return;
+            await invoke("save_file_content", {
                 projectName,
                 filePath: relative_path,
-                content: view.state.doc.toString()
+                content: saved
             });
-            dirtyMarked.current = false;
-            setIsDirty(false);
+            if (viewRef.current?.state.doc.toString() === saved) {
+                dirtyMarked.current = false;
+                setIsDirty(false);
+            }
         } catch (error) {
             console.error(error);
             notify("error", `No se pudo guardar "${fileName}".`, [String(error)]);
@@ -308,6 +316,9 @@ export const CodeCanvas = forwardRef<CodeCanvasHandle, CodeCanvasProps>(({
         const view = viewRef.current;
         if (!view || content === lastEmitted.current || view.state.doc.toString() === content) return;
 
+        dirtyMarked.current = false;
+        changePending.current = false;
+        clearTimeout(changeTimer.current);
         const caret = Math.min(view.state.selection.main.head, content.length);
         view.dispatch({
             changes: { from: 0, to: view.state.doc.length, insert: content },
