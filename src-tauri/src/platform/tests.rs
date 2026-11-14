@@ -64,3 +64,23 @@ fn migrate_skips_when_new_exists_or_old_is_a_file() {
     assert!(old.is_dir());
     let _ = fs::remove_dir_all(&root);
 }
+
+const RELEASE: &str = r#"{"assets":[
+  {"name":"chord-x86_64-pc-windows-msvc.exe","digest":"sha256:099279EB5D59E3CA712944B42A6A824AC80A6CDAEE15EF14CFB1454A43086E42"},
+  {"name":"chord-x86_64-unknown-linux-gnu","digest":"md5:abc"},
+  {"name":"chord-aarch64-apple-darwin"}
+]}"#;
+
+#[test]
+fn reads_github_asset_digest() {
+    let expected = "099279eb5d59e3ca712944b42a6a824ac80a6cdaee15ef14cfb1454a43086e42";
+    assert_eq!(digest_from_release(RELEASE, "chord-x86_64-pc-windows-msvc.exe").as_deref(), Some(expected));
+}
+
+#[test]
+fn ignores_missing_or_malformed_digests() {
+    assert_eq!(digest_from_release(RELEASE, "chord-x86_64-unknown-linux-gnu"), None);
+    assert_eq!(digest_from_release(RELEASE, "chord-aarch64-apple-darwin"), None);
+    assert_eq!(digest_from_release(RELEASE, "no-such-asset"), None);
+    assert_eq!(digest_from_release("not json", "x"), None);
+}

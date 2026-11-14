@@ -390,11 +390,36 @@ pub fn find_checksum(text: &str, filename: &str) -> Option<String> {
     })
 }
 
+/// Blocking HTTP client for downloads: bounded connect and total time so a stalled server cannot hang an update.
 pub fn download_client() -> reqwest::Result<reqwest::blocking::Client> {
     reqwest::blocking::Client::builder()
         .connect_timeout(std::time::Duration::from_secs(15))
         .timeout(std::time::Duration::from_secs(600))
         .build()
+}
+
+pub fn digest_from_release(json: &str, filename: &str) -> Option<String> {
+    let release: serde_json::Value = serde_json::from_str(json).ok()?;
+    release.get("assets")?.as_array()?.iter().find_map(|asset| {
+        if asset.get("name")?.as_str()? != filename {
+            return None;
+        }
+        let hash = asset.get("digest")?.as_str()?.strip_prefix("sha256:")?;
+        is_sha256_hex(hash).then(|| hash.to_ascii_lowercase())
+    })
+}
+
+fn fetch_github_digest(repo: &str, filename: &str) -> Option<String> {
+    let url = format!("https://api.github.com/repos/DisChord-Org/{}/releases/latest", repo);
+    let response = download_client().ok()?
+        .get(url)
+        .header(reqwest::header::USER_AGENT, "dischord-code-studio")
+        .header(reqwest::header::ACCEPT, "application/vnd.github+json")
+        .send().ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    digest_from_release(&response.text().ok()?, filename)
 }
 
 fn fetch_text(url: &str) -> Option<String> {
@@ -434,13 +459,15 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
         return Err(e.into());
     }
 
-    // The CLI does not publish checksums yet: when none exist next to the binary we only
-    // warn. As soon as one is published it is mandatory and a mismatch aborts the install.
+    // Expected hash: a checksum published next to the binary, or else the digest GitHub computes
+    // for the release asset. When neither is available we only warn; once one is, it is
+    // mandatory and a mismatch aborts the install.
     let filename = format!("{}-{}{}", name, target, ext);
     let base = url.rsplit_once('/').map(|(b, _)| b).unwrap_or(&url).to_string();
     let expected = [format!("{}.sha256", url), format!("{}/SHA256SUMS", base), format!("{}/checksums.txt", base)]
         .iter()
-        .find_map(|u| fetch_text(u).and_then(|t| find_checksum(&t, &filename)));
+        .find_map(|u| fetch_text(u).and_then(|t| find_checksum(&t, &filename)))
+        .or_else(|| fetch_github_digest(repo, &filename));
     match expected {
         Some(expected) => {
             let actual = sha256_file(&tmp_dest).inspect_err(|_| {
