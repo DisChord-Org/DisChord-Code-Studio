@@ -110,6 +110,9 @@ pub fn run_full_update_sequence(app_handle: tauri::AppHandle) -> Result<(), Stri
 
         if let Err(e) = window::open_update_window(&app_handle) {
             error!("No se pudo abrir la ventana de actualización: {}", e);
+        } else {
+            // start the checks once the window can show them (bounded, so a window that never loads cannot stall updates).
+            window::wait_update_window_ready(std::time::Duration::from_secs(10));
         }
 
         // 1. Editor

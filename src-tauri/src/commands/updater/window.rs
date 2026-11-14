@@ -1,7 +1,28 @@
+use std::sync::{Condvar, Mutex};
+use std::time::Duration;
+
 use tauri::{Manager, WebviewUrl, WebviewWindowBuilder};
 use log::{info, error};
 
 use crate::commands::window_size::compute_home_window_size;
+
+/// True once the update window's frontend has mounted and can show live progress.
+static WINDOW_READY: (Mutex<bool>, Condvar) = (Mutex::new(false), Condvar::new());
+
+fn set_window_ready(ready: bool) {
+    if let Ok(mut flag) = WINDOW_READY.0.lock() {
+        *flag = ready;
+        WINDOW_READY.1.notify_all();
+    }
+}
+
+/// Blocks until the update window is ready to render, or `timeout` passes. The checks finish in
+/// a couple of seconds and the window's webview takes about as long to load, so without this
+/// the window would open already showing the final result instead of the progress.
+pub fn wait_update_window_ready(timeout: Duration) {
+    let Ok(flag) = WINDOW_READY.0.lock() else { return };
+    let _ = WINDOW_READY.1.wait_timeout_while(flag, timeout, |ready| !*ready);
+}
 
 fn force_focus(window: &tauri::WebviewWindow) {
     let _ = window.show();
@@ -23,6 +44,7 @@ pub fn open_update_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
     }
 
     info!("Abriendo ventana de actualización");
+    set_window_ready(false);
 
     let app_for_event = app_handle.clone();
 
@@ -51,6 +73,7 @@ pub fn open_update_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
     window.on_window_event(move |event| {
         if let tauri::WindowEvent::Destroyed = event {
             info!("Ventana de actualización cerrada, restaurando la principal");
+            set_window_ready(false);
             if let Some(main) = app_for_event.get_webview_window("main") {
                 let _ = main.show();
                 let _ = main.set_focus();
@@ -63,6 +86,7 @@ pub fn open_update_window(app_handle: &tauri::AppHandle) -> Result<(), String> {
 
 #[tauri::command]
 pub fn mark_update_window_ready(app_handle: tauri::AppHandle) {
+    set_window_ready(true);
     if let Some(main) = app_handle.get_webview_window("main") {
         let _ = main.hide();
     }
