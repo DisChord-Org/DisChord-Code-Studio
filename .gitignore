@@ -7,3 +7,4 @@ src-tauri/binaries
 src-tauri/gen/schemas
 # Local notes
 TODO.md
+devlog.md
