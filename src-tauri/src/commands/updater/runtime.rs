@@ -200,32 +200,29 @@ pub fn ensure_runtime(app_handle: tauri::AppHandle) {
         }
     }
 
-    super::emit_progress(&app_handle, "node", if node_ready { "up_to_date" } else { "checking" }, None, None, None, None, None);
+    super::emit_progress(&app_handle, super::Progress::new("node", if node_ready { "up_to_date" } else { "checking" }));
 
     if !node_ready {
-        super::emit_progress(&app_handle, "node", "installing", None, None, None, None,
-            Some("Descargando Node.js...".into()));
+        super::emit_progress(&app_handle, super::Progress::new("node", "installing").message("Descargando Node.js..."));
 
         if let Err(e) = install_node(&app_handle) {
-            super::emit_progress(&app_handle, "node", "error", None, None, None, None, Some(e.clone()));
-            super::emit_progress(&app_handle, "pnpm", "error", None, None, None, None,
-                Some("No se pudo instalar porque Node.js falló".into()));
+            super::emit_progress(&app_handle, super::Progress::new("node", "error").message(e.clone()));
+            super::emit_progress(&app_handle, super::Progress::new("pnpm", "error").message("No se pudo instalar porque Node.js falló"));
             return;
         }
 
-        super::emit_progress(&app_handle, "node", "done", None, None, None, None, None);
+        super::emit_progress(&app_handle, super::Progress::new("node", "done"));
     }
 
     let pnpm_ready = platform::is_pnpm_installed(&app_handle);
-    super::emit_progress(&app_handle, "pnpm", if pnpm_ready { "up_to_date" } else { "checking" }, None, None, None, None, None);
+    super::emit_progress(&app_handle, super::Progress::new("pnpm", if pnpm_ready { "up_to_date" } else { "checking" }));
 
     if !pnpm_ready {
-        super::emit_progress(&app_handle, "pnpm", "installing", None, None, None, None,
-            Some("Instalando pnpm...".into()));
+        super::emit_progress(&app_handle, super::Progress::new("pnpm", "installing").message("Instalando pnpm..."));
 
         match install_pnpm(&app_handle) {
-            Ok(()) => super::emit_progress(&app_handle, "pnpm", "done", None, None, None, None, None),
-            Err(e) => super::emit_progress(&app_handle, "pnpm", "error", None, None, None, None, Some(e)),
+            Ok(()) => super::emit_progress(&app_handle, super::Progress::new("pnpm", "done")),
+            Err(e) => super::emit_progress(&app_handle, super::Progress::new("pnpm", "error").message(e)),
         }
     }
 }

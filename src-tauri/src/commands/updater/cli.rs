@@ -1,7 +1,6 @@
 use std::fs;
 use std::path::PathBuf;
 use std::process::Stdio;
-use std::io::{BufRead, BufReader};
 
 use serde::Deserialize;
 use log::{info, error, warn};
@@ -64,7 +63,7 @@ fn install_cli_binary(app_handle: &tauri::AppHandle) -> Result<PathBuf, String> 
 }
 
 fn run_component_update(app_handle: &tauri::AppHandle, component: &str) -> bool {
-    super::emit_progress(app_handle, component, "checking", None, None, None, None, None);
+    super::emit_progress(app_handle, super::Progress::new(component, "checking"));
 
     let binary: std::ffi::OsString = platform::chord_binary_path(app_handle)
         .filter(|p| p.exists())
@@ -80,42 +79,25 @@ fn run_component_update(app_handle: &tauri::AppHandle, component: &str) -> bool 
         Ok(child) => child,
         Err(e) => {
             error!("No se pudo ejecutar 'chord update {}': {}", component, e);
-            super::emit_progress(app_handle, component, "error", None, None, None, None, Some(e.to_string()));
+            super::emit_progress(app_handle, super::Progress::new(component, "error").message(e.to_string()));
             return false;
         }
     };
 
     let mut child = child;
     let stdout = child.stdout.take().expect("Fallo al capturar stdout");
-    let reader = BufReader::new(stdout);
-
-    for line in reader.lines() {
-        let Ok(l) = line else { continue };
-        let trimmed = l.trim();
-        if trimmed.is_empty() { continue; }
-
-        match serde_json::from_str::<CliProgressLine>(trimmed) {
-            Ok(evt) if evt.tool == component => {
-                super::emit_progress(
-                    app_handle,
-                    &evt.tool,
-                    &evt.phase,
-                    evt.percent,
-                    evt.current_bytes,
-                    evt.total_bytes,
-                    evt.version,
-                    evt.message,
-                );
-            },
-            Ok(_) => {},
-            Err(_) => {
-                let clean_line = trimmed.replace("────────", "").trim().to_string();
-                if !clean_line.is_empty() {
-                    super::emit_progress(app_handle, component, "downloading", None, None, None, None, Some(clean_line));
-                }
+    crate::proc::read_ndjson::<CliProgressLine>(stdout, |trimmed, parsed| match parsed {
+        Ok(evt) if evt.tool == component => {
+            super::emit_progress(app_handle, super::Progress::new(&evt.tool, &evt.phase).percent(evt.percent).bytes(evt.current_bytes, evt.total_bytes).version(evt.version).message_opt(evt.message));
+        },
+        Ok(_) => {},
+        Err(_) => {
+            let clean_line = trimmed.replace("────────", "").trim().to_string();
+            if !clean_line.is_empty() {
+                super::emit_progress(app_handle, super::Progress::new(component, "downloading").message(clean_line));
             }
         }
-    }
+    });
 
     match child.wait() {
         Ok(s) if s.success() => {
@@ -124,8 +106,7 @@ fn run_component_update(app_handle: &tauri::AppHandle, component: &str) -> bool 
         },
         _ => {
             warn!("'chord update {} --json' terminó con un código no exitoso", component);
-            super::emit_progress(app_handle, component, "error", None, None, None, None,
-                Some(format!("'chord update {}' falló", component)));
+            super::emit_progress(app_handle, super::Progress::new(component, "error").message(format!("'chord update {}' falló", component)));
             false
         }
     }
@@ -136,18 +117,17 @@ pub fn ensure_cli_updated(app_handle: &tauri::AppHandle) -> bool {
         return run_component_update(app_handle, "cli");
     }
 
-    super::emit_progress(app_handle, "cli", "installing", None, None, None, None,
-        Some("La CLI no está instalada. Instalándola ahora...".into()));
+    super::emit_progress(app_handle, super::Progress::new("cli", "installing").message("La CLI no está instalada. Instalándola ahora..."));
 
     match install_cli_binary(app_handle) {
         Ok(_) => {
             info!("CLI instalada correctamente");
-            super::emit_progress(app_handle, "cli", "done", None, None, None, None, None);
+            super::emit_progress(app_handle, super::Progress::new("cli", "done"));
             true
         },
         Err(e) => {
             error!("No se pudo instalar la CLI: {}", e);
-            super::emit_progress(app_handle, "cli", "error", None, None, None, None, Some(e));
+            super::emit_progress(app_handle, super::Progress::new("cli", "error").message(e));
             false
         }
     }
