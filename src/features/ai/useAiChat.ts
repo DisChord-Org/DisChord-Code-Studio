@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { listen } from "@tauri-apps/api/event";
+import { parseAiEvent, type AiServerEvent } from "./events";
 import { itemsOfSession, type StoredMessage } from "./sessionItems";
 import type { AiAccount, AiAuth, AiContextUsage, AiItem, AiSessionSummary, AiSessionUsage, AiUser, ToolStatus } from "./types";
 
@@ -15,16 +16,8 @@ const errorTexts: Record<string, string> = {
     too_many_connections: "Hay demasiados dispositivos conectados con tu cuenta.",
 };
 
-interface ServerEvent {
-    type: string;
-    [key: string]: unknown;
-}
-
 type Assistant = Extract<AiItem, { kind: "assistant" }>;
 type Tool = Extract<AiItem, { kind: "tool" }>;
-
-const text = (value: unknown) => (typeof value === "string" ? value : "");
-const optionalText = (value: unknown) => (typeof value === "string" ? value : undefined);
 
 const withoutApproval = (items: AiItem[], commandId: string) => items.filter((item) => !(item.kind === "approval" && item.commandId === commandId));
 
@@ -111,37 +104,37 @@ export const useAiChat = (projectName: string) => {
         }
     }, []);
 
-    const onEvent = useCallback((event: ServerEvent) => {
+    const onEvent = useCallback((event: AiServerEvent) => {
         if (event.type === "chat:token") {
-            const messageId = text(event.messageId);
-            pendingText.current.set(messageId, (pendingText.current.get(messageId) ?? "") + text(event.token));
+            const messageId = event.messageId;
+            pendingText.current.set(messageId, (pendingText.current.get(messageId) ?? "") + event.token);
             if (!flushFrame.current) flushFrame.current = requestAnimationFrame(flushText);
             return;
         }
         flushText();
 
-        if (event.context && typeof event.context === "object") setContext(event.context as AiContextUsage);
-        if (event.sessionUsage && typeof event.sessionUsage === "object") setUsage(event.sessionUsage as AiSessionUsage);
+        if (event.context) setContext(event.context);
+        if (event.sessionUsage) setUsage(event.sessionUsage);
 
         switch (event.type) {
             case "ai:auth": {
-                const status = text(event.status);
+                const status = event.status;
                 if (status === "complete") {
                     setAuth("signed_in");
                     refreshAccount(true);
-                    setUser((event.user as AiUser) ?? null);
+                    setUser(event.user);
                 } else if (status === "pending") setAuth("pending");
                 else {
                     setAuth("signed_out");
                     setUser(null);
                     setAccount(null);
-                    if (status === "expired") notice("warning", text(event.message) || "No se completó el inicio de sesión.");
-                    if (status === "error") notice("error", text(event.message) || "No se pudo iniciar sesión.");
+                    if (status === "expired") notice("warning", event.message || "No se completó el inicio de sesión.");
+                    if (status === "error") notice("error", event.message || "No se pudo iniciar sesión.");
                 }
                 break;
             }
             case "plan:changed":
-                setAccount((prev) => ({ ...prev, plan: text(event.plan) }));
+                setAccount((prev) => ({ ...prev, plan: event.plan }));
                 refreshAccount(true);
                 break;
             case "compact:start":
@@ -156,16 +149,16 @@ export const useAiChat = (projectName: string) => {
                 notice("error", "No se pudo compactar la conversación.");
                 break;
             case "chat:start":
-                sessionId.current = text(event.sessionId) || sessionId.current;
-                updateAssistant(text(event.messageId), () => ({}));
+                sessionId.current = event.sessionId || sessionId.current;
+                updateAssistant(event.messageId, () => ({}));
                 break;
             case "chat:done": {
-                const toolOnly = text(event.commandId) !== "";
-                updateAssistant(text(event.messageId), (current) => ({
-                    content: toolOnly && !current ? "" : text(event.content) || current,
+                const toolOnly = event.commandId !== "";
+                updateAssistant(event.messageId, (current) => ({
+                    content: toolOnly && !current ? "" : event.content || current,
                     streaming: false,
-                    cancelled: event.cancelled === true,
-                    truncated: event.truncated === true,
+                    cancelled: event.cancelled,
+                    truncated: event.truncated,
                 }));
 
                 if (!toolOnly || event.cancelled) {
@@ -175,11 +168,11 @@ export const useAiChat = (projectName: string) => {
                 break;
             }
             case "chat:limit":
-                notice("warning", text(event.message) || "Se alcanzó un límite de la conversación.");
+                notice("warning", event.message || "Se alcanzó un límite de la conversación.");
                 setThinking(false);
                 break;
             case "chat:error": {
-                const code = text(event.error);
+                const code = event.error;
                 setCompacting(false);
                 if (code === "session_not_found") sessionId.current = null;
                 notice("error", errorTexts[code] ?? `Amaya no pudo responder (${code || "error"}).`);
@@ -190,24 +183,24 @@ export const useAiChat = (projectName: string) => {
                 setThinking(false);
                 break;
             case "error":
-                notice("error", errorTexts[text(event.error)] ?? `Error del servidor: ${text(event.error)}.`);
+                notice("error", errorTexts[event.error] ?? `Error del servidor: ${event.error}.`);
                 setThinking(false);
                 break;
             case "ai:approval":
                 setItems((prev) => [...prev, {
                     kind: "approval",
                     id: nextId.current++,
-                    commandId: text(event.commandId),
-                    tool: text(event.tool),
-                    summary: text(event.summary),
-                    detail: optionalText(event.detail),
+                    commandId: event.commandId,
+                    tool: event.tool,
+                    summary: event.summary,
+                    detail: event.detail,
                 }]);
                 break;
             case "ai:command":
-                setTool(text(event.commandId), text(event.status) as ToolStatus, text(event.summary), optionalText(event.output));
+                setTool(event.commandId, event.status, event.summary, event.output);
                 break;
             case "command:expired":
-                setItems((prev) => withoutApproval(prev, text(event.commandId)));
+                setItems((prev) => withoutApproval(prev, event.commandId));
                 break;
             case "ai:closed":
                 setThinking((current) => {
@@ -219,7 +212,10 @@ export const useAiChat = (projectName: string) => {
     }, [flushText, notice, refreshAccount, setTool, updateAssistant]);
 
     useEffect(() => {
-        const unlisten = listen<ServerEvent>("ai-event", (e) => onEvent(e.payload));
+        const unlisten = listen<unknown>("ai-event", (e) => {
+            const event = parseAiEvent(e.payload);
+            if (event) onEvent(event);
+        });
         invoke<{ signedIn: boolean; user: AiUser | null }>("ai_status")
             .then((status) => {
                 setAuth(status.signedIn ? "signed_in" : "signed_out");
