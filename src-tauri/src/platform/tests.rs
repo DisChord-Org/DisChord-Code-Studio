@@ -93,3 +93,22 @@ fn picks_pnpm_asset_per_platform() {
     assert!(pnpm_asset_name("freebsd", "x86_64").is_err());
     assert!(pnpm_asset_name("linux", "riscv64").is_err());
 }
+
+#[test]
+fn parses_server_checksum_only_for_the_expected_file() {
+    let hex = "ab".repeat(32);
+    let body = format!(r#"{{"file":"chord-x86_64-pc-windows-msvc.exe","tag":"v1.7.7","sha256":"{}"}}"#, hex.to_uppercase());
+    let parsed = parse_server_checksum(&body, "chord-x86_64-pc-windows-msvc.exe").unwrap();
+    assert_eq!(parsed, ServerChecksum { tag: "v1.7.7".into(), sha256: hex });
+    assert_eq!(parse_server_checksum(&body, "chord-aarch64-apple-darwin"), None);
+}
+
+#[test]
+fn rejects_malformed_server_checksums() {
+    let hex = "ab".repeat(32);
+    let bad_tag = format!(r#"{{"file":"f","tag":"v1/../x","sha256":"{}"}}"#, hex);
+    assert_eq!(parse_server_checksum(&bad_tag, "f"), None);
+    assert_eq!(parse_server_checksum(r#"{"file":"f","tag":"v1","sha256":"zz"}"#, "f"), None);
+    assert_eq!(parse_server_checksum(r#"{"file":"f","sha256":"x"}"#, "f"), None);
+    assert_eq!(parse_server_checksum("not json", "f"), None);
+}

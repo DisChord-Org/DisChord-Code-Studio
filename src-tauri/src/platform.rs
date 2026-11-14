@@ -432,6 +432,35 @@ pub fn fetch_github_digest(repo_path: &str, release: &str, filename: &str) -> Op
     digest_from_release(&response.text().ok()?, filename)
 }
 
+const SERVER_URL: &str = "https://api.theindiebrand.es";
+
+#[derive(Debug, PartialEq)]
+pub struct ServerChecksum {
+    pub tag: String,
+    pub sha256: String,
+}
+
+pub fn parse_server_checksum(json: &str, filename: &str) -> Option<ServerChecksum> {
+    let body: serde_json::Value = serde_json::from_str(json).ok()?;
+    if body.get("file")?.as_str()? != filename {
+        return None;
+    }
+    let tag = body.get("tag")?.as_str()?;
+    let sha256 = body.get("sha256")?.as_str()?;
+    let tag_ok = !tag.is_empty() && tag.chars().all(|c| c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_'));
+    (tag_ok && is_sha256_hex(sha256)).then(|| ServerChecksum { tag: tag.to_string(), sha256: sha256.to_ascii_lowercase() })
+}
+
+fn fetch_server_checksum(component: &str, filename: &str) -> Option<ServerChecksum> {
+    let url = format!("{}/download/{}/latest/{}/checksum", SERVER_URL, component, std::env::consts::OS);
+    let client = reqwest::blocking::Client::builder().timeout(std::time::Duration::from_secs(10)).build().ok()?;
+    let response = client.get(url).send().ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    parse_server_checksum(&response.text().ok()?, filename)
+}
+
 fn fetch_text(url: &str) -> Option<String> {
     let response = download_client().ok()?.get(url).send().ok()?;
     if !response.status().is_success() {
@@ -445,10 +474,15 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
     let target = get_target_triple()?;
     let ext = if cfg!(windows) { ".exe" } else { "" };
 
-    let url = format!(
-        "https://github.com/DisChord-Org/{}/releases/latest/download/{}-{}{}",
-        repo, name, target, ext
-    );
+    let filename = format!("{}-{}{}", name, target, ext);
+    let component = if name == "chord" { "cli" } else { "compiler" };
+
+    let from_server = fetch_server_checksum(component, &filename);
+    let release_path = match &from_server {
+        Some(c) => format!("download/{}", c.tag),
+        None => "latest/download".to_string(),
+    };
+    let url = format!("https://github.com/DisChord-Org/{}/releases/{}/{}", repo, release_path, filename);
 
     info!("Descargando herramienta: {} desde {}", name, url);
 
@@ -469,15 +503,15 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
         return Err(e.into());
     }
 
-    // Expected hash: a checksum published next to the binary, or else the digest GitHub computes
-    // for the release asset. When neither is available we only warn; once one is, it is
-    // mandatory and a mismatch aborts the install.
-    let filename = format!("{}-{}{}", name, target, ext);
     let base = url.rsplit_once('/').map(|(b, _)| b).unwrap_or(&url).to_string();
-    let expected = [format!("{}.sha256", url), format!("{}/SHA256SUMS", base), format!("{}/checksums.txt", base)]
-        .iter()
-        .find_map(|u| fetch_text(u).and_then(|t| find_checksum(&t, &filename)))
-        .or_else(|| fetch_github_digest(&format!("DisChord-Org/{}", repo), "latest", &filename));
+    let github_release = from_server.as_ref().map(|c| format!("tags/{}", c.tag)).unwrap_or_else(|| "latest".to_string());
+    let expected = from_server.as_ref().map(|c| c.sha256.clone())
+        .or_else(|| {
+            [format!("{}.sha256", url), format!("{}/SHA256SUMS", base), format!("{}/checksums.txt", base)]
+                .iter()
+                .find_map(|u| fetch_text(u).and_then(|t| find_checksum(&t, &filename)))
+        })
+        .or_else(|| fetch_github_digest(&format!("DisChord-Org/{}", repo), &github_release, &filename));
     match expected {
         Some(expected) => {
             let actual = sha256_file(&tmp_dest).inspect_err(|_| {
