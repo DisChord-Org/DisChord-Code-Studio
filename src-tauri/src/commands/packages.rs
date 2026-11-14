@@ -1,6 +1,5 @@
 use std::collections::HashMap;
 use std::fs;
-use std::io::{BufRead, BufReader};
 use std::path::Path;
 use std::process::Stdio;
 
@@ -345,20 +344,12 @@ fn run_pkg_json_op(
 
     let mut child = command.spawn().log_err(context)?;
     let stdout = child.stdout.take().expect("Fallo al capturar stdout de chord pkg");
-    let reader = BufReader::new(stdout);
-
     let mut events: Vec<PkgLine> = Vec::new();
 
-    for line in reader.lines() {
-        let Ok(line) = line else { continue };
-        let trimmed = line.trim();
-        if trimmed.is_empty() {
-            continue;
-        }
-
-        let Ok(evt) = serde_json::from_str::<PkgLine>(trimmed) else {
+    crate::proc::read_ndjson::<PkgLine>(stdout, |trimmed, parsed| {
+        let Ok(evt) = parsed else {
             warn!("{}: línea NDJSON no reconocida: {}", context, trimmed);
-            continue;
+            return;
         };
 
         let _ = app_handle.emit(
@@ -377,7 +368,7 @@ fn run_pkg_json_op(
         );
 
         events.push(evt);
-    }
+    });
 
     let exit_ok = matches!(child.wait(), Ok(status) if status.success());
     let outcome = summarize(op, root, &events, exit_ok);

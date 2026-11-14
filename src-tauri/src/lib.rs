@@ -4,6 +4,7 @@ mod paths;
 mod platform;
 mod log_err;
 mod output;
+mod proc;
 
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};

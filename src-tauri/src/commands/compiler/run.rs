@@ -1,11 +1,10 @@
-use std::io::{Read, Write};
 use std::path::PathBuf;
 use std::process::{Command, Stdio};
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use crate::log_err::LogErr;
 use crate::paths::resolve_in_project;
+use crate::proc::wait_with_timeout;
 use crate::platform::{build_path_env, compiler_binary_path, silent_command, strip_npm_env};
 
 pub(super) const CHECK_TIMEOUT: Duration = Duration::from_secs(15);
@@ -35,46 +34,17 @@ pub(super) fn run_process(mut command: Command, stdin: Option<String>, timeout: 
         .stdout(Stdio::piped())
         .stderr(Stdio::piped());
 
-    let mut child = command.spawn().log_err("No se pudo ejecutar el compilador")?;
-
-    if let (Some(text), Some(mut pipe)) = (stdin, child.stdin.take()) {
-        thread::spawn(move || {
-            let _ = pipe.write_all(text.as_bytes());
-        });
+    let child = command.spawn().log_err("No se pudo ejecutar el compilador")?;
+    let captured = wait_with_timeout(child, stdin, timeout, POLL_INTERVAL, kill_child)?;
+    if captured.timed_out {
+        return Err(format!("El compilador no respondió en {} s.", timeout.as_secs()));
     }
 
-    let mut out_pipe = child.stdout.take().ok_or("Sin salida estándar")?;
-    let mut err_pipe = child.stderr.take().ok_or("Sin salida de errores")?;
-    let out_reader = thread::spawn(move || {
-        let mut text = String::new();
-        let _ = out_pipe.read_to_string(&mut text);
-        text
-    });
-    let err_reader = thread::spawn(move || {
-        let mut text = String::new();
-        let _ = err_pipe.read_to_string(&mut text);
-        text
-    });
+    Ok(Output { code: captured.code, stdout: captured.stdout, stderr: captured.stderr })
+}
 
-    let started = Instant::now();
-    let status = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break status,
-            Ok(None) if started.elapsed() >= timeout => {
-                let _ = child.kill();
-                let _ = child.wait();
-                return Err(format!("El compilador no respondió en {} s.", timeout.as_secs()));
-            }
-            Ok(None) => thread::sleep(POLL_INTERVAL),
-            Err(e) => return Err(e.to_string()),
-        }
-    };
-
-    Ok(Output {
-        code: status.code(),
-        stdout: out_reader.join().unwrap_or_default(),
-        stderr: err_reader.join().unwrap_or_default(),
-    })
+fn kill_child(child: &mut std::process::Child) {
+    let _ = child.kill();
 }
 
 pub(super) fn failure_reason(output: &Output) -> String {
