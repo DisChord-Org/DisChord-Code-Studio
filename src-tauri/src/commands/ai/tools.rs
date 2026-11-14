@@ -1,15 +1,14 @@
 use std::fs;
-use std::io::Read;
 use std::path::{Component, Path, PathBuf};
 use std::process::Stdio;
-use std::thread;
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use ignore::overrides::OverrideBuilder;
 use regex::RegexBuilder;
 use serde_json::Value;
 
 use crate::commands::search::project_files;
+use crate::proc::wait_with_timeout;
 use crate::platform::{default_shell, isolate_process_group, silent_command, strip_npm_env, terminate_process_tree};
 
 const MAX_OUTPUT_CHARS: usize = 12_000;
@@ -53,7 +52,17 @@ fn clip(text: String) -> String {
 
 fn is_secret_file(path: &Path) -> bool {
     let name = path.file_name().map(|n| n.to_string_lossy().to_lowercase()).unwrap_or_default();
-    name.starts_with(".env") && name != ".env.example"
+    if name.starts_with(".env") {
+        return !matches!(name.as_str(), ".env.example" | ".env.sample" | ".env.template");
+    }
+    const EXACT: [&str; 7] = [".npmrc", ".netrc", ".pypirc", "token", "tokens", "credentials", "ai_session.json"];
+    const PREFIXES: [&str; 4] = ["id_rsa", "id_ed25519", "credentials.", "credentials_"];
+    const STEM_PREFIXES: [&str; 3] = ["secrets.", "secret.", "tokens."];
+    const SUFFIXES: [&str; 5] = [".pem", ".key", ".p12", ".pfx", ".token"];
+    EXACT.contains(&name.as_str())
+        || PREFIXES.iter().any(|p| name.starts_with(p))
+        || STEM_PREFIXES.iter().any(|p| name.starts_with(p))
+        || SUFFIXES.iter().any(|s| name.ends_with(s))
 }
 
 fn confine(root: &Path, requested: &str) -> Step<PathBuf> {
@@ -70,8 +79,8 @@ fn confine(root: &Path, requested: &str) -> Step<PathBuf> {
     if full.components().any(|c| c.as_os_str().to_string_lossy().eq_ignore_ascii_case(".git")) {
         return Err("No se permite acceder a la carpeta .git.".into());
     }
-    if is_secret_file(&full) {
-        return Err("No se permite acceder a archivos .env: pueden contener secretos.".into());
+    if is_secret_file(&full) && !full.is_dir() {
+        return Err("No se permite acceder a archivos de secretos (.env, claves, tokens, credenciales): pueden contener secretos.".into());
     }
     Ok(full)
 }
@@ -227,14 +236,6 @@ fn find_files(root: &Path, args: &Value) -> Step<String> {
     Ok(if found.is_empty() { "Sin resultados.".into() } else { found.join("\n") })
 }
 
-fn drain(mut pipe: impl Read + Send + 'static) -> thread::JoinHandle<String> {
-    thread::spawn(move || {
-        let mut bytes = Vec::new();
-        let _ = pipe.read_to_end(&mut bytes);
-        String::from_utf8_lossy(&bytes).into_owned()
-    })
-}
-
 fn run_shell(root: &Path, command: &str, cwd: &str, path_env: Option<std::ffi::OsString>) -> Outcome {
     let dir = match confine(root, cwd) {
         Ok(dir) if dir.is_dir() => dir,
@@ -254,30 +255,15 @@ fn run_shell(root: &Path, command: &str, cwd: &str, path_env: Option<std::ffi::O
         process.env("PATH", path);
     }
 
-    let mut child = match process.spawn() {
+    let child = match process.spawn() {
         Ok(child) => child,
         Err(e) => return Outcome::error(format!("No se pudo ejecutar el comando: {}", e)),
     };
-    let (Some(out), Some(err)) = (child.stdout.take(), child.stderr.take()) else {
-        return Outcome::error("No se pudo leer la salida del comando.");
+    let captured = match wait_with_timeout(child, None, SHELL_TIMEOUT, POLL_INTERVAL, terminate_process_tree) {
+        Ok(captured) => captured,
+        Err(message) => return Outcome::error(message),
     };
-    let (out, err) = (drain(out), drain(err));
-
-    let started = Instant::now();
-    let (status, timed_out) = loop {
-        match child.try_wait() {
-            Ok(Some(status)) => break (status.code(), false),
-            Ok(None) if started.elapsed() >= SHELL_TIMEOUT => {
-                terminate_process_tree(&mut child);
-                let _ = child.wait();
-                break (None, true);
-            }
-            Ok(None) => thread::sleep(POLL_INTERVAL),
-            Err(e) => return Outcome::error(e.to_string()),
-        }
-    };
-
-    let (stdout, stderr) = (out.join().unwrap_or_default(), err.join().unwrap_or_default());
+    let (status, timed_out, stdout, stderr) = (captured.code, captured.timed_out, captured.stdout, captured.stderr);
     let mut text = stdout;
     if !stderr.trim().is_empty() {
         text.push_str(&format!("{}[stderr]\n{}", if text.is_empty() { "" } else { "\n" }, stderr));
@@ -336,7 +322,7 @@ pub fn is_minor_command(command: &str) -> bool {
         "ls" => args.iter().all(|a| a.starts_with('-') && is_plain_word(a) || is_local_path(a)),
         "git" if args.first() == Some(&"branch") => args[1..].iter().all(|a| GIT_BRANCH_LIST_FLAGS.contains(a)),
         "git" if args.first().is_some_and(|sub| GIT_READ_ONLY.contains(sub)) => {
-            args[1..].iter().all(|a| is_plain_word(a) && !GIT_RISKY_FLAGS.iter().any(|risky| a == risky || a.starts_with(&format!("{}=", risky))))
+            args[1..].iter().all(|a| is_local_path(a) && !GIT_RISKY_FLAGS.iter().any(|risky| a == risky || a.starts_with(&format!("{}=", risky))))
         }
         _ => VERSION_PROGRAMS.contains(&program) && matches!(args, ["--version"] | ["-v"] | ["-V"]),
     }
@@ -373,6 +359,54 @@ mod tests {
         }
         assert!(!is_minor_command("git log -p"));
         assert!(!is_minor_command("git push"));
+    }
+
+    #[test]
+    fn git_rejects_colon_and_outside_paths() {
+        for bad in ["git log HEAD:secret.txt", "git show HEAD:.env", "git rev-parse HEAD:file", "git log main:src/a", "git log -- /etc/passwd", "git log ../x", "git log C:/x", "git status ../.."] {
+            assert!(!is_minor_command(bad), "{bad}");
+        }
+        for ok in ["git log main", "git log origin/main", "git log HEAD^", "git log -- src/a.rs", "git rev-parse --abbrev-ref HEAD"] {
+            assert!(is_minor_command(ok), "{ok}");
+        }
+    }
+
+    #[test]
+    fn secret_files_are_detected() {
+        for p in [
+            ".env", ".ENV", ".env.local", ".Env.Production", "sub/dir/.env", "a/b/.npmrc", ".NETRC", ".pypirc",
+            "server.pem", "x/Cert.PEM", "private.key", "a/b/store.p12", "store.PFX", "id_rsa", "id_rsa.pub", "ssh/ID_ED25519",
+            "credentials", "credentials.json", "aws/Credentials", "secrets.json", "bot/Secret.yaml", "token", "TOKEN", "tokens.json",
+            "discord.token", "bot/ai_session.json", "AI_SESSION.JSON",
+        ] {
+            assert!(is_secret_file(Path::new(p)), "{p}");
+        }
+    }
+
+    #[test]
+    fn normal_files_are_not_secret() {
+        for p in [
+            "src/main.ts", "lib.rs", "README.md", "package.json", "config.json", "settings.json", "Cargo.toml", ".gitignore",
+            ".env.example", "app/.ENV.SAMPLE", ".env.template", "tokenizer.rs", "keyboard.ts", "monkey.rs", "src/secretary.ts", "pnpm-lock.yaml",
+        ] {
+            assert!(!is_secret_file(Path::new(p)), "{p}");
+        }
+    }
+
+    #[test]
+    fn search_and_find_skip_secret_files() {
+        let root = std::env::temp_dir().join(format!("dischord_secret_test_{}", std::process::id()));
+        let _ = fs::remove_dir_all(&root);
+        fs::create_dir_all(root.join("bot")).unwrap();
+        fs::write(root.join("bot/credentials.json"), "NEEDLE_SECRET").unwrap();
+        fs::write(root.join("bot/main.ts"), "NEEDLE_PUBLIC").unwrap();
+        let args = serde_json::json!({ "pattern": "NEEDLE", "glob": "**/*" });
+        let found = search_files(&root, &args).unwrap();
+        assert!(found.contains("NEEDLE_PUBLIC") && !found.contains("NEEDLE_SECRET"), "{found}");
+        let listed = find_files(&root, &serde_json::json!({ "pattern": "**/*" })).unwrap();
+        assert!(!listed.contains("credentials"), "{listed}");
+        assert!(confine(&root, "bot/credentials.json").is_err());
+        let _ = fs::remove_dir_all(&root);
     }
 
     #[test]
