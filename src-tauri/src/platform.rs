@@ -5,7 +5,8 @@ use std::process::{Child, Command};
 use std::time::Duration;
 
 use tauri::Manager;
-use log::{info, error, debug};
+use log::{info, warn, error, debug};
+use sha2::{Digest, Sha256};
 
 #[cfg(target_os = "windows")]
 use winreg::enums::*;
@@ -129,8 +130,84 @@ pub fn looks_like_valid_binary(path: &Path) -> bool {
     }
 }
 
+/// Node.js folder. On Windows it stays inside `~/.dischord/bin`; on Unix it has its
+/// own folder so it never shares `~/.local/bin` (which also holds the user's binaries).
 pub fn node_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    Some(bin_dir(app_handle)?.join("node"))
+    if cfg!(windows) {
+        Some(bin_dir(app_handle)?.join("node"))
+    } else {
+        let home = app_handle.path().home_dir().ok()?;
+        Some(unix_node_dir(&home))
+    }
+}
+
+fn unix_node_dir(home: &Path) -> PathBuf {
+    home.join(".local").join("share").join("dischord").join("node")
+}
+
+/// folder where Unix versions prior to the move kept Node.js (`~/.local/bin/node`).
+#[cfg_attr(windows, allow(dead_code))]
+fn legacy_node_dir(home: &Path) -> PathBuf {
+    home.join(".local").join("bin").join("node")
+}
+
+/// One-time migration of Node.js from `~/.local/bin/node` to its own folder (Unix only).
+/// Only a *directory* named `node` is touched; a loose `node` binary is never moved.
+#[cfg(not(target_os = "windows"))]
+pub fn migrate_legacy_node(app_handle: &tauri::AppHandle) {
+    let Ok(home) = app_handle.path().home_dir() else { return };
+    match migrate_dir(&legacy_node_dir(&home), &unix_node_dir(&home)) {
+        Ok(true) => info!("Node.js migrado a {:?}", unix_node_dir(&home)),
+        Ok(false) => {}
+        Err(e) => warn!("No se pudo migrar la instalación antigua de Node.js: {}", e),
+    }
+}
+
+/// Moves `old` to `new` if `old` is a directory and `new` does not exist.
+/// Returns whether a migration happened.
+#[cfg_attr(windows, allow(dead_code))]
+fn migrate_dir(old: &Path, new: &Path) -> std::io::Result<bool> {
+    if !old.is_dir() || fs::symlink_metadata(new).is_ok() {
+        return Ok(false);
+    }
+    if let Some(parent) = new.parent() {
+        fs::create_dir_all(parent)?;
+    }
+    if fs::rename(old, new).is_ok() {
+        return Ok(true);
+    }
+    // rename fails across devices: copy and then remove the original.
+    #[cfg(unix)]
+    {
+        if let Err(e) = copy_dir_recursive(old, new) {
+            let _ = fs::remove_dir_all(new);
+            return Err(e);
+        }
+        fs::remove_dir_all(old)?;
+        Ok(true)
+    }
+    #[cfg(not(unix))]
+    {
+        Err(std::io::Error::other("no se pudo mover la carpeta"))
+    }
+}
+
+#[cfg(unix)]
+fn copy_dir_recursive(from: &Path, to: &Path) -> std::io::Result<()> {
+    fs::create_dir_all(to)?;
+    for entry in fs::read_dir(from)? {
+        let entry = entry?;
+        let target = to.join(entry.file_name());
+        let kind = entry.file_type()?;
+        if kind.is_symlink() {
+            std::os::unix::fs::symlink(fs::read_link(entry.path())?, &target)?;
+        } else if kind.is_dir() {
+            copy_dir_recursive(&entry.path(), &target)?;
+        } else {
+            fs::copy(entry.path(), &target)?;
+        }
+    }
+    Ok(())
 }
 
 fn node_exec_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
@@ -280,6 +357,47 @@ pub fn write_atomic(path: &Path, contents: impl AsRef<[u8]>) -> std::io::Result<
     Ok(())
 }
 
+pub fn sha256_hex(bytes: &[u8]) -> String {
+    format!("{:x}", Sha256::digest(bytes))
+}
+
+fn sha256_file(path: &Path) -> std::io::Result<String> {
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut fs::File::open(path)?, &mut hasher)?;
+    Ok(format!("{:x}", hasher.finalize()))
+}
+
+fn is_sha256_hex(s: &str) -> bool {
+    s.len() == 64 && s.chars().all(|c| c.is_ascii_hexdigit())
+}
+
+/// Looks up the SHA-256 of `filename` in a `sha256sum`-style listing (`<hash>  <name>`,
+/// optionally `<hash> *<name>`). If the text is a single bare hash (a `.sha256`
+/// sidecar), that hash is returned. The result is lowercase.
+pub fn find_checksum(text: &str, filename: &str) -> Option<String> {
+    let lines: Vec<&str> = text.lines().map(str::trim).filter(|l| !l.is_empty()).collect();
+    if let [only] = lines.as_slice() {
+        if is_sha256_hex(only) {
+            return Some(only.to_ascii_lowercase());
+        }
+    }
+    lines.iter().find_map(|line| {
+        let mut parts = line.split_whitespace();
+        let hash = parts.next()?;
+        let name = parts.next()?.trim_start_matches('*');
+        (is_sha256_hex(hash) && name == filename && parts.next().is_none())
+            .then(|| hash.to_ascii_lowercase())
+    })
+}
+
+fn fetch_text(url: &str) -> Option<String> {
+    let response = reqwest::blocking::get(url).ok()?;
+    if !response.status().is_success() {
+        return None;
+    }
+    response.text().ok()
+}
+
 pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::Error>> {
     let repo = if name == "chord" { "DischordCLI" } else { "DisChord" };
     let target = get_target_triple()?;
@@ -292,7 +410,7 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
 
     info!("Descargando herramienta: {} desde {}", name, url);
 
-    let mut response = reqwest::blocking::get(url)?;
+    let mut response = reqwest::blocking::get(&url)?;
     if !response.status().is_success() {
         let err_msg = format!("Error de descarga (HTTP {}): {}", response.status(), name);
         error!("{}", err_msg);
@@ -307,6 +425,29 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
     if let Err(e) = copy_result {
         let _ = fs::remove_file(&tmp_dest);
         return Err(e.into());
+    }
+
+    // The CLI does not publish checksums yet: when none exist next to the binary we only
+    // warn. As soon as one is published it is mandatory and a mismatch aborts the install.
+    let filename = format!("{}-{}{}", name, target, ext);
+    let base = url.rsplit_once('/').map(|(b, _)| b).unwrap_or(&url).to_string();
+    let expected = [format!("{}.sha256", url), format!("{}/SHA256SUMS", base), format!("{}/checksums.txt", base)]
+        .iter()
+        .find_map(|u| fetch_text(u).and_then(|t| find_checksum(&t, &filename)));
+    match expected {
+        Some(expected) => {
+            let actual = sha256_file(&tmp_dest).inspect_err(|_| {
+                let _ = fs::remove_file(&tmp_dest);
+            })?;
+            if actual != expected {
+                let _ = fs::remove_file(&tmp_dest);
+                let msg = format!("La suma SHA-256 de {} no coincide con la publicada; se descartó la descarga.", name);
+                error!("{} (esperada {}, obtenida {})", msg, expected, actual);
+                return Err(msg.into());
+            }
+            info!("SHA-256 de {} verificado", name);
+        }
+        None => warn!("No hay checksum publicado para {}: se instala sin verificar integridad", name),
     }
 
     #[cfg(unix)]
@@ -467,4 +608,74 @@ pub fn terminate_process_tree(child: &mut Child) {
         std::thread::sleep(KILL_GRACE_PERIOD);
         unsafe { libc::killpg(group, libc::SIGKILL) };
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const HELLO_SHA: &str = "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824";
+
+    fn temp(name: &str) -> PathBuf {
+        let dir = std::env::temp_dir().join(format!("dischord-test-{}-{}", name, std::process::id()));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).unwrap();
+        dir
+    }
+
+    #[test]
+    fn sha256_of_known_input() {
+        assert_eq!(sha256_hex(b"hello"), HELLO_SHA);
+    }
+
+    #[test]
+    fn finds_checksum_in_listing() {
+        let other = "a".repeat(64);
+        let text = format!("{other}  node-v22.1.0-linux-x64.tar.xz\n{HELLO_SHA}  node-v22.1.0-win-x64.zip\n{other} *star.zip\n");
+        assert_eq!(find_checksum(&text, "node-v22.1.0-win-x64.zip").as_deref(), Some(HELLO_SHA));
+        assert_eq!(find_checksum(&text, "star.zip").as_deref(), Some(other.as_str()));
+        assert_eq!(find_checksum(&text, "node-v22.1.0-win-x64.zip.sig"), None);
+        assert_eq!(find_checksum("not a hash  file.zip", "file.zip"), None);
+    }
+
+    #[test]
+    fn bare_sidecar_hash_is_accepted() {
+        let upper = HELLO_SHA.to_ascii_uppercase();
+        assert_eq!(find_checksum(&format!("{upper}\n"), "anything").as_deref(), Some(HELLO_SHA));
+    }
+
+    #[test]
+    fn node_dir_is_separate_from_legacy() {
+        let home = Path::new("/home/u");
+        assert_eq!(unix_node_dir(home), home.join(".local/share/dischord/node"));
+        assert_eq!(legacy_node_dir(home), home.join(".local/bin/node"));
+    }
+
+    #[test]
+    fn migrate_moves_legacy_dir_once() {
+        let root = temp("migrate");
+        let (old, new) = (root.join("bin").join("node"), root.join("share").join("dischord").join("node"));
+        fs::create_dir_all(old.join("bin")).unwrap();
+        fs::write(old.join("bin").join("x"), "data").unwrap();
+        assert!(migrate_dir(&old, &new).unwrap());
+        assert!(!old.exists());
+        assert_eq!(fs::read_to_string(new.join("bin").join("x")).unwrap(), "data");
+        assert!(!migrate_dir(&old, &new).unwrap());
+        let _ = fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn migrate_skips_when_new_exists_or_old_is_a_file() {
+        let root = temp("migrate-skip");
+        let (old, new) = (root.join("node"), root.join("new"));
+        fs::write(&old, "user binary").unwrap();
+        assert!(!migrate_dir(&old, &new).unwrap());
+        assert!(old.is_file());
+        fs::remove_file(&old).unwrap();
+        fs::create_dir_all(&old).unwrap();
+        fs::create_dir_all(&new).unwrap();
+        assert!(!migrate_dir(&old, &new).unwrap());
+        assert!(old.is_dir());
+        let _ = fs::remove_dir_all(&root);
+    }
 }

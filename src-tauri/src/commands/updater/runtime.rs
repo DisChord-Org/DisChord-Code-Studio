@@ -9,6 +9,7 @@ use crate::platform;
 use crate::log_err::LogErr;
 
 const NODE_MAJOR: u32 = 22;
+const PNPM_VERSION: &str = "12.6.0";
 
 #[derive(Deserialize)]
 struct NodeRelease {
@@ -97,6 +98,21 @@ fn install_node(app_handle: &tauri::AppHandle) -> Result<(), String> {
         .bytes()
         .log_err("No se pudo leer la descarga de Node.js")?;
 
+    // Never install without verifying against the official SHASUMS256.txt of that release.
+    let archive_file = format!("{}.{}", archive_name, ext);
+    let sums_url = format!("https://nodejs.org/dist/{version}/SHASUMS256.txt");
+    let sums = reqwest::blocking::get(&sums_url)
+        .and_then(|r| r.error_for_status())
+        .and_then(|r| r.text())
+        .log_err("No se pudo obtener SHASUMS256.txt de Node.js; no se instala sin verificar la integridad")?;
+    let expected = platform::find_checksum(&sums, &archive_file)
+        .ok_or_else(|| format!("SHASUMS256.txt no incluye {}; no se instala sin verificar la integridad", archive_file))?;
+    if platform::sha256_hex(&bytes) != expected {
+        // The download only lives in memory, so discarding it is just returning the error.
+        error!("La suma SHA-256 de {} no coincide con la oficial", archive_file);
+        return Err(format!("La descarga de Node.js está corrupta o fue alterada: la suma SHA-256 de {} no coincide con la oficial. Se descartó.", archive_file));
+    }
+
     let staging = dir.with_file_name("node.installing");
     if staging.exists() {
         fs::remove_dir_all(&staging).log_err("No se pudo limpiar una instalación incompleta de Node.js")?;
@@ -166,7 +182,7 @@ fn install_pnpm(app_handle: &tauri::AppHandle) -> Result<(), String> {
     let mut cmd = platform::shim_command(&npm);
     cmd.arg("install")
         .arg("-g")
-        .arg("pnpm")
+        .arg(format!("pnpm@{}", PNPM_VERSION))
         .arg("--prefix")
         .arg(&install_dir);
     platform::strip_npm_env(&mut cmd);
@@ -191,6 +207,9 @@ fn install_pnpm(app_handle: &tauri::AppHandle) -> Result<(), String> {
 }
 
 pub fn ensure_runtime(app_handle: tauri::AppHandle) {
+    #[cfg(not(target_os = "windows"))]
+    platform::migrate_legacy_node(&app_handle);
+
     let node_ready = platform::is_node_installed(&app_handle);
     let pnpm_already_ready = node_ready && platform::is_pnpm_installed(&app_handle);
 
