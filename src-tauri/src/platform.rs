@@ -390,8 +390,15 @@ pub fn find_checksum(text: &str, filename: &str) -> Option<String> {
     })
 }
 
+pub fn download_client() -> reqwest::Result<reqwest::blocking::Client> {
+    reqwest::blocking::Client::builder()
+        .connect_timeout(std::time::Duration::from_secs(15))
+        .timeout(std::time::Duration::from_secs(600))
+        .build()
+}
+
 fn fetch_text(url: &str) -> Option<String> {
-    let response = reqwest::blocking::get(url).ok()?;
+    let response = download_client().ok()?.get(url).send().ok()?;
     if !response.status().is_success() {
         return None;
     }
@@ -410,7 +417,7 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
 
     info!("Descargando herramienta: {} desde {}", name, url);
 
-    let mut response = reqwest::blocking::get(&url)?;
+    let mut response = download_client()?.get(&url).send()?;
     if !response.status().is_success() {
         let err_msg = format!("Error de descarga (HTTP {}): {}", response.status(), name);
         error!("{}", err_msg);

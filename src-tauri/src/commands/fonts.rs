@@ -45,7 +45,9 @@ fn download_font_blocking(app_handle: &tauri::AppHandle, name: &str) -> Result<S
 
     info!("Descargando tipografía '{}' desde {}", name, url);
 
-    let response = reqwest::blocking::get(url).map_err(|e| e.to_string())?;
+    let response = crate::platform::download_client()
+        .and_then(|c| c.get(url).send())
+        .map_err(|e| e.to_string())?;
     if !response.status().is_success() {
         let message = format!("Error de descarga (HTTP {}) para la tipografía '{}'", response.status(), name);
         error!("{}", message);

@@ -18,7 +18,8 @@ struct NodeRelease {
 }
 
 fn latest_lts_version() -> Result<String, String> {
-    let releases: Vec<NodeRelease> = reqwest::blocking::get("https://nodejs.org/dist/index.json")
+    let releases: Vec<NodeRelease> = platform::download_client()
+        .and_then(|c| c.get("https://nodejs.org/dist/index.json").send())
         .log_err("No se pudo consultar la lista de versiones de Node.js")?
         .json()
         .log_err("No se pudo interpretar la lista de versiones de Node.js")?;
@@ -93,7 +94,8 @@ fn install_node(app_handle: &tauri::AppHandle) -> Result<(), String> {
 
     info!("Descargando Node.js {} desde {}", version, url);
 
-    let bytes = reqwest::blocking::get(&url)
+    let bytes = platform::download_client()
+        .and_then(|c| c.get(&url).send())
         .log_err("No se pudo descargar Node.js")?
         .bytes()
         .log_err("No se pudo leer la descarga de Node.js")?;
@@ -101,7 +103,8 @@ fn install_node(app_handle: &tauri::AppHandle) -> Result<(), String> {
     // Never install without verifying against the official SHASUMS256.txt of that release.
     let archive_file = format!("{}.{}", archive_name, ext);
     let sums_url = format!("https://nodejs.org/dist/{version}/SHASUMS256.txt");
-    let sums = reqwest::blocking::get(&sums_url)
+    let sums = platform::download_client()
+        .and_then(|c| c.get(&sums_url).send())
         .and_then(|r| r.error_for_status())
         .and_then(|r| r.text())
         .log_err("No se pudo obtener SHASUMS256.txt de Node.js; no se instala sin verificar la integridad")?;
