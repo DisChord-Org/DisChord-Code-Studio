@@ -84,3 +84,12 @@ fn ignores_missing_or_malformed_digests() {
     assert_eq!(digest_from_release(RELEASE, "no-such-asset"), None);
     assert_eq!(digest_from_release("not json", "x"), None);
 }
+
+#[test]
+fn picks_pnpm_asset_per_platform() {
+    assert_eq!(pnpm_asset_name("windows", "x86_64").unwrap(), "pnpm-win32-x64.zip");
+    assert_eq!(pnpm_asset_name("macos", "aarch64").unwrap(), "pnpm-darwin-arm64.tar.gz");
+    assert_eq!(pnpm_asset_name("linux", "x86_64").unwrap(), "pnpm-linux-x64.tar.gz");
+    assert!(pnpm_asset_name("freebsd", "x86_64").is_err());
+    assert!(pnpm_asset_name("linux", "riscv64").is_err());
+}

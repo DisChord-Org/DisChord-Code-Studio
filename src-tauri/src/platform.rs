@@ -220,6 +220,9 @@ pub fn build_path_env(app_handle: &tauri::AppHandle) -> Option<std::ffi::OsStrin
     if let Some(dir) = bin_dir(app_handle) {
         path_entries.push(dir);
     }
+    if let Some(dir) = pnpm_dir(app_handle) {
+        path_entries.push(dir);
+    }
     if let Some(dir) = node_exec_dir(app_handle) {
         path_entries.push(dir);
     }
@@ -234,25 +237,45 @@ pub fn node_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
     Some(if cfg!(windows) { dir.join("node.exe") } else { dir.join("bin").join("node") })
 }
 
-pub fn npm_shim_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    let dir = node_dir(app_handle)?;
-    Some(if cfg!(windows) { dir.join("npm.cmd") } else { dir.join("bin").join("npm") })
+/// Folder of the standalone pnpm. Same layout rule as Node.js: inside `~/.dischord/bin` on
+/// Windows, its own folder on Unix so it never mixes with the user's `~/.local/bin`.
+pub fn pnpm_dir(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    if cfg!(windows) {
+        Some(bin_dir(app_handle)?.join("pnpm"))
+    } else {
+        let home = app_handle.path().home_dir().ok()?;
+        Some(home.join(".local").join("share").join("dischord").join("pnpm"))
+    }
 }
 
-fn pnpm_cjs_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
-    let dir = node_dir(app_handle)?;
-    let node_modules = if cfg!(windows) { dir.join("node_modules") } else { dir.join("lib").join("node_modules") };
-    Some(node_modules.join("pnpm").join("bin").join("pnpm.cjs"))
+pub fn pnpm_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
+    Some(pnpm_dir(app_handle)?.join(if cfg!(windows) { "pnpm.exe" } else { "pnpm" }))
 }
 
+/// Name of the standalone pnpm archive published in the GitHub release for an OS and
+/// architecture (`std::env::consts` values). It is a `.zip` on Windows and `.tar.gz` elsewhere.
+pub fn pnpm_asset_name(os: &str, arch: &str) -> Result<String, String> {
+    let (os_part, ext) = match os {
+        "windows" => ("win32", "zip"),
+        "macos" => ("darwin", "tar.gz"),
+        "linux" => ("linux", "tar.gz"),
+        _ => return Err(format!("No hay un pnpm independiente para {}-{}.", os, arch)),
+    };
+    let arch_part = match arch {
+        "x86_64" => "x64",
+        "aarch64" => "arm64",
+        _ => return Err(format!("No hay un pnpm independiente para {}-{}.", os, arch)),
+    };
+    Ok(format!("pnpm-{}-{}.{}", os_part, arch_part, ext))
+}
+
+/// The standalone pnpm needs no Node.js: it is a native launcher with its `dist/` next to it.
 pub fn pnpm_command(app_handle: &tauri::AppHandle) -> Option<Command> {
-    let node = node_binary_path(app_handle)?;
-    let cjs = pnpm_cjs_path(app_handle)?;
-    if !node.exists() || !cjs.exists() {
+    let binary = pnpm_binary_path(app_handle)?;
+    if !binary.exists() {
         return None;
     }
-    let mut cmd = silent_command(&node);
-    cmd.arg(&cjs);
+    let mut cmd = silent_command(&binary);
     strip_npm_env(&mut cmd);
     Some(cmd)
 }
@@ -315,17 +338,7 @@ pub fn node_platform_id() -> &'static str {
     }
 }
 
-#[cfg(target_os = "windows")]
-pub fn shim_command(path: &Path) -> Command {
-    let mut cmd = silent_command("cmd");
-    cmd.arg("/C").arg(path);
-    cmd
-}
-#[cfg(not(target_os = "windows"))]
-pub fn shim_command(path: &Path) -> Command {
-    silent_command(path)
-}
-
+/// Platforms with a published `chord` binary. Mac Intel and Linux ARM are out of scope on purpose.
 pub fn get_target_triple() -> Result<&'static str, String> {
     if cfg!(target_os = "windows") && cfg!(target_arch = "x86_64") {
         Ok("x86_64-pc-windows-msvc")
@@ -405,8 +418,9 @@ pub fn digest_from_release(json: &str, filename: &str) -> Option<String> {
     })
 }
 
-fn fetch_github_digest(repo: &str, filename: &str) -> Option<String> {
-    let url = format!("https://api.github.com/repos/DisChord-Org/{}/releases/latest", repo);
+/// SHA-256 GitHub computes for an asset of `owner/repo`; `release` is `latest` or `tags/<tag>`.
+pub fn fetch_github_digest(repo_path: &str, release: &str, filename: &str) -> Option<String> {
+    let url = format!("https://api.github.com/repos/{}/releases/{}", repo_path, release);
     let response = download_client().ok()?
         .get(url)
         .header(reqwest::header::USER_AGENT, "dischord-code-studio")
@@ -463,7 +477,7 @@ pub fn download_tool(name: &str, dest: &Path) -> Result<(), Box<dyn std::error::
     let expected = [format!("{}.sha256", url), format!("{}/SHA256SUMS", base), format!("{}/checksums.txt", base)]
         .iter()
         .find_map(|u| fetch_text(u).and_then(|t| find_checksum(&t, &filename)))
-        .or_else(|| fetch_github_digest(repo, &filename));
+        .or_else(|| fetch_github_digest(&format!("DisChord-Org/{}", repo), "latest", &filename));
     match expected {
         Some(expected) => {
             let actual = sha256_file(&tmp_dest).inspect_err(|_| {

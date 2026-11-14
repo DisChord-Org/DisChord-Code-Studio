@@ -138,74 +138,79 @@ fn install_node(app_handle: &tauri::AppHandle) -> Result<(), String> {
         }
     }
 
-    let backup = dir.with_file_name("node.old");
-    let _ = fs::remove_dir_all(&backup);
-    let had_previous = dir.exists();
-    if had_previous {
-        fs::rename(&dir, &backup).log_err("No se pudo apartar la instalación anterior de Node.js")?;
-    }
-    if let Err(e) = fs::rename(&staging, &dir) {
-        if had_previous {
-            let _ = fs::rename(&backup, &dir);
-        }
-        let _ = fs::remove_dir_all(&staging);
-        error!("No se pudo activar la nueva instalación de Node.js: {}", e);
-        return Err(format!("No se pudo activar la nueva instalación de Node.js: {}", e));
-    }
-    let _ = fs::remove_dir_all(&backup);
+    activate_dir(&staging, &dir, "Node.js")?;
 
     info!("Node.js {} instalado en {:?}", version, dir);
     Ok(())
 }
 
+/// Installs the standalone pnpm from its GitHub release. Like Node.js, it is never installed
+/// without verifying the archive against the SHA-256 GitHub computes for that release asset.
 fn install_pnpm(app_handle: &tauri::AppHandle) -> Result<(), String> {
-    let npm = platform::npm_shim_path(app_handle).ok_or("No se pudo localizar npm")?;
-    if !npm.exists() {
-        return Err("npm no está disponible (¿Node.js instalado correctamente?)".into());
-    }
-    let install_dir = platform::node_dir(app_handle).ok_or("No se pudo determinar la carpeta de Node.js")?;
+    let dir = platform::pnpm_dir(app_handle).ok_or("No se pudo determinar la carpeta de pnpm")?;
+    let asset = platform::pnpm_asset_name(std::env::consts::OS, std::env::consts::ARCH)?;
+    let url = format!("https://github.com/pnpm/pnpm/releases/download/v{}/{}", PNPM_VERSION, asset);
 
-    let stale_candidates = [
-        install_dir.join("pnpm"),
-        install_dir.join("pnpm.cmd"),
-        install_dir.join("pnpm.ps1"),
-        install_dir.join("pnpx"),
-        install_dir.join("pnpx.cmd"),
-        install_dir.join("pnpx.ps1"),
-        install_dir.join("bin").join("pnpm"),
-        install_dir.join("bin").join("pnpx"),
-    ];
-    for stale in stale_candidates {
-        if fs::symlink_metadata(&stale).is_ok() {
-            let _ = fs::remove_file(&stale);
+    info!("Descargando pnpm {} desde {}", PNPM_VERSION, url);
+
+    let bytes = platform::download_client()
+        .and_then(|c| c.get(&url).send())
+        .and_then(|r| r.error_for_status())
+        .log_err("No se pudo descargar pnpm")?
+        .bytes()
+        .log_err("No se pudo leer la descarga de pnpm")?;
+
+    let expected = platform::fetch_github_digest("pnpm/pnpm", &format!("tags/v{}", PNPM_VERSION), &asset)
+        .ok_or_else(|| format!("GitHub no publica la suma SHA-256 de {}; no se instala sin verificar la integridad", asset))?;
+    if platform::sha256_hex(&bytes) != expected {
+        error!("La suma SHA-256 de {} no coincide con la publicada", asset);
+        return Err(format!("La descarga de pnpm está corrupta o fue alterada: la suma SHA-256 de {} no coincide. Se descartó.", asset));
+    }
+
+    let staging = dir.with_file_name("pnpm.installing");
+    if staging.exists() {
+        fs::remove_dir_all(&staging).log_err("No se pudo limpiar una instalación incompleta de pnpm")?;
+    }
+    fs::create_dir_all(&staging).log_err("No se pudo crear la carpeta temporal de pnpm")?;
+
+    // The pnpm archives have no root folder: `pnpm[.exe]` and `dist/` sit at the top.
+    if let Err(e) = extract_archive(&bytes, "", &staging) {
+        let _ = fs::remove_dir_all(&staging);
+        return Err(e);
+    }
+
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let p = staging.join("pnpm");
+        if p.exists() {
+            let _ = fs::set_permissions(&p, fs::Permissions::from_mode(0o755));
         }
     }
 
-    info!("Instalando pnpm vía npm");
-    let mut cmd = platform::shim_command(&npm);
-    cmd.arg("install")
-        .arg("-g")
-        .arg(format!("pnpm@{}", PNPM_VERSION))
-        .arg("--prefix")
-        .arg(&install_dir);
-    platform::strip_npm_env(&mut cmd);
+    activate_dir(&staging, &dir, "pnpm")?;
+    info!("pnpm {} instalado en {:?}", PNPM_VERSION, dir);
+    Ok(())
+}
 
-    if let Some(path) = platform::build_path_env(app_handle) {
-        cmd.env("PATH", path);
+/// Swaps `staging` in as `dir`, keeping the previous folder until the swap worked so a
+/// failure leaves the old install in place.
+fn activate_dir(staging: &Path, dir: &Path, label: &str) -> Result<(), String> {
+    let backup = dir.with_extension("old");
+    let _ = fs::remove_dir_all(&backup);
+    let had_previous = dir.exists();
+    if had_previous {
+        fs::rename(dir, &backup).log_err(&format!("No se pudo apartar la instalación anterior de {}", label))?;
     }
-    cmd.stdout(std::process::Stdio::piped());
-    cmd.stderr(std::process::Stdio::piped());
-
-    let output = cmd.output().log_err("No se pudo ejecutar 'npm install -g pnpm'")?;
-
-    if !output.status.success() {
-        let stderr = String::from_utf8_lossy(&output.stderr);
-        let stdout = String::from_utf8_lossy(&output.stdout);
-        let detail = if !stderr.trim().is_empty() { stderr.trim() } else { stdout.trim() };
-        error!("'npm install -g pnpm' falló: {}", detail);
-        return Err(format!("'npm install -g pnpm' falló: {}", detail));
+    if let Err(e) = fs::rename(staging, dir) {
+        if had_previous {
+            let _ = fs::rename(&backup, dir);
+        }
+        let _ = fs::remove_dir_all(staging);
+        error!("No se pudo activar la nueva instalación de {}: {}", label, e);
+        return Err(format!("No se pudo activar la nueva instalación de {}: {}", label, e));
     }
-
+    let _ = fs::remove_dir_all(&backup);
     Ok(())
 }
 
@@ -214,9 +219,9 @@ pub fn ensure_runtime(app_handle: tauri::AppHandle) {
     platform::migrate_legacy_node(&app_handle);
 
     let node_ready = platform::is_node_installed(&app_handle);
-    let pnpm_already_ready = node_ready && platform::is_pnpm_installed(&app_handle);
+    let pnpm_ready = platform::is_pnpm_installed(&app_handle);
 
-    if !node_ready || !pnpm_already_ready {
+    if !node_ready || !pnpm_ready {
         if let Err(e) = super::window::open_update_window(&app_handle) {
             warn!("No se pudo abrir la ventana de actualización para el entorno de ejecución: {}", e);
         }
@@ -227,20 +232,17 @@ pub fn ensure_runtime(app_handle: tauri::AppHandle) {
     if !node_ready {
         super::emit_progress(&app_handle, super::Progress::new("node", "installing").message("Descargando Node.js..."));
 
-        if let Err(e) = install_node(&app_handle) {
-            super::emit_progress(&app_handle, super::Progress::new("node", "error").message(e.clone()));
-            super::emit_progress(&app_handle, super::Progress::new("pnpm", "error").message("No se pudo instalar porque Node.js falló"));
-            return;
+        match install_node(&app_handle) {
+            Ok(()) => super::emit_progress(&app_handle, super::Progress::new("node", "done")),
+            Err(e) => super::emit_progress(&app_handle, super::Progress::new("node", "error").message(e)),
         }
-
-        super::emit_progress(&app_handle, super::Progress::new("node", "done"));
     }
 
-    let pnpm_ready = platform::is_pnpm_installed(&app_handle);
+    // pnpm is standalone: it does not depend on Node.js being installed first.
     super::emit_progress(&app_handle, super::Progress::new("pnpm", if pnpm_ready { "up_to_date" } else { "checking" }));
 
     if !pnpm_ready {
-        super::emit_progress(&app_handle, super::Progress::new("pnpm", "installing").message("Instalando pnpm..."));
+        super::emit_progress(&app_handle, super::Progress::new("pnpm", "installing").message("Descargando pnpm..."));
 
         match install_pnpm(&app_handle) {
             Ok(()) => super::emit_progress(&app_handle, super::Progress::new("pnpm", "done")),
