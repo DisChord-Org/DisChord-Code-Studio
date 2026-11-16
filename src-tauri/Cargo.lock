@@ -926,7 +926,7 @@ dependencies = [
 
 [[package]]
 name = "dischord-code-studio"
-version = "1.18.2"
+version = "1.18.3"
 dependencies = [
  "base64 0.23.1",
  "chrono",
