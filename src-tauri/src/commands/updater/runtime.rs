@@ -76,6 +76,18 @@ fn extract_archive(bytes: &[u8], root_entry: &str, dest: &Path) -> Result<(), St
             if let Some(parent) = out_path.parent() {
                 fs::create_dir_all(parent).log_err("No se pudo crear una carpeta al extraer Node.js")?;
             }
+            if entry.header().entry_type().is_hard_link() {
+                // Hard link targets are relative to the archive root, not to the working directory.
+                let target = entry.link_name().log_err("No se pudo leer un enlace del tar.gz")?.map(|t| t.into_owned());
+                if let Some(target) = target {
+                    let target = dest.join(target.strip_prefix(root_entry).unwrap_or(&target));
+                    let _ = fs::remove_file(&out_path);
+                    if fs::hard_link(&target, &out_path).is_err() {
+                        fs::copy(&target, &out_path).log_err("No se pudo copiar un enlace del tar.gz")?;
+                    }
+                    continue;
+                }
+            }
             entry.unpack(&out_path).log_err("No se pudo extraer un fichero de Node.js")?;
         }
     }
