@@ -28,6 +28,17 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: check the tag matches the app version
+        shell: bash
+        run: |
+          for file in package.json src-tauri/tauri.conf.json; do
+            version=$(node -p "require('./$file').version")
+            if [ "v$version" != "$GITHUB_REF_NAME" ]; then
+              echo "::error file=$file::$file has version $version but the tag is $GITHUB_REF_NAME"
+              exit 1
+            fi
+          done
+
       - name: install pnpm
         uses: pnpm/action-setup@v4
 
