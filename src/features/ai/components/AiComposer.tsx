@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Tooltip } from "../../../components/ui";
 import { FileIcon } from "../../editor/components/FileIcon";
 import { mentionAt, useMentions } from "../useMentions";
@@ -78,12 +78,34 @@ export const AiComposer = ({ projectName, fileName, thinking, disabled = false, 
         box.current?.focus();
     }, [draft]);
 
+    const adjustHeight = useCallback(() => {
+        const element = box.current;
+
+        if (!element) return;
+
+        element.style.height = "auto";
+
+        if (element.scrollHeight > 0) element.style.height = `${Math.min(element.scrollHeight, maxHeightPx)}px`;
+    }, []);
+
+    useLayoutEffect(adjustHeight, [text, adjustHeight]);
+
     useEffect(() => {
         const element = box.current;
+
         if (!element) return;
-        element.style.height = "auto";
-        element.style.height = `${Math.min(element.scrollHeight, maxHeightPx)}px`;
-    }, [text]);
+
+        let width = element.clientWidth;
+
+        const observer = new ResizeObserver(() => {
+            if (element.clientWidth === width) return;
+            width = element.clientWidth;
+            adjustHeight();
+        });
+
+        observer.observe(element);
+        return () => observer.disconnect();
+    }, [adjustHeight]);
 
     const runCommand = (command: SlashCommand) => {
         setText("");
@@ -198,7 +220,7 @@ export const AiComposer = ({ projectName, fileName, thinking, disabled = false, 
                     placeholder={disabled ? "Inicia sesión para escribir…" : "Escribe tu pregunta…"}
                     disabled={disabled}
                     aria-label="Mensaje para Amaya"
-                    className="custom-scrollbar block w-full resize-none bg-transparent px-2.5 py-2 text-[13px] text-white outline-none placeholder:text-gray-600"
+                    className="custom-scrollbar block min-h-9 w-full resize-none bg-transparent px-2.5 py-2 text-[13px] text-white outline-none placeholder:text-gray-600"
                 />
 
                 <div className="flex items-center gap-3 px-2.5 pb-2">
