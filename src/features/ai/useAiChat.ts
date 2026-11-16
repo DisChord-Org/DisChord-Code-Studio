@@ -104,6 +104,14 @@ export const useAiChat = (projectName: string) => {
         }
     }, []);
 
+    const cancelRefresh = useRef<ReturnType<typeof setTimeout>>(undefined);
+    const refreshAfterCancel = useCallback(() => {
+        refreshAccount(true);
+        clearTimeout(cancelRefresh.current);
+        cancelRefresh.current = setTimeout(() => refreshAccount(true), 2000);
+    }, [refreshAccount]);
+    useEffect(() => () => clearTimeout(cancelRefresh.current), []);
+
     const onEvent = useCallback((event: AiServerEvent) => {
         if (event.type === "chat:token") {
             const messageId = event.messageId;
@@ -163,7 +171,8 @@ export const useAiChat = (projectName: string) => {
 
                 if (!toolOnly || event.cancelled) {
                     setThinking(false);
-                    refreshAccount();
+                    if (event.cancelled) refreshAfterCancel();
+                    else refreshAccount();
                 }
                 break;
             }
@@ -181,6 +190,7 @@ export const useAiChat = (projectName: string) => {
             }
             case "chat:cancel:ack":
                 setThinking(false);
+                refreshAfterCancel();
                 break;
             case "error":
                 notice("error", errorTexts[event.error] ?? `Error del servidor: ${event.error}.`);
@@ -209,7 +219,7 @@ export const useAiChat = (projectName: string) => {
                 });
                 break;
         }
-    }, [flushText, notice, refreshAccount, setTool, updateAssistant]);
+    }, [flushText, notice, refreshAccount, refreshAfterCancel, setTool, updateAssistant]);
 
     useEffect(() => {
         const unlisten = listen<unknown>("ai-event", (e) => {
