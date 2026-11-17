@@ -68,10 +68,15 @@ pub fn chord_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
 }
 
 pub fn resolve_chord_command(app_handle: &tauri::AppHandle) -> Command {
-    match chord_binary_path(app_handle).filter(|p| p.exists()) {
+    let mut command = match chord_binary_path(app_handle).filter(|p| p.exists()) {
         Some(path) => silent_command(path),
         None => silent_command("chord"),
+    };
+
+    if let Some(path) = build_path_env(app_handle) {
+        command.env("PATH", path);
     }
+    command
 }
 
 pub fn compiler_binary_path(app_handle: &tauri::AppHandle) -> Option<PathBuf> {
@@ -111,9 +116,11 @@ pub fn looks_like_valid_binary(path: &Path) -> bool {
         ];
         let Ok(mut file) = fs::File::open(path) else { return false };
         let mut header = [0u8; 4];
+
         if file.read_exact(&mut header).is_err() {
             return false;
         }
+        
         return MACHO_MAGICS.contains(&header);
     }
 
