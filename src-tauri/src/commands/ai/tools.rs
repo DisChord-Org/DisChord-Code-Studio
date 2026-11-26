@@ -324,6 +324,8 @@ pub fn is_minor_command(command: &str) -> bool {
         "git" if args.first().is_some_and(|sub| GIT_READ_ONLY.contains(sub)) => {
             args[1..].iter().all(|a| is_local_path(a) && !GIT_RISKY_FLAGS.iter().any(|risky| a == risky || a.starts_with(&format!("{}=", risky))))
         }
+        "chord" if matches!(args, ["run" | "help" | "compile", ..] | ["pkg", "search", ..]) => true,
+        "dischord-compiler" | "chord-compiler" => true,
         _ => VERSION_PROGRAMS.contains(&program) && matches!(args, ["--version"] | ["-v"] | ["-V"]),
     }
 }
