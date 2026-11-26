@@ -47,6 +47,20 @@ const targetOrder: TargetKey[] = ["ide", "cli", "compiler", "node", "pnpm"];
 const settledPhases: Phase[] = ["up_to_date", "done", "error"];
 const activePhases: Phase[] = ["checking", "downloading", "installing"];
 
+const spanishTimeZones = ["Europe/Madrid", "Atlantic/Canary", "Africa/Ceuta"];
+const networkErrorPattern = /error sending request|connect|timed out|timeout|dns|network|tcp|resolve|conexi|red\b|descarga/i;
+
+type LeagueBlock = "blocked" | "unknown";
+
+const isInSpain = () => {
+    try {
+        // Works the same in WebView2 (Windows), WebKitGTK (Linux) and WKWebView (macOS): all report IANA names.
+        return spanishTimeZones.includes(Intl.DateTimeFormat().resolvedOptions().timeZone);
+    } catch {
+        return false;
+    }
+};
+
 const initialState = (): Record<TargetKey, TargetState> => ({
     ide: { phase: "idle" },
     cli: { phase: "idle" },
@@ -197,6 +211,9 @@ function Update() {
     const hasError = targetOrder.some((k) => states[k].phase === "error");
     const ideInstalling = states.ide.phase === "installing";
     const ideNeedsRestart = states.ide.phase === "done";
+    const hasNetworkError = targetOrder.some(
+        (k) => states[k].phase === "error" && networkErrorPattern.test(states[k].message ?? ""),
+    );
     const nothingChanged =
         allSettled && !hasError && targetOrder.every((k) => states[k].phase !== "done");
 
@@ -207,6 +224,29 @@ function Update() {
         }, 1600);
         return () => clearTimeout(timer);
     }, [nothingChanged]);
+
+    const [leagueBlock, setLeagueBlock] = useState<LeagueBlock | null>(null);
+
+    useEffect(() => {
+        if (!allSettled || !hasNetworkError || !isInSpain()) {
+            setLeagueBlock(null);
+            return;
+        }
+
+        let cancelled = false;
+        invoke<string>("check_league_block")
+            .then((result) => {
+                if (cancelled) return;
+                setLeagueBlock(result === "blocked" || result === "unknown" ? result : null);
+            })
+            .catch(() => {
+                if (!cancelled) setLeagueBlock("unknown");
+            });
+
+        return () => {
+            cancelled = true;
+        };
+    }, [allSettled, hasNetworkError]);
 
     const [autoRestartSeconds, setAutoRestartSeconds] = useState<number | null>(null);
 
@@ -287,6 +327,17 @@ function Update() {
                     </div>
                 ))}
             </ListGroup>
+
+            {leagueBlock && (
+                <div className="max-w-xl mx-auto w-full mt-4 flex items-start gap-3 rounded-lg border border-amber-400/20 bg-amber-400/5 px-4 py-3 animate-in fade-in duration-300">
+                    <i className="bi bi-exclamation-triangle-fill text-amber-400 text-sm mt-0.5 shrink-0"></i>
+                    <p className="text-[11px] text-amber-200/90 leading-relaxed">
+                        {leagueBlock === "blocked"
+                            ? "Actualmente en España hay fútbol y LaLiga ha bloqueado medio internet, nuestros servicios incluidos. No es tu conexión ni un fallo de la app. Los que hacemos software indie nos comemos el apagón por la ignorancia de Tebas, que solo busca llenar más su bolsillo por un servicio deficiente."
+                            : "Estás en España y la conexión ha fallado. Si hay partido (no se ha podido comprobar), probablemente sea LaLiga bloqueando IPs de Cloudflare, y con ellas nuestro servicio y medio internet. Espera a que acabe o usa una VPN."}
+                    </p>
+                </div>
+            )}
 
             <div className="mt-auto pt-8 flex items-center justify-between max-w-xl mx-auto w-full">
                 <span className="text-[10px] text-gray-600">

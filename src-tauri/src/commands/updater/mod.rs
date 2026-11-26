@@ -2,6 +2,7 @@ mod window;
 mod ide;
 mod cli;
 mod runtime;
+mod league;
 
 use tauri::{Emitter, Manager};
 use serde::{Serialize, Deserialize};
@@ -12,6 +13,7 @@ use crate::UpdateState;
 
 pub use ide::run_ide_update;
 pub use cli::setup_environment;
+pub use league::*;
 pub use window::*;
 
 #[derive(Clone, Serialize, Deserialize)]

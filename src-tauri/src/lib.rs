@@ -142,6 +142,7 @@ pub fn run() {
 
             commands::updater::start_full_update,
             commands::updater::get_update_state,
+            commands::updater::check_league_block,
             commands::updater::mark_update_window_ready,
 
             commands::system_stats::get_system_stats,
